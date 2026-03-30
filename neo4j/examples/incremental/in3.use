@@ -1,0 +1,10 @@
+model BWTest
+
+class FulUp
+attributes
+end
+
+composition NewHhu between
+    FulUp[*] role employee
+    Cass1[0..1] role employer
+end

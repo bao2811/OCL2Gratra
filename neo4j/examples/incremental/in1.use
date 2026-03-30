@@ -1,0 +1,17 @@
+model BWTest
+
+class Cass1
+attributes
+    name: String
+    age: Integer
+    salary: Real
+    isGood: Boolean
+end
+
+composition WorksFor between
+    Cass2[*] role employee
+    Cass1[0..1] role employer
+end
+class Cass2
+attributes
+end

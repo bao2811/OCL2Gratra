@@ -1,0 +1,64 @@
+model sc
+class Statechart
+end
+
+class State
+attributes
+ name:String
+end
+
+class Trans
+--attributes
+ --name:String
+end
+
+class Event
+attributes
+ name:String
+end
+
+class Init < State
+end
+
+class Fin < State
+end
+
+class SimpState < State
+end
+
+class CompState < State
+attributes
+  isConcurr:Boolean
+operations
+  allChilds():Set(State) = self.content
+end
+
+association TransFrom between
+  Trans[0..*] role outgoing
+  State[1..1] role src
+end
+
+association TransTo between
+  Trans[0..*] role incomimg
+  State[1..1] role dst
+end
+
+association OwnsTrans between
+  Statechart[0..1] role trOwner
+  Trans[0..*] role transition
+end
+
+association OwnsState between
+  Statechart[0..1] role owner
+  State[0..*] role state
+end
+
+association ContainsState between
+  CompState[0..1] role container
+  State[1..*] role content
+end
+
+association Trigger between
+  Trans[0..*] role trans
+  Event[0..*] role trigger
+end

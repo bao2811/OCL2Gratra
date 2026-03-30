@@ -1,0 +1,95 @@
+!create h2 : Hospital
+!set h2.name := 'Bệnh viện K - Cơ sở Tân Triều'
+!set h2.totalBudget := 800000.0
+!set h2.location := 'Thanh Trì, Hà Nội'
+!set h2.totalBeds := 1500
+!set h2.availableICUs := 30
+!set h2.isPublic := true
+
+!create d3 : Department
+!set d3.deptName := 'Khoa Ung bướu'
+
+!create d4 : Department
+!set d4.deptName := 'Khoa Nội thần kinh'
+
+-- Thiết lập Aggregation cho Hospital h2 [3]
+!insert (h2, d3) into HospitalStructure
+!insert (h2, d4) into HospitalStructure
+
+-- 2. Tạo Bác sĩ và Y tá mới
+!create dr3 : Doctor
+!set dr3.name := 'Hoàng Văn E'
+!set dr3.age := 50
+!set dr3.gender := Gender::MALE
+!set dr3.doctorID := 'DOC003'
+!set dr3.specialty := Specialty::ONCOLOGY
+!set dr3.consultationFee := 350.0
+!set dr3.isAvailable := true
+-- Lịch trực: Tuần 1 trực phòng 301, 302; Tuần 2 trực phòng 305 [4]
+!set dr3.shiftSchedule := Sequence{Set{301, 302}, Set{305}}
+
+!create n2 : Nurse
+!set n2.name := 'Phạm Thị G'
+!set n2.nurseID := 'NUR002'
+!set n2.isHeadNurse := false
+!set n2.assignedWard := 'A3-UngBướu'
+
+-- 3. Tạo Bệnh nhân và Bệnh lý mới
+!create p2 : Patient
+!set p2.name := 'Lê Thị F'
+!set p2.age := 58
+!set p2.patientID := 'PAT002'
+!set p2.bloodType := BloodType::AB_NEG
+!set p2.isEmergency := false
+!set p2.weight := 52.0
+!set p2.symptoms := Sequence{'Sụt cân nhanh', 'Mệt mỏi kéo dài'}
+!set p2.treatmentHistory := Set{Sequence{'Khám tổng quát tại tỉnh', 'Chuyển tuyến Trung ương'}}
+
+!create dis2 : Disease
+!set dis2.diseaseName := 'U lympho không Hodgkin'
+
+-- 4. Thuốc và Quản lý liều lượng (Dosage & Dosage Plan) [1, 2]
+-- Dựa trên tài liệu MediSupply: Thuốc ở đây dùng tên thương hiệu (Brand)
+!create m3 : Medication
+!set m3.brandName := 'Buffaprin'
+!set m3.genericName := 'Aspirin'
+!set m3.price := 45.0
+
+!create dp1 : DosagePlan
+-- (Giả định DosagePlan là một tập hợp các liều lượng cho bệnh nhân p2)
+
+!create dos1 : Dosage
+!set dos1.patientNumber := 20240001
+!set dos1.adminMethod := Administration::ENTERAL
+!set dos1.brandName := Brand::BUFFAPRIN
+
+!create dos2 : Dosage
+!set dos2.patientNumber := 20240001
+!set dos2.adminMethod := Administration::PARENTERAL
+!set dos2.brandName := Brand::AXOTAL
+
+-- 5. Thiết lập các mối quan hệ (Links)
+-- Hội chẩn [5]
+!insert (dr3, p2, dis2) into Consultation
+
+-- Nhập viện và Quản lý buồng phòng (Association Class) [5]
+!create hosp2 : Hospitalization between (p2, d3)
+!set hosp2.admissionDate := '2024-02-15'
+!set hosp2.roomNumber := 308
+
+-- Đơn thuốc (Association Class) [5]
+!create presc2 : Prescription between (dr3, p2)
+!set presc2.prescriptionID := 'PRES002'
+!set presc2.dosageInstructions := 'Sử dụng theo kế hoạch DosagePlan 01'
+
+-- Cập nhật danh sách nhân sự bệnh viện h2
+!set h2.medicalStaff := Set{dr3, n2}
+
+-- Hồ sơ bệnh án (Composition) [6]
+!create mr2 : MedicalRecord
+!insert (p2, mr2) into PatientRecord
+
+!create re2 : RecordEntry
+!set re2.entryDate := '2024-03-04'
+!set re2.description := 'Bắt đầu liệu trình hóa trị đợt 1'
+!insert (mr2, re2) into RecordEntries

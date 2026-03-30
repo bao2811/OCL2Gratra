@@ -1,0 +1,421 @@
+transformation sc2eha
+direction forward
+
+rule initTop
+checkSource(  
+){
+  sc:Statechart
+  initS:Init
+  s:SimpState
+  tr:Trans
+  (tr,initS):TransFrom
+  (tr,s):TransTo
+  (sc,s):OwnsState
+  (sc,tr):OwnsTrans
+  (sc,initS):OwnsState
+  [initS.name='']
+  [s.name<>oclUndefined(String)]
+}checkTarget(
+){  
+  eha:EHA
+  top:InitH
+  aut:AutH  
+  sH:InitH
+  (eha,top):InitState
+  (top,aut):RefiningAutH
+  (eha,aut):OwnsAutH
+  (aut,sH):ContainsStateH
+  [aut.name='']
+}checkCorr(
+){
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  ((State)initS,(StateH)top) as (sc,eha) in i2i:S2SH
+  ((State)s,(StateH)sH) in s2sH:S2SH
+  S2SH:[self.eha.name=self.sc.name]
+}end
+
+rule initNest
+checkSource(
+  sc:Statechart
+  cps:CompState
+){
+  initS:Init
+  s:SimpState
+  tr:Trans
+  (tr,initS):TransFrom
+  (tr,s):TransTo
+  (sc,s):OwnsState
+  (sc,tr):OwnsTrans
+  (cps,s):ContainsState
+  [initS.name='']
+  [s.name<>oclUndefined(String)]
+}checkTarget(
+  eha:EHA
+  aut:AutH
+  (eha,aut):OwnsAutH
+){
+  sH:InitH
+  (aut,sH):ContainsStateH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (cps,aut) as (sc,eha) in s2a:St2Aut
+){
+  ((State)s,(StateH)sH) in s2sH:S2SH
+  S2SH:[self.eha.name=self.sc.name]
+}end
+
+rule simpStateTop
+checkSource(
+  sc:Statechart
+){
+  s:SimpState
+  (sc,s):OwnsState
+  [s.name<>oclUndefined(String)]
+  [s.container=oclUndefined(CompState)]
+}checkTarget(
+  eha:EHA
+  aut:AutH
+  (eha,aut):OwnsAutH
+  [aut.refined=eha.top]
+){
+  sH:StateH
+  (aut,sH):ContainsStateH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+){
+  ((State)s,sH) as (sc,eha) in s2sH:S2SH 
+  S2SH:[self.eha.name=self.sc.name] 
+}end
+
+rule simpStateNest
+checkSource(
+  sc:Statechart
+  cps:CompState
+){
+  s:SimpState
+  (sc,s):OwnsState
+  (cps,s):ContainsState
+  [s.name<>oclUndefined(String)]
+}checkTarget(
+  eha:EHA
+  aut:AutH
+  (eha,aut):OwnsAutH
+){
+  sH:StateH
+  (aut,sH):ContainsStateH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (cps,aut) as (sc,eha) in s2a:St2Aut
+){
+  ((State)s,sH) in s2sH:S2SH  
+  S2SH:[self.eha.name=self.sc.name]
+}end
+
+rule concurrStateTop
+checkSource(
+  sc:Statechart
+){
+  s:CompState
+  s1:CompState
+  s2:CompState
+  (sc,s):OwnsState
+  (sc,s1):OwnsState
+  (sc,s2):OwnsState
+  (s,s1):ContainsState
+  (s,s2):ContainsState
+  [s.name<>oclUndefined(String)]
+  [s1.name<>oclUndefined(String)]
+  [s2.name<>oclUndefined(String)]
+  [s.isConcurr=true]
+  [s.container=oclUndefined(CompState)]
+  [s1.isConcurr=false]
+  [s2.isConcurr=false]
+}checkTarget(
+  eha:EHA
+  aut:AutH
+  (eha,aut):OwnsAutH
+  [aut.refined=eha.top]
+){
+  sH:StateH
+  aut1:AutH
+  aut2:AutH
+  (eha,aut1):OwnsAutH
+  (eha,aut2):OwnsAutH
+  (aut,sH):ContainsStateH
+  (sH,aut1):RefiningAutH
+  (sH,aut2):RefiningAutH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+){
+  (s1,aut1) as (sc,eha) in s2a1:St2Aut
+  (s2,aut2) as (sc,eha) in s2a2:St2Aut
+  ((State)s,sH) as (sc,eha) in s2sH:S2SH  
+  S2SH:[self.eha.name=self.sc.name]
+  St2Aut:[self.eha.name=self.sc.name]
+}end
+
+--rule compStateTop
+--checkSource(
+  --sc:Statechart
+--){
+  --s:CompState
+  --(sc,s):OwnsState
+  --[s.name<>oclUndefined(String)]
+  --[s.isConcurr=false]
+--}checkTarget(
+  --eha:EHA
+  --aut:AutH
+  --(eha,aut):OwnsAutH
+  --[aut.refined<>eha.top]
+--){
+  --sH:StateH
+  --aut1:AutH
+  --(aut,sH):ContainsStateH
+  --(sH,aut1):RefiningAutH
+  --(eha,aut1):OwnsAutH
+--}checkCorr(
+  --(sc,eha) as (sc,eha) in s2e:SC2EHA
+--){
+  --((State)s,sH) as (sc,eha) in s2sH:S2SH  
+--}end
+
+rule compStateNest
+checkSource(
+  sc:Statechart
+  cps:CompState
+  (sc,cps):OwnsState
+  [cps.isConcurr=false]
+){
+  s:CompState
+  (sc,s):OwnsState
+  (cps,s):ContainsState
+  [s.name<>oclUndefined(String)]
+  [s.isConcurr=false]
+}checkTarget(
+  eha:EHA
+  aut:AutH
+  (eha,aut):OwnsAutH
+){
+  sH:StateH
+  aut1:AutH
+  (aut,sH):ContainsStateH
+  (sH,aut1):RefiningAutH
+  (eha,aut1):OwnsAutH  
+  [aut1.name<>oclUndefined(String)]
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (cps,aut) as (sc,eha) in s2a:St2Aut
+  St2Aut:[self.eha.name=self.sc.name]
+){
+  ((State)s,sH) in s2sH:S2SH
+  (s,aut1) as (sc,eha) in s2a1:St2Aut
+  S2SH:[self.eha.name=self.sc.name]
+  St2Aut:[self.eha.name=self.sc.name]
+}end
+
+rule transitToSimp
+checkSource(
+  sc:Statechart
+  s1:State
+  s2:State
+){
+  tr:Trans
+  e:Event
+  (tr,s1):TransFrom
+  (tr,s2):TransTo
+  (sc,tr):OwnsTrans
+  (tr,e):Trigger
+}checkTarget(
+  eha:EHA
+  sH1:StateH
+  sH2:StateH
+  aut:AutH
+  (eha,aut):OwnsAutH
+  (aut,sH1):ContainsStateH
+  (aut,sH2):ContainsStateH
+){
+  trH:TransH
+  eH:EventH
+  (trH,sH1):TransFromH
+  (trH,sH2):TransToH
+  (aut,trH):ContainsTransH
+  (trH,eH):TriggerH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (s1,sH1) as (sc,eha) in s2sH1:S2SH
+  (s2,sH2) in s2sH2:S2SH
+){}
+end
+
+rule transitToComp
+checkSource(
+  sc:Statechart
+  s1:State
+  s2:CompState
+  s3:State
+  (sc,s1):OwnsState
+  (sc,s2):OwnsState
+  (s2,s3):ContainsState
+  [s2.isConcurr=false]
+){
+  tr:Trans
+  e:Event
+  (tr,s1):TransFrom
+  (tr,s2):TransTo
+  (sc,tr):OwnsTrans
+  (tr,e):Trigger
+}checkTarget(
+  eha:EHA
+  sH1:StateH
+  sH2:StateH
+  sH3:InitH
+  aut:AutH
+  (eha,aut):OwnsAutH
+  (aut,sH1):ContainsStateH
+  (aut,sH2):ContainsStateH
+){
+  trH:TransH
+  eH:EventH
+  (trH,sH1):TransFromH
+  (trH,sH2):TransToH
+  (aut,trH):ContainsTransH
+  (trH,sH3):TargetDet
+  (trH,eH):TriggerH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (s1,sH1) as (sc,eha) in s2sH1:S2SH
+  ((State)s2,sH2) in s2sH2:S2SH
+  (s3,(StateH)sH3) in s2sH3:S2SH
+){}
+end
+
+rule transitToConcurr
+checkSource(
+  sc:Statechart
+  s1:State
+  s2:CompState
+  s3:State
+  s4:State
+  (sc,s1):OwnsState
+  (sc,s2):OwnsState
+  (sc,s3):OwnsState
+  (sc,s4):OwnsState
+  [s2.isConcurr=true]
+  [s2.content->includes(s3.container)]
+  [s2.content->includes(s4.container)]
+){
+  tr:Trans
+  e:Event
+  (tr,s1):TransFrom
+  (tr,s2):TransTo
+  (sc,tr):OwnsTrans
+  (tr,e):Trigger
+}checkTarget(
+  eha:EHA
+  sH1:StateH
+  sH2:StateH
+  sH3:InitH
+  sH4:InitH
+  aut:AutH
+  (eha,aut):OwnsAutH
+  (aut,sH1):ContainsStateH
+  (aut,sH2):ContainsStateH
+){
+  trH:TransH
+  eH:EventH
+  (trH,sH1):TransFromH
+  (trH,sH2):TransToH
+  (aut,trH):ContainsTransH
+  (trH,sH3):TargetDet
+  (trH,sH4):TargetDet
+  (trH,eH):TriggerH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (s1,sH1) as (sc,eha) in s2sH1:S2SH
+  ((State)s2,sH2) in s2sH2:S2SH
+  (s3,(StateH)sH3) in s2sH3:S2SH
+  (s4,(StateH)sH4) in s2sH4:S2SH
+){}
+end
+
+--rule transitDownSimp
+--checkSource(
+  --sc:Statechart
+  --s1:State
+  --s2:State
+  --s3:CompState
+  --e:Event
+  --(sc,s1):OwnsState
+  --(sc,s2):OwnsState
+  --[s3.allChilds()->includes(s2)]
+--){
+  --tr:Trans
+  --(tr,s1):TransFrom
+  --(tr,s2):TransTo
+  --(sc,tr):OwnsTrans
+  --(tr,e):Trigger
+--}checkTarget(
+  --eha:EHA
+  --sH1:StateH
+  --sH2:StateH
+  --sH3:StateH
+  --aut:AutH
+  --eH:EventH
+  --(eha,aut):OwnsAutH
+  --(aut,sH1):ContainsStateH
+  --(aut,sH3):ContainsStateH
+--){
+  --trH:TransH
+  --(trH,sH1):TransFromH
+  --(trH,sH3):TransToH
+  --(aut,trH):ContainsTransH
+  --(trH,sH2):TargetDet
+  --(trH,eH):TriggerH
+--}checkCorr(
+  --(sc,eha) as (sc,eha) in s2e:SC2EHA
+  --(s1,sH1) as (sc,eha) in s2sH1:S2SH
+  --(s2,sH2) in s2sH2:S2SH
+  --((State)s3,sH3) in s2sH3:S2SH
+--){}
+--end
+
+rule transitUpSimp
+checkSource(
+  sc:Statechart
+  s1:State
+  s2:State
+  s3:CompState
+  (sc,s1):OwnsState
+  (sc,s2):OwnsState
+  [s3.allChilds()->includes(s1)]
+){
+  tr:Trans
+  e:Event
+  (tr,s1):TransFrom
+  (tr,s2):TransTo
+  (sc,tr):OwnsTrans
+  (tr,e):Trigger
+}checkTarget(
+  eha:EHA
+  sH1:StateH
+  sH2:StateH
+  sH3:StateH
+  aut:AutH
+  (eha,aut):OwnsAutH
+  (aut,sH2):ContainsStateH
+  (aut,sH3):ContainsStateH
+){
+  trH:TransH
+  eH:EventH
+  (trH,sH3):TransFromH
+  (trH,sH2):TransToH
+  (aut,trH):ContainsTransH
+  (trH,sH1):SrcRest
+  (trH,eH):TriggerH
+}checkCorr(
+  (sc,eha) as (sc,eha) in s2e:SC2EHA
+  (s1,sH1) as (sc,eha) in s2sH1:S2SH
+  (s2,sH2) in s2sH2:S2SH
+  ((State)s3,sH3) in s2sH3:S2SH
+){}
+end

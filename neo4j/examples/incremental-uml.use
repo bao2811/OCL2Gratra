@@ -1,0 +1,392 @@
+model LotteryTicketModel
+
+
+class step3_act_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+composition SnapshotPurchase between
+  Snapshot[1] role snapshotPurchase
+  Purchase[*]
+end
+
+aggregation PredSuccLotteryDraw between
+  LotteryDraw[0..1] role predLotteryDraw
+  LotteryDraw[0..1] role succLotteryDraw
+end
+
+association Filmstrip between
+  Snapshot[0..1] role pred
+  Snapshot[0..1] role succ
+  OperationCall[0..1]
+end
+
+association BuyLotteryTicket_lotteryDraws between
+  BuyLotteryTicket[0..1] role buyLotteryTicketlotterydraws
+  LotteryDraw[*] role lotteryDraws
+end
+
+association BuyLotteryTicket_purchase between
+  BuyLotteryTicket[0..1] role buyLotteryTicketPurchase
+  Purchase[0..1]
+end
+
+class step4_sys_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+abstract class OperationCall
+operations
+  pred() : Snapshot =
+    if (self.pred->size() = 1) then self.pred->any( $elem0:Snapshot | true ) else null endif
+  succ() : Snapshot =
+    if (self.succ->size() = 1) then self.succ->any( $elem0:Snapshot | true ) else null endif
+end
+
+abstract class BuyLotteryTicketOpC < OperationCall
+attributes
+  aSelf : BuyLotteryTicket
+end
+
+class match_step5_act_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+class BuyLotteryTicket
+attributes
+  curStep : String
+  lotteryDrawId : Integer
+  lotteryDrawIds : Set(Integer)
+  matchedStep : String
+  purchaseTotal : Integer
+  ticketPrice : Integer
+  ticketQuantity : Integer
+operations
+  enter_BuyLotteryTicket() : Boolean =
+    (((not self.buyer.isUndefined() and not self.lotteryDraw.isUndefined()) and (self.lotteryDraw.availableTickets > 0)) and (self.curStep = 's0'))
+  exit_BuyLotteryTicket() : Boolean =
+    (not self.purchase.isUndefined() and self.isFinalStep())
+  isFinalStep() : Boolean =
+    (self.curStep = 'step6_sys')
+  match_step3_act()
+  match_step5_act()
+  step1_act()
+  step2_sys()
+  step3_act()
+  step4_sys()
+  step5_act()
+  step6_sys()
+end
+
+composition SnapshotBuyer between
+  Snapshot[1] role snapshotBuyer
+  Buyer[*]
+end
+
+class step1_act_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+association BuyLotteryTicket_buyer between
+  BuyLotteryTicket[0..1] role buyLotteryTicketBuyer
+  Buyer[0..1]
+end
+
+aggregation PredSuccBuyLotteryTicket between
+  BuyLotteryTicket[0..1] role predBuyLotteryTicket
+  BuyLotteryTicket[0..1] role succBuyLotteryTicket
+end
+
+composition SnapshotLotteryDraw between
+  Snapshot[1] role snapshotLotteryDraw
+  LotteryDraw[*]
+end
+
+composition SnapshotBuyLotteryTicket between
+  Snapshot[1] role snapshotBuyLotteryTicket
+  BuyLotteryTicket[*]
+end
+
+class step6_sys_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+class Snapshot
+operations
+  copy() : Snapshot
+    begin
+      declare s : Snapshot;
+      s := new Snapshot;
+      for cl in self.buyLotteryTicket do
+        declare x : BuyLotteryTicket;
+        x := new BuyLotteryTicket;
+        insert (cl,x) into PredSuccBuyLotteryTicket;
+        insert (s,x) into SnapshotBuyLotteryTicket;
+      end;
+      for cl in self.buyer do
+        declare x : Buyer;
+        x := new Buyer;
+        insert (cl,x) into PredSuccBuyer;
+        insert (s,x) into SnapshotBuyer;
+      end;
+      for cl in self.lotteryDraw do
+        declare x : LotteryDraw;
+        x := new LotteryDraw;
+        insert (cl,x) into PredSuccLotteryDraw;
+        insert (s,x) into SnapshotLotteryDraw;
+      end;
+      ;
+      for cl in self.purchase do
+        declare x : Purchase;
+        x := new Purchase;
+        insert (cl,x) into PredSuccPurchase;
+        insert (s,x) into SnapshotPurchase;
+      end;
+      for cl in s.buyLotteryTicket do
+        cl.curStep := cl.predBuyLotteryTicket.curStep;
+        cl.lotteryDrawId := cl.predBuyLotteryTicket.lotteryDrawId;
+        cl.lotteryDrawIds := cl.predBuyLotteryTicket.lotteryDrawIds;
+        cl.matchedStep := cl.predBuyLotteryTicket.matchedStep;
+        cl.purchaseTotal := cl.predBuyLotteryTicket.purchaseTotal;
+        cl.ticketPrice := cl.predBuyLotteryTicket.ticketPrice;
+        cl.ticketQuantity := cl.predBuyLotteryTicket.ticketQuantity;
+      end;
+      for cl in s.buyer do
+        cl.id := cl.predBuyer.id;
+      end;
+      for cl in s.lotteryDraw do
+        cl.availableTickets := cl.predLotteryDraw.availableTickets;
+        cl.drawNumber := cl.predLotteryDraw.drawNumber;
+        cl.id := cl.predLotteryDraw.id;
+        cl.ticketPrice := cl.predLotteryDraw.ticketPrice;
+      end;
+      for cl in s.purchase do
+        cl.id := cl.predPurchase.id;
+        cl.quantity := cl.predPurchase.quantity;
+        cl.totalCost := cl.predPurchase.totalCost;
+      end;
+      for cl in self.buyLotteryTicket do
+        if not cl.purchase.isUndefined then
+          insert (cl.succBuyLotteryTicket,cl.purchase.succPurchase) into BuyLotteryTicket_purchase
+        end;
+        if not cl.lotteryDraw.isUndefined then
+          insert (cl.succBuyLotteryTicket,cl.lotteryDraw.succLotteryDraw) into BuyLotteryTicket_lotteryDraw
+        end;
+        if not cl.buyer.isUndefined then
+          insert (cl.succBuyLotteryTicket,cl.buyer.succBuyer) into BuyLotteryTicket_buyer
+        end;
+        if not cl.lotteryDraws->isEmpty then
+          for elem in cl.lotteryDraws do
+            insert (cl.succBuyLotteryTicket,elem.succLotteryDraw) into BuyLotteryTicket_lotteryDraws
+          end
+        end;
+      end;
+      for cl in self.buyer do
+        if not cl.purchase->isEmpty then
+          for elem in cl.purchase do
+            insert (cl.succBuyer,elem.succPurchase) into MakesBy
+          end
+        end;
+      end;
+      for cl in self.lotteryDraw do
+        if not cl.purchase->isEmpty then
+          for elem in cl.purchase do
+            insert (elem.succPurchase,cl.succLotteryDraw) into BuysFrom
+          end
+        end;
+      end;
+      result := s;
+    end
+  pred() : Boolean =
+    true
+  succ() : Snapshot =
+    if (self.succ->size() = 1) then self.succ->any( $elem0:Snapshot | true ) else null endif
+end
+
+class step2_sys_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+aggregation PredSuccBuyer between
+  Buyer[0..1] role predBuyer
+  Buyer[0..1] role succBuyer
+end
+
+association BuyLotteryTicket_lotteryDraw between
+  BuyLotteryTicket[0..1] role buyLotteryTicketLotteryDraw
+  LotteryDraw[0..1]
+end
+
+class step5_act_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+aggregation PredSuccPurchase between
+  Purchase[0..1] role predPurchase
+  Purchase[0..1] role succPurchase
+end
+
+class match_step3_act_BuyLotteryTicketOpC < BuyLotteryTicketOpC
+end
+
+class LotteryDraw
+attributes
+  id : Integer
+  drawNumber : Integer
+  ticketPrice : Integer
+  availableTickets : Integer
+end
+
+class Buyer
+attributes
+  id : Integer
+end
+
+class Purchase
+attributes
+  id : Integer
+  quantity : Integer
+  totalCost : Integer
+end
+
+association BuysFrom between
+  Purchase[*]
+  LotteryDraw[1]
+end
+
+association MakesBy between
+  Buyer[1]
+  Purchase[*]
+end
+
+constraints
+context BuyLotteryTicket inv validLinkingBuyLotteryTicket_buyer:
+  (self.buyer.isDefined() implies (self.snapshotBuyLotteryTicket = self.buyer.snapshotBuyer))
+
+context BuyLotteryTicket inv validLinkingBuyLotteryTicket_lotteryDraw:
+  (self.lotteryDraw.isDefined() implies (self.snapshotBuyLotteryTicket = self.lotteryDraw.snapshotLotteryDraw))
+
+context BuyLotteryTicket inv validLinkingBuyLotteryTicket_lotteryDraws:
+  self.lotteryDraws->forAll( c:LotteryDraw | (c.snapshotLotteryDraw = self.snapshotBuyLotteryTicket) )
+
+context BuyLotteryTicket inv validLinkingBuyLotteryTicket_purchase:
+  (self.purchase.isDefined() implies (self.snapshotBuyLotteryTicket = self.purchase.snapshotPurchase))
+
+context BuyLotteryTicket inv validSnapshotLinking:
+  (self.succBuyLotteryTicket.isDefined() implies (self.succBuyLotteryTicket.snapshotBuyLotteryTicket = self.snapshotBuyLotteryTicket.succ()))
+
+context BuyLotteryTicketOpC inv aSelfDefined:
+  self.aSelf.isDefined()
+
+context BuyLotteryTicketOpC inv aSelfInPred:
+  (self.aSelf.snapshotBuyLotteryTicket = self.pred())
+
+context Buyer inv validLinkingMakesBy:
+  self.purchase->forAll( c:Purchase | (c.snapshotPurchase = self.snapshotBuyer) )
+
+context Buyer inv validSnapshotLinking:
+  (self.succBuyer.isDefined() implies (self.succBuyer.snapshotBuyer = self.snapshotBuyer.succ()))
+
+context LotteryDraw inv validSnapshotLinking:
+  (self.succLotteryDraw.isDefined() implies (self.succLotteryDraw.snapshotLotteryDraw = self.snapshotLotteryDraw.succ()))
+
+context OperationCall inv assocClassBehavior:
+  (((self.pred->size() = 1) and (self.succ->size() = 1)) and OperationCall.allInstances()->forAll( op:OperationCall | (((self.pred = op.pred) and (self.succ = op.succ)) implies (self = op)) ))
+
+context Purchase inv validLinkingBuysFrom:
+  (self.lotteryDraw.isDefined() implies (self.snapshotPurchase = self.lotteryDraw.snapshotLotteryDraw))
+
+context Purchase inv validSnapshotLinking:
+  (self.succPurchase.isDefined() implies (self.succPurchase.snapshotPurchase = self.snapshotPurchase.succ()))
+
+context Snapshot inv cycleFree:
+  Set{self.succ()}->closure( s:Snapshot | s.succ() )->excludes(self)
+
+context Snapshot inv oneFilmstrip:
+  ((Snapshot.allInstances()->select( s:Snapshot | s.pred().isUndefined() )->size() = 1) and (Snapshot.allInstances()->select( s:Snapshot | s.succ().isUndefined() )->size() = 1))
+
+context match_step3_act_BuyLotteryTicketOpC inv post_nextMatchStep:
+  (((aSelf.succBuyLotteryTicket.matchedStep = 'match_step3_act') and not aSelf.succBuyLotteryTicket.lotteryDrawId.isUndefined()) and aSelf.succBuyLotteryTicket.lotteryDraws->collect( $elem0:LotteryDraw | $elem0.id )->asSet()->includes(aSelf.succBuyLotteryTicket.lotteryDrawId))
+
+context match_step3_act_BuyLotteryTicketOpC inv post_unchanged:
+  ((((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) )) and (aSelf.succBuyLotteryTicket.curStep = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.curStep))
+
+context match_step3_act_BuyLotteryTicketOpC inv pre_preMatchStep:
+  (aSelf.matchedStep = 'match_null')
+
+context match_step5_act_BuyLotteryTicketOpC inv post_nextMatchStep:
+  ((aSelf.succBuyLotteryTicket.matchedStep = 'match_step5_act') and not aSelf.succBuyLotteryTicket.ticketQuantity.isUndefined())
+
+context match_step5_act_BuyLotteryTicketOpC inv post_unchanged:
+  ((((((((((((aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) )) and (aSelf.succBuyLotteryTicket.curStep = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.curStep))
+
+context match_step5_act_BuyLotteryTicketOpC inv pre_preMatchStep:
+  (aSelf.matchedStep = 'match_null')
+
+context step1_act_BuyLotteryTicketOpC inv post_nextStep:
+  ((aSelf.succBuyLotteryTicket.curStep = 'step1_act') and (aSelf.succBuyLotteryTicket.matchedStep = 'match_null'))
+
+context step1_act_BuyLotteryTicketOpC inv post_postSnapshot:
+  self.succ().buyer->includes(aSelf.succBuyLotteryTicket.buyer)
+
+context step1_act_BuyLotteryTicketOpC inv post_unchanged:
+  ((((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId)) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) ))
+
+context step1_act_BuyLotteryTicketOpC inv pre_preStep:
+  ((aSelf.curStep = 's0') and aSelf.enter_BuyLotteryTicket())
+
+context step2_sys_BuyLotteryTicketOpC inv post_nextStep:
+  ((aSelf.succBuyLotteryTicket.curStep = 'step2_sys') and (aSelf.succBuyLotteryTicket.matchedStep = 'match_null'))
+
+context step2_sys_BuyLotteryTicketOpC inv post_postSnapshot:
+  (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.lotteryDraws->collect( $elem0:LotteryDraw | $elem0.id )->asSet())
+
+context step2_sys_BuyLotteryTicketOpC inv post_unchanged:
+  (((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId)) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) ))
+
+context step2_sys_BuyLotteryTicketOpC inv pre_preSnapshot:
+  (aSelf.lotteryDraws = self.pred().lotteryDraw->select( ld:LotteryDraw | (ld.availableTickets > 0) ))
+
+context step2_sys_BuyLotteryTicketOpC inv pre_preStep:
+  (aSelf.curStep = 'step1_act')
+
+context step3_act_BuyLotteryTicketOpC inv post_nextStep:
+  ((aSelf.succBuyLotteryTicket.curStep = 'step3_act') and (aSelf.succBuyLotteryTicket.matchedStep = 'match_null'))
+
+context step3_act_BuyLotteryTicketOpC inv post_unchanged:
+  ((((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId)) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) ))
+
+context step3_act_BuyLotteryTicketOpC inv pre_preSnapshot:
+  (aSelf.lotteryDraws->collect( $elem0:LotteryDraw | $elem0.id )->asSet()->includes(aSelf.lotteryDrawId) and not aSelf.lotteryDrawId.isUndefined())
+
+context step3_act_BuyLotteryTicketOpC inv pre_preStep:
+  ((aSelf.curStep = 'step2_sys') and (aSelf.matchedStep = 'match_step3_act'))
+
+context step4_sys_BuyLotteryTicketOpC inv post_nextStep:
+  ((aSelf.succBuyLotteryTicket.curStep = 'step4_sys') and (aSelf.succBuyLotteryTicket.matchedStep = 'match_null'))
+
+context step4_sys_BuyLotteryTicketOpC inv post_unchanged:
+  (((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) ))
+
+context step4_sys_BuyLotteryTicketOpC inv pre_preSnapshot:
+  (aSelf.lotteryDraw.id = aSelf.lotteryDrawId)
+
+context step4_sys_BuyLotteryTicketOpC inv pre_preStep:
+  (aSelf.curStep = 'step3_act')
+
+context step5_act_BuyLotteryTicketOpC inv post_nextStep:
+  ((aSelf.succBuyLotteryTicket.curStep = 'step5_act') and (aSelf.succBuyLotteryTicket.matchedStep = 'match_null'))
+
+context step5_act_BuyLotteryTicketOpC inv post_unchanged:
+  ((((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId)) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.purchase = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchase.succPurchase)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.purchaseTotal = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.purchaseTotal)) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and self.succ().lotteryDraw->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and self.succ().purchase->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) ))
+
+context step5_act_BuyLotteryTicketOpC inv pre_preSnapshot:
+  not aSelf.ticketQuantity.isUndefined()
+
+context step5_act_BuyLotteryTicketOpC inv pre_preStep:
+  ((aSelf.curStep = 'step4_sys') and (aSelf.matchedStep = 'match_step5_act'))
+
+context step6_sys_BuyLotteryTicketOpC inv post_nextStep:
+  (((aSelf.succBuyLotteryTicket.curStep = 'step6_sys') and (aSelf.succBuyLotteryTicket.matchedStep = 'match_null')) and aSelf.succBuyLotteryTicket.exit_BuyLotteryTicket())
+
+context step6_sys_BuyLotteryTicketOpC inv post_unchanged:
+  (((((((((((((aSelf.succBuyLotteryTicket.ticketQuantity = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketQuantity) and (aSelf.succBuyLotteryTicket.lotteryDrawId = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawId)) and (aSelf.succBuyLotteryTicket.ticketPrice = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraw.succLotteryDraw)) and (aSelf.succBuyLotteryTicket.lotteryDraws = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDraws->collectNested( l1:LotteryDraw | l1.succLotteryDraw )->asSet())) and (aSelf.succBuyLotteryTicket.lotteryDrawIds = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.lotteryDrawIds)) and (aSelf.succBuyLotteryTicket.buyer = aSelf.succBuyLotteryTicket.predBuyLotteryTicket.buyer.succBuyer)) and self.succ().buyer->forAll( x:Buyer | ((x = x) and (x.id = x.predBuyer.id)) )) and (self.succ().lotteryDraw - Set{aSelf.succBuyLotteryTicket.lotteryDraw})->forAll( x:LotteryDraw | (((((x = x) and (x.availableTickets = x.predLotteryDraw.availableTickets)) and (x.drawNumber = x.predLotteryDraw.drawNumber)) and (x.id = x.predLotteryDraw.id)) and (x.ticketPrice = x.predLotteryDraw.ticketPrice)) )) and (self.succ().purchase - Set{aSelf.succBuyLotteryTicket.purchase})->forAll( x:Purchase | ((((((x = x) and (x.id = x.predPurchase.id)) and (x.quantity = x.predPurchase.quantity)) and (x.totalCost = x.predPurchase.totalCost)) and (x.lotteryDraw = x.predPurchase.lotteryDraw.succLotteryDraw)) and (x.buyer = x.predPurchase.buyer.succBuyer)) )) and (aSelf.succBuyLotteryTicket.lotteryDraw.drawNumber = aSelf.succBuyLotteryTicket.lotteryDraw.predLotteryDraw.drawNumber)) and (aSelf.succBuyLotteryTicket.lotteryDraw.ticketPrice = aSelf.succBuyLotteryTicket.lotteryDraw.predLotteryDraw.ticketPrice)) and (aSelf.succBuyLotteryTicket.lotteryDraw.id = aSelf.succBuyLotteryTicket.lotteryDraw.predLotteryDraw.id))
+
+context step6_sys_BuyLotteryTicketOpC inv pre_preStep:
+  (aSelf.curStep = 'step5_act')
+
+context Snapshot::copy() : Snapshot
+  pre uncopied: self.succ().isUndefined()

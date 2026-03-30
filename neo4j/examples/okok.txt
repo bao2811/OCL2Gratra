@@ -1,0 +1,191 @@
+USE version 7.1.1, Copyright (C) 1999-2024 University of Bremen & University of Applied Sciences Hamburg
+Invalid extension directory '/Users/audreycolar/Downloads/use-neo4j/use-core/target/oclextensions'
+java.lang.UnsatisfiedLinkError: no natGNUReadline in java.library.path: /Users/audreycolar/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:.
+Apparently, the GNU readline library is not available on your system.
+The program will continue using a simple readline implementation.
+You can turn off this warning message by using the switch -nr
+use> Body Fail: copy -> Operation creation failed!
+OCL Invariant Error in LotteryDraw: UseApi:1:109: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Purchase: UseApi:1:97: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:5: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step3_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step3_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Buyer: UseApi:1:85: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step6_sys_BuyLotteryTicketOpC: UseApi:1:935: Operation step6_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:10: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:132: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:1056: Operation step2_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:32: Operation step2_sys_BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in step4_sys_BuyLotteryTicketOpC: UseApi:1:1062: Operation step4_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in OperationCall: UseApi:1:8: Undefined operation named `pred' in expression `OperationCall.pred()'.
+
+OCL Invariant Error in BuyLotteryTicketOpC: UseApi:1:44: Operation BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in match_step5_act_BuyLotteryTicketOpC: UseApi:1:1057: Operation match_step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step5_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in BuyLotteryTicket: UseApi:1:129: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in match_step3_act_BuyLotteryTicketOpC: UseApi:1:1059: Operation match_step3_act_BuyLotteryTicketOpC::succ has no body.
+
+Body Fail: copy -> Operation creation failed!
+OCL Invariant Error in LotteryDraw: UseApi:1:109: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Purchase: UseApi:1:97: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:5: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step3_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step3_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Buyer: UseApi:1:85: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step6_sys_BuyLotteryTicketOpC: UseApi:1:935: Operation step6_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:10: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:132: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:1056: Operation step2_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:32: Operation step2_sys_BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in step4_sys_BuyLotteryTicketOpC: UseApi:1:1062: Operation step4_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in OperationCall: UseApi:1:8: Undefined operation named `pred' in expression `OperationCall.pred()'.
+
+OCL Invariant Error in BuyLotteryTicketOpC: UseApi:1:44: Operation BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in match_step5_act_BuyLotteryTicketOpC: UseApi:1:1057: Operation match_step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step5_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in BuyLotteryTicket: UseApi:1:129: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in match_step3_act_BuyLotteryTicketOpC: UseApi:1:1059: Operation match_step3_act_BuyLotteryTicketOpC::succ has no body.
+
+Body Fail: copy -> Operation creation failed!
+OCL Invariant Error in LotteryDraw: UseApi:1:109: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Purchase: UseApi:1:97: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:5: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step3_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step3_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Buyer: UseApi:1:85: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step6_sys_BuyLotteryTicketOpC: UseApi:1:935: Operation step6_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:10: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:132: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:1056: Operation step2_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:32: Operation step2_sys_BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in step4_sys_BuyLotteryTicketOpC: UseApi:1:1062: Operation step4_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in OperationCall: UseApi:1:8: Undefined operation named `pred' in expression `OperationCall.pred()'.
+
+OCL Invariant Error in BuyLotteryTicketOpC: UseApi:1:44: Operation BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in match_step5_act_BuyLotteryTicketOpC: UseApi:1:1057: Operation match_step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step5_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in BuyLotteryTicket: UseApi:1:129: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in match_step3_act_BuyLotteryTicketOpC: UseApi:1:1059: Operation match_step3_act_BuyLotteryTicketOpC::succ has no body.
+
+Body Fail: copy -> Operation creation failed!
+OCL Invariant Error in LotteryDraw: UseApi:1:109: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Purchase: UseApi:1:97: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:5: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step3_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step3_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Buyer: UseApi:1:85: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step6_sys_BuyLotteryTicketOpC: UseApi:1:935: Operation step6_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:10: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:132: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:1056: Operation step2_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:32: Operation step2_sys_BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in step4_sys_BuyLotteryTicketOpC: UseApi:1:1062: Operation step4_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in OperationCall: UseApi:1:8: Undefined operation named `pred' in expression `OperationCall.pred()'.
+
+OCL Invariant Error in BuyLotteryTicketOpC: UseApi:1:44: Operation BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in match_step5_act_BuyLotteryTicketOpC: UseApi:1:1057: Operation match_step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step5_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in BuyLotteryTicket: UseApi:1:129: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in match_step3_act_BuyLotteryTicketOpC: UseApi:1:1059: Operation match_step3_act_BuyLotteryTicketOpC::succ has no body.
+
+Body Fail: copy -> Operation creation failed!
+OCL Invariant Error in LotteryDraw: UseApi:1:109: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Purchase: UseApi:1:97: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:5: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step1_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step1_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step3_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step3_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Buyer: UseApi:1:85: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step6_sys_BuyLotteryTicketOpC: UseApi:1:935: Operation step6_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:10: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in Snapshot: UseApi:1:132: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:1056: Operation step2_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step2_sys_BuyLotteryTicketOpC: UseApi:1:32: Operation step2_sys_BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in step4_sys_BuyLotteryTicketOpC: UseApi:1:1062: Operation step4_sys_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in OperationCall: UseApi:1:8: Undefined operation named `pred' in expression `OperationCall.pred()'.
+
+OCL Invariant Error in BuyLotteryTicketOpC: UseApi:1:44: Operation BuyLotteryTicketOpC::pred has no body.
+
+OCL Invariant Error in match_step5_act_BuyLotteryTicketOpC: UseApi:1:1057: Operation match_step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in step5_act_BuyLotteryTicketOpC: UseApi:1:1181: Operation step5_act_BuyLotteryTicketOpC::succ has no body.
+
+OCL Invariant Error in BuyLotteryTicket: UseApi:1:129: Operation Snapshot::succ has no body.
+
+OCL Invariant Error in match_step3_act_BuyLotteryTicketOpC: UseApi:1:1059: Operation match_step3_act_BuyLotteryTicketOpC::succ has no body.
+

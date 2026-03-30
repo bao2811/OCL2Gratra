@@ -1,0 +1,250 @@
+model Employee
+
+enum Gender { Male, Female, Other }
+enum ContractType { FullTime, PartTime, Intern, Consultant }
+
+class Person
+attributes
+    name : String
+    age : Integer
+    salary : Real
+    sex : Gender
+    stud: Set(University)
+    codes: Set(String)
+    codesBag: Bag(String)
+    nested: Set(Set(String))
+    nestedDiff: Set(Bag(String))
+operations
+    -- Check if person is eligible for promotion
+    isEligibleForPromotion() : Boolean =
+        self.age >= 25 and self.salary < 5000.0
+
+    -- Calculate annual salary
+    getAnnualSalary() : Real =
+        self.salary * 12
+
+    -- Check if working at university
+    isEmployed() : Boolean =
+        not self.employer.isUndefined()
+
+    -- Check if has employment contract
+    hasContract() : Boolean =
+        Employment.allInstances()->exists(e:Employment | e.person = self)
+
+    -- Get employment contract
+    getContract() : Employment =
+        Employment.allInstances()->any(e:Employment | e.person = self)
+end
+
+class University
+attributes
+    name : String
+    location : String
+operations
+    -- Fire employee
+    fires(p:Person)
+
+    -- Get total employee count
+    getEmployeeCount() : Integer =
+        self.employee->size()
+
+    -- Get all professors
+    getProfessors() : Set(Professor) =
+        self.employee->select(e:Person | e.oclIsKindOf(Professor))
+            ->collect(e:Person | e.oclAsType(Professor))->asSet()
+
+    -- Get all students
+    getStudents() : Set(Student) =
+        self.employee->select(e:Person | e.oclIsKindOf(Student))
+            ->collect(e:Person | e.oclAsType(Student))->asSet()
+
+    -- Calculate total salary expense
+    getTotalSalaryExpense() : Real =
+        if self.employee->isEmpty() then
+            0
+        else
+            self.employee->collect(e:Person | e.salary)->sum()
+        endif
+
+    -- Get employees by contract type
+    getEmployeesByContract(ct:ContractType) : Set(Person) =
+        Employment.allInstances()
+            ->select(emp:Employment | emp.university = self and emp.contractType = ct)
+            ->collect(emp:Employment | emp.person)->asSet()
+
+    -- Check if has full-time employees
+    hasFullTimeEmployees() : Boolean =
+        Employment.allInstances()
+            ->exists(emp:Employment | emp.university = self and emp.contractType = ContractType::FullTime)
+end
+
+class Student < Person
+operations
+    -- Check if can graduate
+    canGraduate() : Boolean =
+        self.age >= 22
+
+    -- Check if employed
+    isWorking() : Boolean =
+        not self.employer.isUndefined()
+end
+
+class Professor < Person
+operations
+    -- Get salary comparison with students
+    getSalaryAdvantage() : Real =
+        if Student.allInstances()->isEmpty() then
+            self.salary
+        else
+            let avgStudentSalary : Real =
+                Student.allInstances()->collect(s:Student | s.salary)->sum() /
+                Student.allInstances()->size()
+            in
+                self.salary - avgStudentSalary
+        endif
+
+    -- Check if senior professor
+    isSenior() : Boolean =
+        self.age >= 50 and self.salary >= 4000.0
+
+    -- Check if supervises student (same university)
+    canSupervise(s:Student) : Boolean =
+        not self.employer.isUndefined() and
+        not s.employer.isUndefined() and
+        self.employer = s.employer
+end
+
+-- Composition for basic employment relationship
+composition WorksFor between
+    Person[*] role employee
+    University[0..1] role employer
+end
+
+class C1Assoc
+attributes
+end
+
+class C2Aggreg
+attributes
+end
+
+association DemoAssociation between
+    C1Assoc[*] role s1
+    University[0..1] role t1
+end
+
+aggregation DemoAggregation between
+    C2Aggreg[*] role s2
+    University[0..1] role t2
+end
+
+
+-- Association class for detailed employment information
+association Ternari between
+    Person[1] role pte
+    University[1] role unte
+    Student[1] role prte
+end
+
+
+associationclass Employment between
+    Person[1] role person
+    University[1] role university
+attributes
+    startDate : String
+    position : String
+    contractType : ContractType
+operations
+    -- Calculate employment duration (simplified - returns years)
+    getDurationYears() : Integer =
+        if self.startDate.size() = 4 then
+            2026 - self.startDate.toInteger()
+        else
+            0
+        endif
+
+    -- Check if permanent position
+    isPermanent() : Boolean =
+        self.contractType = ContractType::FullTime
+
+    -- Check if temporary position
+    isTemporary() : Boolean =
+        self.contractType = ContractType::PartTime or
+        self.contractType = ContractType::Intern or
+        self.contractType = ContractType::Consultant
+
+    -- Check if probation period passed (assuming 1 year)
+    passedProbation() : Boolean =
+        self.getDurationYears() >= 1
+
+    -- Get employee name
+    getEmployeeName() : String =
+        self.person.name
+
+    -- Get university name
+    getUniversityName() : String =
+        self.university.name
+end
+
+-- Constraints
+constraints
+
+context Person
+inv ValidAge:
+    self.age >= 18 and self.age <= 70
+
+inv ValidSalary:
+    self.salary > 0
+
+inv MustHaveEmploymentIfEmployed:
+    not self.employer.isUndefined() implies
+        Employment.allInstances()->exists(e:Employment | e.person = self)
+
+inv EmploymentConsistency:
+    Employment.allInstances()->forAll(emp:Employment |
+        emp.person = self implies emp.university = self.employer)
+
+context University
+inv ValidLocation:
+    self.location.size() > 0
+
+inv EmploymentMatchesWorksFor:
+    self.employee->forAll(p:Person |
+        Employment.allInstances()->exists(e:Employment |
+            e.person = p and e.university = self))
+
+context Student
+inv StudentAgeLimit:
+    self.age <= 30
+
+inv StudentSalaryLimit:
+    self.salary < 3000.0
+
+context Professor
+inv ProfessorMinimumAge:
+    self.age >= 25
+
+inv ProfessorMinimumSalary:
+    self.salary >= 2000.0
+
+inv HigherSalaryThanStudent:
+    Student.allInstances()->forAll(s:Student | s.salary < self.salary)
+
+context Employment
+inv ValidStartDate:
+    self.startDate.size() = 4
+
+inv ConsistentEmployer:
+    self.person.employer = self.university
+
+inv UniqueEmploymentPerPerson:
+    Employment.allInstances()->forAll(e:Employment |
+        e <> self and e.person = self.person implies e.university <> self.university)
+
+context University::fires(p:Person)
+pre firePre:
+    self.employee->includes(p)
+post firePost:
+    self.employee->excludes(p) and
+    Employment.allInstances()->forAll(e:Employment |
+        not (e.person = p and e.university = self))

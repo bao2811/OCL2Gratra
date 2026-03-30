@@ -1,0 +1,3 @@
+#! /usr/bin/sh
+
+mvn install:install-file -Dfile=./lib/kodkod.jar -DgroupId=kodkod -DartifactId=kodkod -Dversion=1.0 -Dpackaging=jar

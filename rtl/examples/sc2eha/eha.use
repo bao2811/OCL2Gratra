@@ -1,0 +1,79 @@
+model eha
+class EHA
+end
+
+class AutH
+attributes
+ name:String
+end
+
+class StateH
+attributes
+ name:String
+end
+
+class InitH < StateH
+end
+
+class FinH < StateH
+end
+
+class TransH
+--attributes
+ --name:String
+end
+
+class EventH
+attributes
+ name:String
+end
+
+association TransFromH between
+  TransH[0..*] role outgoing
+  StateH[1..1] role src
+end
+
+association TransToH between
+  TransH[0..*] role incomimg
+  StateH[1..1] role dst
+end
+
+association SrcRest between
+  TransH[0..*] role restTo
+  StateH[0..*] role enabling
+end
+
+association TargetDet between
+  TransH[0..*] role detBy
+  StateH[0..*] role entered
+end
+
+association ContainsStateH between
+  AutH[0..1] role container
+  StateH[1..*] role state
+end
+
+association ContainsTransH between
+  AutH[0..1] role container
+  TransH[1..*] role trans
+end
+
+association OwnsAutH between
+  EHA[0..1] role owner
+  AutH[0..*] role autH
+end
+
+association InitState between
+  EHA[0..1] role ower
+  StateH[1..1] role top
+end
+
+association RefiningAutH between
+  StateH[0..1] role refined
+  AutH[0..*] role refAut
+end
+
+association TriggerH between
+  TransH[0..*] role trans
+  EventH[0..*] role trigger
+end

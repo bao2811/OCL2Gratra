@@ -1,0 +1,38 @@
+model LibrarySystem
+
+-- 1. Định nghĩa các lớp (Classes) [2]
+class Book
+attributes
+    title : String
+    author : String
+    isAvailable : Boolean
+end
+
+class Member
+attributes
+    name : String
+    cardId : Integer
+    maxBooksAllowed : Integer -- Số sách tối đa được mượn
+end
+
+-- 2. Định nghĩa mối quan hệ (Associations) [3]gut
+-- Một thành viên có thể mượn nhiều sách (role borrowedBooks)
+-- Một cuốn sách chỉ được mượn bởi tối đa 1 người tại một thời điểm (role borrower)
+association Borrowing between
+    Member[0..1] role borrower
+    Book[*] role borrowedBooks
+end
+
+constraints
+
+context Member
+    inv PositiveLimit:
+        self.maxBooksAllowed > 0
+    inv LimitBooksBorrowed:
+        self.borrowedBooks->size() <= self.maxBooksAllowed
+
+context Book
+    inv AvailabilityCheck: self.borrower.isDefined() implies self.isAvailable = false
+
+
+

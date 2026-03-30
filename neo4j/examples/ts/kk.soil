@@ -1,0 +1,22 @@
+!create p1 : Doctor
+!set p1.age := 1
+
+
+!create p2 : Doctor
+!set p2.age := 1
+
+!create p3 : Doctor
+!set p3.age := 1
+
+!create p4 : Doctor
+!set p4.age := 1
+
+!create p5 : Doctor
+!set p5.age := 1
+
+!create p6 : Doctor
+!set p6.age := 1
+
+//
+
+!create d1:Doctor

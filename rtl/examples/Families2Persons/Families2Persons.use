@@ -1,0 +1,312 @@
+model Families2Persons
+
+
+class FamilyRegister
+end
+
+class Family
+attributes
+	name: String
+end
+
+association FamilyRegistration between
+	FamilyRegister [0..1]
+	Family [*] role families
+end
+
+class FamilyMember
+attributes
+	name: String
+end
+
+composition Father between
+	Family [0..1] role familyFather
+	FamilyMember [0..1] role father
+end
+
+composition Mother between
+	Family [0..1] role familyMother
+	FamilyMember [0..1] role mother
+end
+
+composition Sons between
+	Family [0..1] role familySon
+	FamilyMember [*] role sons
+end
+
+composition Daughters between
+	Family [0..1] role familyDaughter
+	FamilyMember [*] role daughters
+end
+
+
+class PersonRegister
+end
+
+abstract class Person
+attributes
+	name: String
+	birthday: String
+end
+
+composition PersonRegistration between
+	PersonRegister [0..1]
+	Person [*] role persons
+end
+
+class Male < Person
+end
+
+class Female < Person
+end
+
+---------- CorrPart ----------
+class FR2PR
+end
+
+class F2MP
+end
+
+class FM2MP
+end
+
+association FR2PR_FamilyRegister between
+  FamilyRegister[1] role fr
+  FR2PR[0..1] role fr2pr
+end
+
+association FR2PR_PersonRegister between
+  PersonRegister[1] role pr
+  FR2PR[0..1] role fr2pr
+end
+
+association F2MP_FamilyMember between
+  FamilyMember[1] role f
+  F2MP[0..1] role f2mp
+end
+
+association F2MP_Male between
+  Male[1] role mp
+  F2MP[0..1] role f2mp
+end
+
+association FM2MP_Family between
+  Family[1] role fm
+  FM2MP[*] role fm2mp
+end
+
+association FM2MP_Male between
+  Male[1] role mp
+  FM2MP[0..1] role fm2mp
+end
+
+---------- RuleCollection ----------
+class RuleCollection
+operations
+---------- Forward transformations ----------
+Father2Male_forwTrafo (
+    matchSR: Tuple(fr: FamilyRegister, fm: Family, father: FamilyMember),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTL: Tuple(pr: PersonRegister))
+
+---------- Backward transformations ----------
+Father2Male_backTrafo (
+    matchSL: Tuple(fr: FamilyRegister, fm: Family),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTR: Tuple(pr: PersonRegister, mp: Male))
+
+---------- Integration transformations ----------
+Father2Male_integration (
+    matchSR: Tuple(fr: FamilyRegister, fm: Family, father: FamilyMember),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTR: Tuple(pr: PersonRegister, mp: Male))
+
+---------- Co-evolution transformations ----------
+Father2Male_coEvol (
+    matchSL: Tuple(fr: FamilyRegister, fm: Family),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTL: Tuple(pr: PersonRegister))
+end
+
+
+---------- Transformation constraints ----------
+constraints
+context RuleCollection::Father2Male_forwTrafo (
+    matchSR: Tuple(fr: FamilyRegister, fm: Family, father: FamilyMember),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTL: Tuple(pr: PersonRegister))
+pre Father2Male_forwTrafo_pre: 
+let fr:FamilyRegister = matchSR.fr in
+let fm:Family = matchSR.fm in
+let father:FamilyMember = matchSR.father in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTL.pr in
+fr.families->includes(fm) and 
+fm.familyRegister->includes(fr) and
+father.familyFather->includes(fm) and 
+fm.father->includes(father) and
+fr.fr2pr->includes(fr2pr) and 
+fr2pr.fr->includes(fr) and 
+pr.fr2pr->includes(fr2pr) and 
+fr2pr.pr->includes(pr) and
+father.f2mp->size() = 0
+
+post Father2Male_forwTrafo_post:
+let fr:FamilyRegister = matchSR.fr in
+let fm:Family = matchSR.fm in
+let father:FamilyMember = matchSR.father in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTL.pr in
+PersonRegister.allInstances->includesAll(Set {pr})
+ and
+(Male.allInstances - Male.allInstances@pre)->exists(mp|
+mp.personRegister->includes(pr) and
+pr.persons->includes(mp) and FR2PR.allInstances->includesAll(Set {fr2pr})
+ and
+(F2MP.allInstances - F2MP.allInstances@pre)->exists(f2mp|
+(FM2MP.allInstances - FM2MP.allInstances@pre)->exists(fm2mp|
+father.f2mp->includes(f2mp) and
+f2mp.f->includes(father) and
+mp.f2mp->includes(f2mp) and
+f2mp.mp->includes(mp) and
+fm.fm2mp->includes(fm2mp) and
+fm2mp.fm->includes(fm) and
+mp.fm2mp->includes(fm2mp) and
+fm2mp.mp->includes(mp))))
+
+context RuleCollection::Father2Male_backTrafo (
+    matchSL: Tuple(fr: FamilyRegister, fm: Family),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTR: Tuple(pr: PersonRegister, mp: Male))
+pre Father2Male_backTrafo_pre: 
+let fr:FamilyRegister = matchSL.fr in
+let fm:Family = matchSL.fm in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTR.pr in
+let mp:Male = matchTR.mp in
+fr.families->includes(fm) and 
+fm.familyRegister->includes(fr) and
+fm.father->size() < 1 and
+mp.personRegister->includes(pr) and 
+pr.persons->includes(mp) and
+fr.fr2pr->includes(fr2pr) and 
+fr2pr.fr->includes(fr) and 
+pr.fr2pr->includes(fr2pr) and 
+fr2pr.pr->includes(pr) and
+mp.f2mp->size() = 0 and
+mp.fm2mp->size() = 0
+
+post Father2Male_backTrafo_post:
+let fr:FamilyRegister = matchSL.fr in
+let fm:Family = matchSL.fm in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTR.pr in
+let mp:Male = matchTR.mp in
+FamilyRegister.allInstances->includesAll(Set {fr})
+ and
+Family.allInstances->includesAll(Set {fm})
+ and
+(FamilyMember.allInstances - FamilyMember.allInstances@pre)->exists(father|
+father.familyFather->includes(fm) and
+fm.father->includes(father) and FR2PR.allInstances->includesAll(Set {fr2pr})
+ and
+(F2MP.allInstances - F2MP.allInstances@pre)->exists(f2mp|
+(FM2MP.allInstances - FM2MP.allInstances@pre)->exists(fm2mp|
+father.f2mp->includes(f2mp) and
+f2mp.f->includes(father) and
+mp.f2mp->includes(f2mp) and
+f2mp.mp->includes(mp) and
+fm.fm2mp->includes(fm2mp) and
+fm2mp.fm->includes(fm) and
+mp.fm2mp->includes(fm2mp) and
+fm2mp.mp->includes(mp))))
+
+context RuleCollection::Father2Male_integration (
+    matchSR: Tuple(fr: FamilyRegister, fm: Family, father: FamilyMember),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTR: Tuple(pr: PersonRegister, mp: Male))
+pre Father2Male_integration_pre: 
+let fr:FamilyRegister = matchSR.fr in
+let fm:Family = matchSR.fm in
+let father:FamilyMember = matchSR.father in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTR.pr in
+let mp:Male = matchTR.mp in
+fr.families->includes(fm) and 
+fm.familyRegister->includes(fr) and
+father.familyFather->includes(fm) and 
+fm.father->includes(father) and
+mp.personRegister->includes(pr) and 
+pr.persons->includes(mp) and
+fr.fr2pr->includes(fr2pr) and 
+fr2pr.fr->includes(fr) and 
+pr.fr2pr->includes(fr2pr) and 
+fr2pr.pr->includes(pr) and
+father.f2mp->size() = 0 and
+mp.f2mp->size() = 0 and
+mp.fm2mp->size() = 0
+
+post Father2Male_integration_post:
+let fr:FamilyRegister = matchSR.fr in
+let fm:Family = matchSR.fm in
+let father:FamilyMember = matchSR.father in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTR.pr in
+let mp:Male = matchTR.mp in
+FR2PR.allInstances->includesAll(Set {fr2pr})
+ and
+(F2MP.allInstances - F2MP.allInstances@pre)->exists(f2mp|
+(FM2MP.allInstances - FM2MP.allInstances@pre)->exists(fm2mp|
+father.f2mp->includes(f2mp) and
+f2mp.f->includes(father) and
+mp.f2mp->includes(f2mp) and
+f2mp.mp->includes(mp) and
+fm.fm2mp->includes(fm2mp) and
+fm2mp.fm->includes(fm) and
+mp.fm2mp->includes(fm2mp) and
+fm2mp.mp->includes(mp)))
+
+context RuleCollection::Father2Male_coEvol (
+    matchSL: Tuple(fr: FamilyRegister, fm: Family),
+    matchCL: Tuple(fr2pr: FR2PR),
+    matchTL: Tuple(pr: PersonRegister))
+pre Father2Male_coEvol_pre: 
+let fr:FamilyRegister = matchSL.fr in
+let fm:Family = matchSL.fm in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTL.pr in
+fr.families->includes(fm) and 
+fm.familyRegister->includes(fr) and
+fm.father->size() < 1 and
+fr.fr2pr->includes(fr2pr) and 
+fr2pr.fr->includes(fr) and 
+pr.fr2pr->includes(fr2pr) and 
+fr2pr.pr->includes(pr)
+
+post Father2Male_coEvol_post:
+let fr:FamilyRegister = matchSL.fr in
+let fm:Family = matchSL.fm in
+let fr2pr:FR2PR = matchCL.fr2pr in
+let pr:PersonRegister = matchTL.pr in
+FamilyRegister.allInstances->includesAll(Set {fr})
+ and
+Family.allInstances->includesAll(Set {fm})
+ and
+(FamilyMember.allInstances - FamilyMember.allInstances@pre)->exists(father|
+father.familyFather->includes(fm) and
+fm.father->includes(father) and PersonRegister.allInstances->includesAll(Set {pr})
+ and
+(Male.allInstances - Male.allInstances@pre)->exists(mp|
+mp.personRegister->includes(pr) and
+pr.persons->includes(mp) and FR2PR.allInstances->includesAll(Set {fr2pr})
+ and
+(F2MP.allInstances - F2MP.allInstances@pre)->exists(f2mp|
+(FM2MP.allInstances - FM2MP.allInstances@pre)->exists(fm2mp|
+father.f2mp->includes(f2mp) and
+f2mp.f->includes(father) and
+mp.f2mp->includes(f2mp) and
+f2mp.mp->includes(mp) and
+fm.fm2mp->includes(fm2mp) and
+fm2mp.fm->includes(fm) and
+mp.fm2mp->includes(fm2mp) and
+fm2mp.mp->includes(mp)))))

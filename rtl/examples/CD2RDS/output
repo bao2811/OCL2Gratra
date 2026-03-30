@@ -1,0 +1,3 @@
+!new Class('HumanClass')
+!HumanClass.name := 'kien'
+!HumanClass.is_persistent := true

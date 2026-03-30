@@ -1,0 +1,1343 @@
+model CD22RDS
+
+class Class
+attributes
+  name : String
+  is_persistent : Boolean
+end
+
+class Attribute
+attributes
+  name : String
+  is_primary : Boolean
+end
+
+class Association
+attributes
+  name : String
+end
+
+class PrimitiveDataType
+attributes
+  name : String
+end
+
+-- Associations
+association src between
+	Association[0..*] role end1Assoc
+	Class[0..*] role end1
+end
+association dest between
+	Association[0..*] role end2Assoc
+	Class[0..*] role end2
+end
+composition attrs between
+	Class[0..*] role belongTo
+	Attribute[0..1] role has
+end
+association parent between
+	Class[0..1] role parent
+	Class[0..*] role child
+end
+association type between
+	Attribute[0..*] role attr
+	Class[0..*] role type
+end
+association priType between
+	Attribute[0..*] role attr
+	PrimitiveDataType[0..*] role priType
+end
+-- Constraints
+
+
+class Table
+attributes
+  name : String
+end
+
+class Column
+attributes
+  name : String
+  type : String
+end
+
+class Constraint
+attributes
+end
+
+class PrimaryKey < Constraint
+attributes
+	name: String
+end
+
+class ForeignKey < Constraint
+attributes
+	name: String
+end
+-- Association
+composition cols between
+	Table[1..1] role table
+	Column[0..*] role columns
+end
+composition keys between
+	Table[1..1] role table
+	Constraint[0..*] role const
+end
+association constraint between
+	Column[1..*] role col
+	Constraint[0..*] role constraint
+end
+association primary between
+	PrimaryKey[1..1] role priKey
+	Table[1..1] role tab	
+end
+association foreign between
+	ForeignKey[1..1] role forKey
+	Table[1..1] role refTable
+end
+-- Constraints
+
+
+---------- CorrPart ----------
+class C2T
+end
+
+class A2C
+end
+
+class P2C
+end
+
+class A2F
+end
+
+class ASS2C
+end
+
+association C2T_Class between
+  Class[1] role c
+  C2T[0..1] role c2t
+end
+
+association C2T_Table between
+  Table[1] role t
+  C2T[0..1] role c2t
+end
+
+association A2C_Attribute between
+  Attribute[1] role a
+  A2C[0..1] role a2c
+end
+
+association A2C_Column between
+  Column[1] role c
+  A2C[0..1] role a2c
+end
+
+association P2C_PrimitiveDataType between
+  PrimitiveDataType[1] role p
+  P2C[0..1] role p2c
+end
+
+association P2C_Column between
+  Column[1] role c
+  P2C[0..1] role p2c
+end
+
+association A2F_Attribute between
+  Attribute[1] role a
+  A2F[0..1] role a2f
+end
+
+association A2F_Column between
+  Column[1] role f
+  A2F[0..1] role a2f
+end
+
+association ASS2C_Association between
+  Association[1] role ass
+  ASS2C[0..1] role ass2c
+end
+
+association ASS2C_Column between
+  Column[1] role c
+  ASS2C[0..1] role ass2c
+end
+
+---------- Correlation invariants ----------
+constraints
+context C2T inv:
+    self.t.name=self.c.name
+context A2C inv:
+    self.c.name=self.a.name
+context P2C inv:
+    self.c.type=self.p.name
+context A2F inv:
+    self.f.name=self.a.name
+context ASS2C inv:
+    self.c.name=self.ass.name
+
+---------- RuleCollection ----------
+class RuleCollection
+operations
+---------- Forward transformations ----------
+trafoClass2Table_forwTrafo (
+    matchSR: Tuple(theClassA: Class))
+trafoPriAtt2Col_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute, thePriTypeA: PrimitiveDataType),
+    matchCL: Tuple(c2t: C2T),
+    matchTL: Tuple(theTableA: Table))
+trafoPerAtt2Col_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+trafoPrimary2PKey_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTL: Tuple(theTableA: Table, theColumnA: Column))
+trafoAss2Col_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAssA: Association),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+
+---------- Backward transformations ----------
+trafoClass2Table_backTrafo (
+    matchTR: Tuple(theTableA: Table))
+trafoPriAtt2Col_backTrafo (
+    matchSL: Tuple(theClassA: Class),
+    matchCL: Tuple(c2t: C2T),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column))
+trafoPerAtt2Col_backTrafo (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+trafoPrimary2PKey_backTrafo (
+    matchSL: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column, thePriKeyA: PrimaryKey))
+trafoAss2Col_backTrafo (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+
+---------- Integration transformations ----------
+trafoClass2Table_integration (
+    matchSR: Tuple(theClassA: Class),
+    matchTR: Tuple(theTableA: Table))
+trafoPriAtt2Col_integration (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute, thePriTypeA: PrimitiveDataType),
+    matchCL: Tuple(c2t: C2T),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column))
+trafoPerAtt2Col_integration (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+trafoPrimary2PKey_integration (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column, thePriKeyA: PrimaryKey))
+trafoAss2Col_integration (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAssA: Association),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+
+---------- Co-evolution transformations ----------
+trafoClass2Table_coEvol ()
+trafoPriAtt2Col_coEvol (
+    matchSL: Tuple(theClassA: Class),
+    matchCL: Tuple(c2t: C2T),
+    matchTL: Tuple(theTableA: Table))
+trafoPerAtt2Col_coEvol (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+trafoPrimary2PKey_coEvol (
+    matchSL: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTL: Tuple(theTableA: Table, theColumnA: Column))
+trafoAss2Col_coEvol (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+end
+
+
+---------- Transformation constraints ----------
+constraints
+context RuleCollection::trafoClass2Table_forwTrafo (
+    matchSR: Tuple(theClassA: Class))
+pre trafoClass2Table_forwTrafo_pre: 
+let theClassA:Class = matchSR.theClassA in
+theClassA.name<>oclUndefined(String) and 
+theClassA.is_persistent=true and 
+theClassA.c2t->size()=0 and
+theClassA.c2t->size() = 0
+
+post trafoClass2Table_forwTrafo_post:
+let theClassA:Class = matchSR.theClassA in
+(Table.allInstances - Table.allInstances@pre)->exists(theTableA|
+(C2T.allInstances - C2T.allInstances@pre)->exists(c2t|
+c2t.c->includes(theClassA) and
+theClassA.c2t->includes(c2t) and
+c2t.t->includes(theTableA) and
+theTableA.c2t->includes(c2t) and
+c2t.t.name=c2t.c.name))
+
+context RuleCollection::trafoPriAtt2Col_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute, thePriTypeA: PrimitiveDataType),
+    matchCL: Tuple(c2t: C2T),
+    matchTL: Tuple(theTableA: Table))
+pre trafoPriAtt2Col_forwTrafo_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let thePriTypeA:PrimitiveDataType = matchSR.thePriTypeA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTL.theTableA in
+theClassA.name<>oclUndefined(String) and
+thePriTypeA.attr->includes(theAttrA) and 
+theAttrA.priType->includes(thePriTypeA) and 
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theAttrA.name<>oclUndefined(String) and 
+thePriTypeA.name<>oclUndefined(String) and 
+theAttrA.a2c->size()=0 and 
+thePriTypeA.p2c->size()=0 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and
+theAttrA.a2c->size() = 0 and
+thePriTypeA.p2c->size() = 0
+
+post trafoPriAtt2Col_forwTrafo_post:
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let thePriTypeA:PrimitiveDataType = matchSR.thePriTypeA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTL.theTableA in
+Table.allInstances->includesAll(Set {theTableA})
+ and
+(Column.allInstances - Column.allInstances@pre)->exists(theColumnA|
+theColumnA.table->includes(theTableA) and
+theTableA.columns->includes(theColumnA) and C2T.allInstances->includesAll(Set {c2t})
+ and
+(A2C.allInstances - A2C.allInstances@pre)->exists(a2c|
+(P2C.allInstances - P2C.allInstances@pre)->exists(p2c|
+theAttrA.a2c->includes(a2c) and
+a2c.a->includes(theAttrA) and
+a2c.c->includes(theColumnA) and
+theColumnA.a2c->includes(a2c) and
+p2c.p->includes(thePriTypeA) and
+thePriTypeA.p2c->includes(p2c) and
+p2c.c->includes(theColumnA) and
+theColumnA.p2c->includes(p2c) and
+a2c.c.name=a2c.a.name and
+p2c.c.type=p2c.p.name)))
+
+context RuleCollection::trafoPerAtt2Col_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+pre trafoPerAtt2Col_forwTrafo_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theAttrA.type->includes(theClassB) and 
+theClassB.attr->includes(theAttrA) and 
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theAttrA.name<>oclUndefined(String) and 
+theAttrA.a2f->size()=0 and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theTableB.forKey->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1) and
+theAttrA.a2f->size() = 0
+
+post trafoPerAtt2Col_forwTrafo_post:
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+Table.allInstances->includesAll(Set {theTableA, theTableB})
+ and
+Column.allInstances->includesAll(Set {theColumnB})
+ and
+PrimaryKey.allInstances->includesAll(Set {thePriKeyA})
+ and
+(Column.allInstances - Column.allInstances@pre)->exists(theColumnA|
+(ForeignKey.allInstances - ForeignKey.allInstances@pre)->exists(theForeignKeyA|
+theColumnA.table->includes(theTableA) and
+theTableA.columns->includes(theColumnA) and
+theTableA.const->includes(theForeignKeyA) and
+theForeignKeyA.table->includes(theTableA) and
+theForeignKeyA.refTable->includes(theTableB) and
+theTableB.forKey->includes(theForeignKeyA) and
+theForeignKeyA.col->includes(theColumnA) and
+theColumnA.constraint->includes(theForeignKeyA) and
+theColumnA.type = theColumnB.type and C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(A2F.allInstances - A2F.allInstances@pre)->exists(a2f|
+theAttrA.a2f->includes(a2f) and
+a2f.a->includes(theAttrA) and
+a2f.f->includes(theColumnA) and
+theColumnA.a2f->includes(a2f) and
+a2f.f.name=a2f.a.name)))
+
+context RuleCollection::trafoPrimary2PKey_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTL: Tuple(theTableA: Table, theColumnA: Column))
+pre trafoPrimary2PKey_forwTrafo_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTL.theTableA in
+let theColumnA:Column = matchTL.theColumnA in
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theClassA.name<>oclUndefined(String) and 
+theAttrA.name<>oclUndefined(String) and 
+theAttrA.is_primary=true and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.priKey->size()=0 and
+theTableA.priKey->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+theAttrA.a2c->includes(a2c) and 
+a2c.a->includes(theAttrA) and 
+a2c.c->includes(theColumnA) and 
+theColumnA.a2c->includes(a2c)
+
+post trafoPrimary2PKey_forwTrafo_post:
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTL.theTableA in
+let theColumnA:Column = matchTL.theColumnA in
+Table.allInstances->includesAll(Set {theTableA})
+ and
+Column.allInstances->includesAll(Set {theColumnA})
+ and
+(PrimaryKey.allInstances - PrimaryKey.allInstances@pre)->exists(thePriKeyA|
+theTableA.const->includes(thePriKeyA) and
+thePriKeyA.table->includes(theTableA) and
+thePriKeyA.tab->includes(theTableA) and
+theTableA.priKey->includes(thePriKeyA) and
+theColumnA.constraint->includes(thePriKeyA) and
+thePriKeyA.col->includes(theColumnA) and C2T.allInstances->includesAll(Set {c2t})
+ and
+A2C.allInstances->includesAll(Set {a2c})
+)
+
+context RuleCollection::trafoAss2Col_forwTrafo (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAssA: Association),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+pre trafoAss2Col_forwTrafo_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAssA:Association = matchSR.theAssA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theAssA.end1->includes(theClassA) and 
+theClassA.end1Assoc->includes(theAssA) and 
+theClassB.end2Assoc->includes(theAssA) and 
+theAssA.end2->includes(theClassB) and 
+theAssA.name<>oclUndefined(String) and 
+theAssA.ass2c->size()=0 and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theTableB.forKey->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1) and
+theAssA.ass2c->size() = 0
+
+post trafoAss2Col_forwTrafo_post:
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAssA:Association = matchSR.theAssA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+Table.allInstances->includesAll(Set {theTableA, theTableB})
+ and
+Column.allInstances->includesAll(Set {theColumnB})
+ and
+PrimaryKey.allInstances->includesAll(Set {thePriKeyA})
+ and
+(Column.allInstances - Column.allInstances@pre)->exists(theColumnA|
+(ForeignKey.allInstances - ForeignKey.allInstances@pre)->exists(theForeignKeyA|
+theColumnA.table->includes(theTableA) and
+theTableA.columns->includes(theColumnA) and
+theTableA.const->includes(theForeignKeyA) and
+theForeignKeyA.table->includes(theTableA) and
+theForeignKeyA.refTable->includes(theTableB) and
+theTableB.forKey->includes(theForeignKeyA) and
+theForeignKeyA.col->includes(theColumnA) and
+theColumnA.constraint->includes(theForeignKeyA) and
+theColumnA.type = theColumnB.type and C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(ASS2C.allInstances - ASS2C.allInstances@pre)->exists(ass2c|
+theAssA.ass2c->includes(ass2c) and
+ass2c.ass->includes(theAssA) and
+theColumnA.ass2c->includes(ass2c) and
+ass2c.c->includes(theColumnA) and
+ass2c.c.name=ass2c.ass.name)))
+
+context RuleCollection::trafoClass2Table_backTrafo (
+    matchTR: Tuple(theTableA: Table))
+pre trafoClass2Table_backTrafo_pre: 
+let theTableA:Table = matchTR.theTableA in
+theTableA.c2t->size() = 0
+
+post trafoClass2Table_backTrafo_post:
+let theTableA:Table = matchTR.theTableA in
+(Class.allInstances - Class.allInstances@pre)->exists(theClassA|
+theClassA.name<>oclUndefined(String) and
+theClassA.is_persistent=true and
+theClassA.c2t->size()=0 and (C2T.allInstances - C2T.allInstances@pre)->exists(c2t|
+c2t.c->includes(theClassA) and
+theClassA.c2t->includes(c2t) and
+c2t.t->includes(theTableA) and
+theTableA.c2t->includes(c2t) and
+c2t.t.name=c2t.c.name))
+
+context RuleCollection::trafoPriAtt2Col_backTrafo (
+    matchSL: Tuple(theClassA: Class),
+    matchCL: Tuple(c2t: C2T),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column))
+pre trafoPriAtt2Col_backTrafo_pre: 
+let theClassA:Class = matchSL.theClassA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+theClassA.name<>oclUndefined(String) and
+theClassA.has->size() < 1 and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and
+theColumnA.a2c->size() = 0 and
+theColumnA.p2c->size() = 0
+
+post trafoPriAtt2Col_backTrafo_post:
+let theClassA:Class = matchSL.theClassA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+Class.allInstances->includesAll(Set {theClassA})
+ and
+(Attribute.allInstances - Attribute.allInstances@pre)->exists(theAttrA|
+(PrimitiveDataType.allInstances - PrimitiveDataType.allInstances@pre)->exists(thePriTypeA|
+thePriTypeA.attr->includes(theAttrA) and
+theAttrA.priType->includes(thePriTypeA) and
+theClassA.has->includes(theAttrA) and
+theAttrA.belongTo->includes(theClassA) and
+theAttrA.name<>oclUndefined(String) and
+thePriTypeA.name<>oclUndefined(String) and
+theAttrA.a2c->size()=0 and
+thePriTypeA.p2c->size()=0 and C2T.allInstances->includesAll(Set {c2t})
+ and
+(A2C.allInstances - A2C.allInstances@pre)->exists(a2c|
+(P2C.allInstances - P2C.allInstances@pre)->exists(p2c|
+theAttrA.a2c->includes(a2c) and
+a2c.a->includes(theAttrA) and
+a2c.c->includes(theColumnA) and
+theColumnA.a2c->includes(a2c) and
+p2c.p->includes(thePriTypeA) and
+thePriTypeA.p2c->includes(p2c) and
+p2c.c->includes(theColumnA) and
+theColumnA.p2c->includes(p2c) and
+a2c.c.name=a2c.a.name and
+p2c.c.type=p2c.p.name))))
+
+context RuleCollection::trafoPerAtt2Col_backTrafo (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+pre trafoPerAtt2Col_backTrafo_pre: 
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theClassA.has->size() < 1 and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.const->includes(theForeignKeyA) and 
+theForeignKeyA.table->includes(theTableA) and 
+theForeignKeyA.refTable->includes(theTableB) and 
+theTableB.forKey->includes(theForeignKeyA) and 
+theForeignKeyA.col->includes(theColumnA) and 
+theColumnA.constraint->includes(theForeignKeyA) and 
+theColumnA.type = theColumnB.type and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1) and
+theColumnA.a2f->size() = 0
+
+post trafoPerAtt2Col_backTrafo_post:
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+Class.allInstances->includesAll(Set {theClassA, theClassB})
+ and
+(Attribute.allInstances - Attribute.allInstances@pre)->exists(theAttrA|
+theAttrA.type->includes(theClassB) and
+theClassB.attr->includes(theAttrA) and
+theClassA.has->includes(theAttrA) and
+theAttrA.belongTo->includes(theClassA) and
+theAttrA.name<>oclUndefined(String) and
+theAttrA.a2f->size()=0 and C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(A2F.allInstances - A2F.allInstances@pre)->exists(a2f|
+theAttrA.a2f->includes(a2f) and
+a2f.a->includes(theAttrA) and
+a2f.f->includes(theColumnA) and
+theColumnA.a2f->includes(a2f) and
+a2f.f.name=a2f.a.name))
+
+context RuleCollection::trafoPrimary2PKey_backTrafo (
+    matchSL: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column, thePriKeyA: PrimaryKey))
+pre trafoPrimary2PKey_backTrafo_pre: 
+let theClassA:Class = matchSL.theClassA in
+let theAttrA:Attribute = matchSL.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theClassA.name<>oclUndefined(String) and 
+theAttrA.name<>oclUndefined(String) and 
+theAttrA.is_primary=true and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.priKey->size()=0 and
+theTableA.const->includes(thePriKeyA) and 
+thePriKeyA.table->includes(theTableA) and 
+thePriKeyA.tab->includes(theTableA) and 
+theTableA.priKey->includes(thePriKeyA) and 
+theColumnA.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnA) and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+theAttrA.a2c->includes(a2c) and 
+a2c.a->includes(theAttrA) and 
+a2c.c->includes(theColumnA) and 
+theColumnA.a2c->includes(a2c)
+
+post trafoPrimary2PKey_backTrafo_post:
+let theClassA:Class = matchSL.theClassA in
+let theAttrA:Attribute = matchSL.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+Class.allInstances->includesAll(Set {theClassA})
+ and
+Attribute.allInstances->includesAll(Set {theAttrA})
+ and C2T.allInstances->includesAll(Set {c2t})
+ and
+A2C.allInstances->includesAll(Set {a2c})
+
+
+context RuleCollection::trafoAss2Col_backTrafo (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+pre trafoAss2Col_backTrafo_pre: 
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.const->includes(theForeignKeyA) and 
+theForeignKeyA.table->includes(theTableA) and 
+theForeignKeyA.refTable->includes(theTableB) and 
+theTableB.forKey->includes(theForeignKeyA) and 
+theForeignKeyA.col->includes(theColumnA) and 
+theColumnA.constraint->includes(theForeignKeyA) and 
+theColumnA.type = theColumnB.type and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1) and
+theColumnA.ass2c->size() = 0
+
+post trafoAss2Col_backTrafo_post:
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+Class.allInstances->includesAll(Set {theClassA, theClassB})
+ and
+(Association.allInstances - Association.allInstances@pre)->exists(theAssA|
+theAssA.end1->includes(theClassA) and
+theClassA.end1Assoc->includes(theAssA) and
+theClassB.end2Assoc->includes(theAssA) and
+theAssA.end2->includes(theClassB) and
+theAssA.name<>oclUndefined(String) and
+theAssA.ass2c->size()=0 and C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(ASS2C.allInstances - ASS2C.allInstances@pre)->exists(ass2c|
+theAssA.ass2c->includes(ass2c) and
+ass2c.ass->includes(theAssA) and
+theColumnA.ass2c->includes(ass2c) and
+ass2c.c->includes(theColumnA) and
+ass2c.c.name=ass2c.ass.name))
+
+context RuleCollection::trafoClass2Table_integration (
+    matchSR: Tuple(theClassA: Class),
+    matchTR: Tuple(theTableA: Table))
+pre trafoClass2Table_integration_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theTableA:Table = matchTR.theTableA in
+theClassA.name<>oclUndefined(String) and 
+theClassA.is_persistent=true and 
+theClassA.c2t->size()=0 and
+theClassA.c2t->size() = 0 and
+theTableA.c2t->size() = 0
+
+post trafoClass2Table_integration_post:
+let theClassA:Class = matchSR.theClassA in
+let theTableA:Table = matchTR.theTableA in
+(C2T.allInstances - C2T.allInstances@pre)->exists(c2t|
+c2t.c->includes(theClassA) and
+theClassA.c2t->includes(c2t) and
+c2t.t->includes(theTableA) and
+theTableA.c2t->includes(c2t) and
+c2t.t.name=c2t.c.name)
+
+context RuleCollection::trafoPriAtt2Col_integration (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute, thePriTypeA: PrimitiveDataType),
+    matchCL: Tuple(c2t: C2T),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column))
+pre trafoPriAtt2Col_integration_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let thePriTypeA:PrimitiveDataType = matchSR.thePriTypeA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+theClassA.name<>oclUndefined(String) and
+thePriTypeA.attr->includes(theAttrA) and 
+theAttrA.priType->includes(thePriTypeA) and 
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theAttrA.name<>oclUndefined(String) and 
+thePriTypeA.name<>oclUndefined(String) and 
+theAttrA.a2c->size()=0 and 
+thePriTypeA.p2c->size()=0 and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and
+theAttrA.a2c->size() = 0 and
+thePriTypeA.p2c->size() = 0 and
+theColumnA.a2c->size() = 0 and
+theColumnA.p2c->size() = 0
+
+post trafoPriAtt2Col_integration_post:
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let thePriTypeA:PrimitiveDataType = matchSR.thePriTypeA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+C2T.allInstances->includesAll(Set {c2t})
+ and
+(A2C.allInstances - A2C.allInstances@pre)->exists(a2c|
+(P2C.allInstances - P2C.allInstances@pre)->exists(p2c|
+theAttrA.a2c->includes(a2c) and
+a2c.a->includes(theAttrA) and
+a2c.c->includes(theColumnA) and
+theColumnA.a2c->includes(a2c) and
+p2c.p->includes(thePriTypeA) and
+thePriTypeA.p2c->includes(p2c) and
+p2c.c->includes(theColumnA) and
+theColumnA.p2c->includes(p2c) and
+a2c.c.name=a2c.a.name and
+p2c.c.type=p2c.p.name))
+
+context RuleCollection::trafoPerAtt2Col_integration (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+pre trafoPerAtt2Col_integration_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theAttrA.type->includes(theClassB) and 
+theClassB.attr->includes(theAttrA) and 
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theAttrA.name<>oclUndefined(String) and 
+theAttrA.a2f->size()=0 and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.const->includes(theForeignKeyA) and 
+theForeignKeyA.table->includes(theTableA) and 
+theForeignKeyA.refTable->includes(theTableB) and 
+theTableB.forKey->includes(theForeignKeyA) and 
+theForeignKeyA.col->includes(theColumnA) and 
+theColumnA.constraint->includes(theForeignKeyA) and 
+theColumnA.type = theColumnB.type and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1) and
+theAttrA.a2f->size() = 0 and
+theColumnA.a2f->size() = 0
+
+post trafoPerAtt2Col_integration_post:
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(A2F.allInstances - A2F.allInstances@pre)->exists(a2f|
+theAttrA.a2f->includes(a2f) and
+a2f.a->includes(theAttrA) and
+a2f.f->includes(theColumnA) and
+theColumnA.a2f->includes(a2f) and
+a2f.f.name=a2f.a.name)
+
+context RuleCollection::trafoPrimary2PKey_integration (
+    matchSR: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTR: Tuple(theTableA: Table, theColumnA: Column, thePriKeyA: PrimaryKey))
+pre trafoPrimary2PKey_integration_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theClassA.name<>oclUndefined(String) and 
+theAttrA.name<>oclUndefined(String) and 
+theAttrA.is_primary=true and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.priKey->size()=0 and
+theTableA.const->includes(thePriKeyA) and 
+thePriKeyA.table->includes(theTableA) and 
+thePriKeyA.tab->includes(theTableA) and 
+theTableA.priKey->includes(thePriKeyA) and 
+theColumnA.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnA) and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+theAttrA.a2c->includes(a2c) and 
+a2c.a->includes(theAttrA) and 
+a2c.c->includes(theColumnA) and 
+theColumnA.a2c->includes(a2c)
+
+post trafoPrimary2PKey_integration_post:
+let theClassA:Class = matchSR.theClassA in
+let theAttrA:Attribute = matchSR.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTR.theTableA in
+let theColumnA:Column = matchTR.theColumnA in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+C2T.allInstances->includesAll(Set {c2t})
+ and
+A2C.allInstances->includesAll(Set {a2c})
+
+
+context RuleCollection::trafoAss2Col_integration (
+    matchSR: Tuple(theClassA: Class, theClassB: Class, theAssA: Association),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTR: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey, theColumnA: Column, theForeignKeyA: ForeignKey))
+pre trafoAss2Col_integration_pre: 
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAssA:Association = matchSR.theAssA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theAssA.end1->includes(theClassA) and 
+theClassA.end1Assoc->includes(theAssA) and 
+theClassB.end2Assoc->includes(theAssA) and 
+theAssA.end2->includes(theClassB) and 
+theAssA.name<>oclUndefined(String) and 
+theAssA.ass2c->size()=0 and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.const->includes(theForeignKeyA) and 
+theForeignKeyA.table->includes(theTableA) and 
+theForeignKeyA.refTable->includes(theTableB) and 
+theTableB.forKey->includes(theForeignKeyA) and 
+theForeignKeyA.col->includes(theColumnA) and 
+theColumnA.constraint->includes(theForeignKeyA) and 
+theColumnA.type = theColumnB.type and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1) and
+theAssA.ass2c->size() = 0 and
+theColumnA.ass2c->size() = 0
+
+post trafoAss2Col_integration_post:
+let theClassA:Class = matchSR.theClassA in
+let theClassB:Class = matchSR.theClassB in
+let theAssA:Association = matchSR.theAssA in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTR.theTableA in
+let theTableB:Table = matchTR.theTableB in
+let theColumnB:Column = matchTR.theColumnB in
+let thePriKeyA:PrimaryKey = matchTR.thePriKeyA in
+let theColumnA:Column = matchTR.theColumnA in
+let theForeignKeyA:ForeignKey = matchTR.theForeignKeyA in
+C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(ASS2C.allInstances - ASS2C.allInstances@pre)->exists(ass2c|
+theAssA.ass2c->includes(ass2c) and
+ass2c.ass->includes(theAssA) and
+theColumnA.ass2c->includes(ass2c) and
+ass2c.c->includes(theColumnA) and
+ass2c.c.name=ass2c.ass.name)
+
+context RuleCollection::trafoClass2Table_coEvol ()
+pre trafoClass2Table_coEvol_pre: 
+true
+
+
+post trafoClass2Table_coEvol_post:
+(Class.allInstances - Class.allInstances@pre)->exists(theClassA|
+theClassA.name<>oclUndefined(String) and
+theClassA.is_persistent=true and
+theClassA.c2t->size()=0 and (Table.allInstances - Table.allInstances@pre)->exists(theTableA|
+(C2T.allInstances - C2T.allInstances@pre)->exists(c2t|
+c2t.c->includes(theClassA) and
+theClassA.c2t->includes(c2t) and
+c2t.t->includes(theTableA) and
+theTableA.c2t->includes(c2t) and
+c2t.t.name=c2t.c.name)))
+
+context RuleCollection::trafoPriAtt2Col_coEvol (
+    matchSL: Tuple(theClassA: Class),
+    matchCL: Tuple(c2t: C2T),
+    matchTL: Tuple(theTableA: Table))
+pre trafoPriAtt2Col_coEvol_pre: 
+let theClassA:Class = matchSL.theClassA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTL.theTableA in
+theClassA.name<>oclUndefined(String) and
+theClassA.has->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t)
+
+post trafoPriAtt2Col_coEvol_post:
+let theClassA:Class = matchSL.theClassA in
+let c2t:C2T = matchCL.c2t in
+let theTableA:Table = matchTL.theTableA in
+Class.allInstances->includesAll(Set {theClassA})
+ and
+(Attribute.allInstances - Attribute.allInstances@pre)->exists(theAttrA|
+(PrimitiveDataType.allInstances - PrimitiveDataType.allInstances@pre)->exists(thePriTypeA|
+thePriTypeA.attr->includes(theAttrA) and
+theAttrA.priType->includes(thePriTypeA) and
+theClassA.has->includes(theAttrA) and
+theAttrA.belongTo->includes(theClassA) and
+theAttrA.name<>oclUndefined(String) and
+thePriTypeA.name<>oclUndefined(String) and
+theAttrA.a2c->size()=0 and
+thePriTypeA.p2c->size()=0 and Table.allInstances->includesAll(Set {theTableA})
+ and
+(Column.allInstances - Column.allInstances@pre)->exists(theColumnA|
+theColumnA.table->includes(theTableA) and
+theTableA.columns->includes(theColumnA) and C2T.allInstances->includesAll(Set {c2t})
+ and
+(A2C.allInstances - A2C.allInstances@pre)->exists(a2c|
+(P2C.allInstances - P2C.allInstances@pre)->exists(p2c|
+theAttrA.a2c->includes(a2c) and
+a2c.a->includes(theAttrA) and
+a2c.c->includes(theColumnA) and
+theColumnA.a2c->includes(a2c) and
+p2c.p->includes(thePriTypeA) and
+thePriTypeA.p2c->includes(p2c) and
+p2c.c->includes(theColumnA) and
+theColumnA.p2c->includes(p2c) and
+a2c.c.name=a2c.a.name and
+p2c.c.type=p2c.p.name)))))
+
+context RuleCollection::trafoPerAtt2Col_coEvol (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+pre trafoPerAtt2Col_coEvol_pre: 
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theClassA.has->size() < 1 and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theTableB.forKey->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1)
+
+post trafoPerAtt2Col_coEvol_post:
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+Class.allInstances->includesAll(Set {theClassA, theClassB})
+ and
+(Attribute.allInstances - Attribute.allInstances@pre)->exists(theAttrA|
+theAttrA.type->includes(theClassB) and
+theClassB.attr->includes(theAttrA) and
+theClassA.has->includes(theAttrA) and
+theAttrA.belongTo->includes(theClassA) and
+theAttrA.name<>oclUndefined(String) and
+theAttrA.a2f->size()=0 and Table.allInstances->includesAll(Set {theTableA, theTableB})
+ and
+Column.allInstances->includesAll(Set {theColumnB})
+ and
+PrimaryKey.allInstances->includesAll(Set {thePriKeyA})
+ and
+(Column.allInstances - Column.allInstances@pre)->exists(theColumnA|
+(ForeignKey.allInstances - ForeignKey.allInstances@pre)->exists(theForeignKeyA|
+theColumnA.table->includes(theTableA) and
+theTableA.columns->includes(theColumnA) and
+theTableA.const->includes(theForeignKeyA) and
+theForeignKeyA.table->includes(theTableA) and
+theForeignKeyA.refTable->includes(theTableB) and
+theTableB.forKey->includes(theForeignKeyA) and
+theForeignKeyA.col->includes(theColumnA) and
+theColumnA.constraint->includes(theForeignKeyA) and
+theColumnA.type = theColumnB.type and C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(A2F.allInstances - A2F.allInstances@pre)->exists(a2f|
+theAttrA.a2f->includes(a2f) and
+a2f.a->includes(theAttrA) and
+a2f.f->includes(theColumnA) and
+theColumnA.a2f->includes(a2f) and
+a2f.f.name=a2f.a.name))))
+
+context RuleCollection::trafoPrimary2PKey_coEvol (
+    matchSL: Tuple(theClassA: Class, theAttrA: Attribute),
+    matchCL: Tuple(c2t: C2T, a2c: A2C),
+    matchTL: Tuple(theTableA: Table, theColumnA: Column))
+pre trafoPrimary2PKey_coEvol_pre: 
+let theClassA:Class = matchSL.theClassA in
+let theAttrA:Attribute = matchSL.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTL.theTableA in
+let theColumnA:Column = matchTL.theColumnA in
+theClassA.has->includes(theAttrA) and 
+theAttrA.belongTo->includes(theClassA) and 
+theClassA.name<>oclUndefined(String) and 
+theAttrA.name<>oclUndefined(String) and 
+theAttrA.is_primary=true and
+theColumnA.table->includes(theTableA) and 
+theTableA.columns->includes(theColumnA) and 
+theTableA.priKey->size()=0 and
+theTableA.priKey->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+theAttrA.a2c->includes(a2c) and 
+a2c.a->includes(theAttrA) and 
+a2c.c->includes(theColumnA) and 
+theColumnA.a2c->includes(a2c)
+
+post trafoPrimary2PKey_coEvol_post:
+let theClassA:Class = matchSL.theClassA in
+let theAttrA:Attribute = matchSL.theAttrA in
+let c2t:C2T = matchCL.c2t in
+let a2c:A2C = matchCL.a2c in
+let theTableA:Table = matchTL.theTableA in
+let theColumnA:Column = matchTL.theColumnA in
+Class.allInstances->includesAll(Set {theClassA})
+ and
+Attribute.allInstances->includesAll(Set {theAttrA})
+ and Table.allInstances->includesAll(Set {theTableA})
+ and
+Column.allInstances->includesAll(Set {theColumnA})
+ and
+(PrimaryKey.allInstances - PrimaryKey.allInstances@pre)->exists(thePriKeyA|
+theTableA.const->includes(thePriKeyA) and
+thePriKeyA.table->includes(theTableA) and
+thePriKeyA.tab->includes(theTableA) and
+theTableA.priKey->includes(thePriKeyA) and
+theColumnA.constraint->includes(thePriKeyA) and
+thePriKeyA.col->includes(theColumnA) and C2T.allInstances->includesAll(Set {c2t})
+ and
+A2C.allInstances->includesAll(Set {a2c})
+)
+
+context RuleCollection::trafoAss2Col_coEvol (
+    matchSL: Tuple(theClassA: Class, theClassB: Class),
+    matchCL: Tuple(c2t: C2T, c2t1: C2T),
+    matchTL: Tuple(theTableA: Table, theTableB: Table, theColumnB: Column, thePriKeyA: PrimaryKey))
+pre trafoAss2Col_coEvol_pre: 
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+theClassA.name<>oclUndefined(String) and 
+theClassB.name<>oclUndefined(String) and
+theColumnB.table->includes(theTableB) and 
+theTableB.columns->includes(theColumnB) and 
+thePriKeyA.table->includes(theTableB) and 
+theTableB.const->includes(thePriKeyA) and 
+thePriKeyA.tab->includes(theTableB) and 
+theTableB.priKey->includes(thePriKeyA) and 
+theColumnB.constraint->includes(thePriKeyA) and 
+thePriKeyA.col->includes(theColumnB) and
+theTableB.forKey->size() < 1 and
+c2t.c->includes(theClassA) and 
+theClassA.c2t->includes(c2t) and 
+c2t.t->includes(theTableA) and 
+theTableA.c2t->includes(c2t) and 
+c2t1.c->includes(theClassB) and 
+theClassB.c2t->includes(c2t1) and 
+c2t1.t->includes(theTableB) and 
+theTableB.c2t->includes(c2t1)
+
+post trafoAss2Col_coEvol_post:
+let theClassA:Class = matchSL.theClassA in
+let theClassB:Class = matchSL.theClassB in
+let c2t:C2T = matchCL.c2t in
+let c2t1:C2T = matchCL.c2t1 in
+let theTableA:Table = matchTL.theTableA in
+let theTableB:Table = matchTL.theTableB in
+let theColumnB:Column = matchTL.theColumnB in
+let thePriKeyA:PrimaryKey = matchTL.thePriKeyA in
+Class.allInstances->includesAll(Set {theClassA, theClassB})
+ and
+(Association.allInstances - Association.allInstances@pre)->exists(theAssA|
+theAssA.end1->includes(theClassA) and
+theClassA.end1Assoc->includes(theAssA) and
+theClassB.end2Assoc->includes(theAssA) and
+theAssA.end2->includes(theClassB) and
+theAssA.name<>oclUndefined(String) and
+theAssA.ass2c->size()=0 and Table.allInstances->includesAll(Set {theTableA, theTableB})
+ and
+Column.allInstances->includesAll(Set {theColumnB})
+ and
+PrimaryKey.allInstances->includesAll(Set {thePriKeyA})
+ and
+(Column.allInstances - Column.allInstances@pre)->exists(theColumnA|
+(ForeignKey.allInstances - ForeignKey.allInstances@pre)->exists(theForeignKeyA|
+theColumnA.table->includes(theTableA) and
+theTableA.columns->includes(theColumnA) and
+theTableA.const->includes(theForeignKeyA) and
+theForeignKeyA.table->includes(theTableA) and
+theForeignKeyA.refTable->includes(theTableB) and
+theTableB.forKey->includes(theForeignKeyA) and
+theForeignKeyA.col->includes(theColumnA) and
+theColumnA.constraint->includes(theForeignKeyA) and
+theColumnA.type = theColumnB.type and C2T.allInstances->includesAll(Set {c2t, c2t1})
+ and
+(ASS2C.allInstances - ASS2C.allInstances@pre)->exists(ass2c|
+theAssA.ass2c->includes(ass2c) and
+ass2c.ass->includes(theAssA) and
+theColumnA.ass2c->includes(ass2c) and
+ass2c.c->includes(theColumnA) and
+ass2c.c.name=ass2c.ass.name))))

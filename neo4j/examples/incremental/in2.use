@@ -1,0 +1,29 @@
+model BWTest
+
+class Cass1
+attributes
+    name: String
+    age: Integer
+    salary: Real
+    isGood: Boolean
+end
+
+
+class Cass2
+attributes
+end
+
+class Cass3
+attributes
+    name: String
+end
+
+class Cass4
+attributes
+    name: String
+end
+
+class Cass5
+attributes
+    name: String
+end

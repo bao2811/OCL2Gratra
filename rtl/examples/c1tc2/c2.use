@@ -1,0 +1,12 @@
+model C2
+
+class C3
+end
+
+class C4
+end
+
+association InMM2 between
+	C3 [0..1] role c1m2
+	C4 [*] role c2m2
+end

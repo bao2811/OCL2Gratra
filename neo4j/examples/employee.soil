@@ -1,0 +1,105 @@
+!create Tom:Student
+!create CSU:University
+!insert (Tom, CSU) into WorksFor
+!openter CSU fires(Tom)
+!delete (Tom, CSU) from WorksFor
+!opexit
+
+
+!insert (o1, o2) into Connect
+
+!insert (p1,u1,s1) into Ternari
+
+!create e1:Employment
+
+!insert (p1, u1) into Employment
+
+!set o1.coli := Set{1, 5, 9}
+
+!set o1.name := 'huhu'
+
+!create CSS:Cass1
+
+///
+!create Tom:Student
+!create CSU:University
+!insert (Tom, CSU) into WorksFor
+!set Tom.age := 18
+!set Tom.name := '18'
+!set CSU.name := 'uet'
+
+!create Tom:Student
+!set Tom.age := 18
+!set Tom.name := 'chris'
+
+!insert (o1, o2) into Connect
+
+
+///real
+
+!create MIT : University
+!create Stanford : University
+
+!create ProfSmith : Professor
+!create ProfJones : Professor
+
+!create Alice : Student
+!create Bob : Student
+!create Charlie : Student
+
+!create A1 : C1Assoc
+!create A2 : C1Assoc
+!create G1 : C2Aggreg
+
+!set MIT.name := 'Massachusetts Institute of Technology'
+!set MIT.location := 'Cambridge'
+!set Stanford.name := 'Stanford University'
+!set Stanford.location := 'California'
+
+!set ProfSmith.name := 'John Smith'
+!set ProfSmith.age := 50
+!set ProfSmith.salary := 8000.0
+!set ProfSmith.sex := Gender::Male
+
+!set Alice.name := 'Alice Wonderland'
+!set Alice.age := 20
+!set Alice.salary := 0.0
+!set Alice.sex := Gender::Female
+
+!set Bob.name := 'Bob Builder'
+!set Bob.age := 24
+!set Bob.salary := 1500.0
+!set Bob.sex := Gender::Male
+
+!set Bob.stud := Set{MIT, Stanford}
+
+!set Bob.codes := Set{'CS101', 'E202', 'AI303'}
+
+!set ProfSmith.codes := Set{'CS101', 'SE202', 'AI303'}
+
+!set ProfSmith.codesBag := Bag{'Login', 'Login', 'Logout'}
+
+!set ProfSmith.nested := Set{Set{'High', 'Medium'}, Set{'Low'}}
+
+!set Alice.nestedDiff := Set{Bag{'A', 'A', 'B'}, Bag{'C'}}
+
+!insert (ProfSmith, MIT) into WorksFor
+!insert (ProfJones, Stanford) into WorksFor
+!insert (Alice, MIT) into WorksFor
+
+!create contract1 : Employment between (ProfSmith, MIT)
+!set contract1.startDate := '2020-01-01'
+!set contract1.position := 'Head of Dept'
+!set contract1.contractType := ContractType::FullTime
+
+!create contract2 : Employment between (Alice, MIT)
+!set contract2.startDate := '2023-09-01'
+!set contract2.position := 'Research Assistant'
+!set contract2.contractType := ContractType::PartTime
+
+
+!insert (ProfSmith, MIT, Alice) into Ternari
+
+!insert (A1, MIT) into DemoAssociation
+!insert (A2, MIT) into DemoAssociation
+!insert (G1, Stanford) into DemoAggregation

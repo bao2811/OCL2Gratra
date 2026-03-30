@@ -1,0 +1,141 @@
+model C12C2
+
+
+class C1
+end
+
+class C2
+end
+
+association InMM1 between
+	C1 [0..1] role c1m1
+	C2 [*] role c2m1
+end
+
+
+class C3
+end
+
+class C4
+end
+
+association InMM2 between
+	C3 [0..1] role c1m2
+	C4 [*] role c2m2
+end
+
+---------- CorrPart ----------
+---------- RuleCollection ----------
+class RuleCollection
+operations
+---------- Forward transformations ----------
+rl1_forwTrafo (
+    matchSR: Tuple(c11: C1, c1: C1, c2: C2),
+    matchTL: Tuple(c3: C3))
+
+---------- Backward transformations ----------
+rl1_backTrafo (
+    matchSL: Tuple(c11: C1, c1: C1),
+    matchTR: Tuple(c3: C3, c4: C4))
+
+---------- Integration transformations ----------
+rl1_integration (
+    matchSR: Tuple(c11: C1, c1: C1, c2: C2),
+    matchTR: Tuple(c3: C3, c4: C4))
+
+---------- Co-evolution transformations ----------
+rl1_coEvol (
+    matchSL: Tuple(c11: C1, c1: C1),
+    matchTL: Tuple(c3: C3))
+end
+
+
+---------- Transformation constraints ----------
+constraints
+context RuleCollection::rl1_forwTrafo (
+    matchSR: Tuple(c11: C1, c1: C1, c2: C2),
+    matchTL: Tuple(c3: C3))
+pre rl1_forwTrafo_pre: 
+let c11:C1 = matchSR.c11 in
+let c1:C1 = matchSR.c1 in
+let c2:C2 = matchSR.c2 in
+let c3:C3 = matchTL.c3 in
+true
+
+
+post rl1_forwTrafo_post:
+let c11:C1 = matchSR.c11 in
+let c1:C1 = matchSR.c1 in
+let c2:C2 = matchSR.c2 in
+let c3:C3 = matchTL.c3 in
+C3.allInstances->includesAll(Set {c3})
+ and
+(C4.allInstances - C4.allInstances@pre)->exists(c4|
+true
+)
+
+context RuleCollection::rl1_backTrafo (
+    matchSL: Tuple(c11: C1, c1: C1),
+    matchTR: Tuple(c3: C3, c4: C4))
+pre rl1_backTrafo_pre: 
+let c11:C1 = matchSL.c11 in
+let c1:C1 = matchSL.c1 in
+let c3:C3 = matchTR.c3 in
+let c4:C4 = matchTR.c4 in
+true
+
+
+post rl1_backTrafo_post:
+let c11:C1 = matchSL.c11 in
+let c1:C1 = matchSL.c1 in
+let c3:C3 = matchTR.c3 in
+let c4:C4 = matchTR.c4 in
+C1.allInstances->includesAll(Set {c11, c1})
+ and
+(C2.allInstances - C2.allInstances@pre)->exists(c2|
+true
+)
+
+context RuleCollection::rl1_integration (
+    matchSR: Tuple(c11: C1, c1: C1, c2: C2),
+    matchTR: Tuple(c3: C3, c4: C4))
+pre rl1_integration_pre: 
+let c11:C1 = matchSR.c11 in
+let c1:C1 = matchSR.c1 in
+let c2:C2 = matchSR.c2 in
+let c3:C3 = matchTR.c3 in
+let c4:C4 = matchTR.c4 in
+true
+
+
+post rl1_integration_post:
+let c11:C1 = matchSR.c11 in
+let c1:C1 = matchSR.c1 in
+let c2:C2 = matchSR.c2 in
+let c3:C3 = matchTR.c3 in
+let c4:C4 = matchTR.c4 in
+true
+
+
+context RuleCollection::rl1_coEvol (
+    matchSL: Tuple(c11: C1, c1: C1),
+    matchTL: Tuple(c3: C3))
+pre rl1_coEvol_pre: 
+let c11:C1 = matchSL.c11 in
+let c1:C1 = matchSL.c1 in
+let c3:C3 = matchTL.c3 in
+true
+
+
+post rl1_coEvol_post:
+let c11:C1 = matchSL.c11 in
+let c1:C1 = matchSL.c1 in
+let c3:C3 = matchTL.c3 in
+C1.allInstances->includesAll(Set {c11, c1})
+ and
+(C2.allInstances - C2.allInstances@pre)->exists(c2|
+C3.allInstances->includesAll(Set {c3})
+ and
+(C4.allInstances - C4.allInstances@pre)->exists(c4|
+true
+))

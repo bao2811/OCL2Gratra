@@ -1,0 +1,35 @@
+
+!create b1 : Book
+!create b2 : Book
+!create b3 : Book
+!create alice : Member
+!create bob : Member
+!set b1.title := 'Clean Code'
+!set b1.author := 'Robert Martin'
+!set b1.isAvailable := true
+!set b2.title := 'The Pragmatic Programmer'
+!set b2.isAvailable := true
+!set b3.title := 'Design Patterns'
+!set b3.isAvailable := true
+!set alice.name := 'Alice'
+!set alice.maxBooksAllowed := 2
+!set bob.name := 'Bob'
+!set bob.maxBooksAllowed := 5
+!insert (alice, b1) into Borrowing
+!set b1.isAvailable := false
+!insert (alice, b2) into Borrowing
+!set b2.isAvailable := false
+!insert (alice, b3) into Borrowing
+!set b3.isAvailable := false
+
+
+Set{Set{n3},Set{n1,n2}}
+
+Sequence{Set{1,2,3},Set{4,5,6}}
+
+check
+
+
+p.age > 80 implies p.isEmergency = true
+
+!insert (m2, b1) into Borrowing

@@ -1,0 +1,111 @@
+
+!create h1 : Hospital
+!set h1.name := 'Bệnh viện Đa khoa Trung ương'
+!set h1.totalBudget := 500000.0
+!set h1.location := 'Hà Nội'
+!set h1.totalBeds := 1000
+!set h1.availableICUs := 50
+!set h1.rating := 4.8
+!set h1.isPublic := true
+!set h1.emergencyContact := '19001000'
+
+!create d1 : Department
+!set d1.deptName := 'Khoa Cấp cứu'
+
+!create d2 : Department
+!set d2.deptName := 'Khoa Tim mạch'
+
+!create m1 : Medication
+!set m1.brandName := 'Ascriptin'
+!set m1.genericName := 'Aspirin'
+!set m1.price := 15.5
+
+!create m2 : Medication
+!set m2.brandName := 'Ibuprin'
+!set m2.genericName := 'Ibuprofen'
+!set m2.price := 12.0
+
+!create dis1 : Disease
+!set dis1.diseaseName := 'Sốt xuất huyết'
+
+-- 2. Tạo Bác sĩ và Y tá (Kế thừa từ Person)
+!create dr1 : Doctor
+!set dr1.name := 'Nguyễn Văn A'
+!set dr1.age := 45
+!set dr1.gender := Gender::MALE
+!set dr1.doctorID := 'DOC001'
+!set dr1.specialty := Specialty::EMERGENCY
+!set dr1.consultationFee := 200.0
+!set dr1.isAvailable := true
+
+-- Set Nested Collection cho Doctor: Sequence(Set(Integer))
+-- Mô tả: Ca 1 trực phòng 101, 102; Ca 2 trực phòng 201
+!set dr1.shiftSchedule := Sequence{Set{101, 102}, Set{201}}
+
+!create dr2 : Doctor
+!set dr2.name := 'Trần Thị B'
+!set dr2.doctorID := 'DOC002'
+!set dr1.specialty := Specialty::CARDIOLOGY
+
+!create n1 : Nurse
+!set n1.name := 'Lê Thị C'
+!set n1.nurseID := 'NUR001'
+!set n1.isHeadNurse := true
+
+-- 3. Tạo Bệnh nhân và thiết lập thuộc tính phức tạp
+!create p1 : Patient
+!set p1.name := 'Trần Văn D'
+!set p1.age := 30
+!set p1.patientID := 'PAT001'
+!set p1.isEmergency := true
+!set p1.weight := 70.5
+!set p1.symptoms := Sequence{'Sốt cao', 'Đau đầu', 'Phát ban'}
+
+-- Set Nested Collection cho Patient: Set(Sequence(String))
+-- Mô tả: Lịch sử điều trị gồm 2 đợt, mỗi đợt là một chuỗi ghi chú
+!set p1.treatmentHistory := Set{Sequence{'Nhập viện ngày 1', 'Xét nghiệm máu'}, Sequence{'Uống thuốc hạ sốt'}}
+
+-- Set Object Collection: Set(Doctor), Set(Medication)
+!set p1.attendingPhysicians := Set{dr1, dr2}
+!set p1.currentMeds := Set{m1}
+
+-- Set Nested Object Collection: Sequence(Sequence(Medication))
+-- Mô tả: Lần khám 1 dùng m1, lần khám 2 dùng m1 và m2
+!set p1.prescriptionHistory := Sequence{Sequence{m1}, Sequence{m1, m2}}
+
+-- 4. Thiết lập quan hệ Aggregation (HospitalStructure)
+!insert (h1, d1) into HospitalStructure
+!insert (h1, d2) into HospitalStructure
+
+-- 5. Thiết lập quan hệ Composition (PatientRecord & RecordEntries)
+!create mr1 : MedicalRecord
+!insert (p1, mr1) into PatientRecord
+
+!create re1 : RecordEntry
+!set re1.entryDate := '2024-03-04'
+!set re1.description := 'Bệnh nhân ổn định'
+!insert (mr1, re1) into RecordEntries
+
+-- 6. Thiết lập N-ary Association (Consultation & Appointment)
+-- Consultation (3-way): Doctor, Patient, Disease
+!insert (dr1, p1, dis1) into Consultation
+
+-- Appointment (3-way): Doctor, Patient, Department
+!insert (dr1, p1, d1) into Appointment
+
+-- 7. Tạo Association Class (Hospitalization & Prescription)
+-- Cú pháp tạo Association Class: !create <name> : <class> between (<end1>, <end2>) [2]
+!create hosp1 : Hospitalization between (p1, d1)
+!set hosp1.admissionDate := '2024-03-01'
+!set hosp1.roomNumber := 502
+
+!create presc1 : Prescription between (dr1, p1)
+!set presc1.prescriptionID := 'PRES001'
+!set presc1.dosageInstructions := 'Uống 2 lần/ngày sau ăn'
+
+-- 8. Thiết lập tập hợp đối tượng trong thuộc tính (Object Sets)
+!set dr1.assignedNurses := Set{n1}
+!set h1.medicalStaff := Set{dr1, dr2, n1}
+
+-- Kiểm tra trạng thái hệ thống
+check

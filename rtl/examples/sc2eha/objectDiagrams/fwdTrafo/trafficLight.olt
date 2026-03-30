@@ -1,0 +1,4255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<diagram_Layout version="4">
+  <diagramOptions>
+    <autolayout>false</autolayout>
+    <antialiasing>false</antialiasing>
+    <showassocnames>true</showassocnames>
+    <showattributes>true</showattributes>
+    <showmultiplicities>false</showmultiplicities>
+    <showoperations>false</showoperations>
+    <showrolenames>false</showrolenames>
+    <showgrid>false</showgrid>
+  </diagramOptions>
+  <node type="Object">
+    <name>carStop2</name>
+    <x_coord>579.4973440199224</x_coord>
+    <y_coord>644.3804886793885</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>carStop3</name>
+    <x_coord>173.84876153975756</x_coord>
+    <y_coord>651.738357889798</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>t1</name>
+    <x_coord>54.0</x_coord>
+    <y_coord>73.96214491008573</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transTimeGreen</name>
+    <x_coord>315.32844730520776</x_coord>
+    <y_coord>399.2775460774001</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>cs2</name>
+    <x_coord>35.39494457654723</x_coord>
+    <y_coord>288.9939360885064</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>cs3</name>
+    <x_coord>93.59219824524871</x_coord>
+    <y_coord>226.43097587552802</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>cs1</name>
+    <x_coord>38.749297155240924</x_coord>
+    <y_coord>163.56185817346477</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>carStop1</name>
+    <x_coord>570.0464109463653</x_coord>
+    <y_coord>597.8609076011621</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transOn2Off</name>
+    <x_coord>30.1327622868248</x_coord>
+    <y_coord>128.50223992100678</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transRed</name>
+    <x_coord>451.915985614629</x_coord>
+    <y_coord>544.4646352624341</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>initLamp</name>
+    <x_coord>484.6427123132494</x_coord>
+    <y_coord>335.9519194327918</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>yellow</name>
+    <x_coord>328.3676736157895</x_coord>
+    <y_coord>433.20435815760084</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>rc</name>
+    <x_coord>1069.0</x_coord>
+    <y_coord>572.416006316446</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>cameraSwitch1</name>
+    <x_coord>414.2407693023962</x_coord>
+    <y_coord>169.59447467706502</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>cameraSwitch2</name>
+    <x_coord>412.80262081995306</x_coord>
+    <y_coord>294.74064244238946</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>switch2</name>
+    <x_coord>170.58402419545803</x_coord>
+    <y_coord>119.29109622119108</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transSwitch</name>
+    <x_coord>213.9156005329943</x_coord>
+    <y_coord>178.5</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>switch1</name>
+    <x_coord>290.8442279696019</x_coord>
+    <y_coord>117.22522321131936</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transTimeYellow</name>
+    <x_coord>313.84483842871737</x_coord>
+    <y_coord>490.5</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>redYellow</name>
+    <x_coord>24.378002258537663</x_coord>
+    <y_coord>483.01416605587747</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>timeRed</name>
+    <x_coord>36.58517491918383</x_coord>
+    <y_coord>650.5020929740692</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>ssCameraOn</name>
+    <x_coord>211.71554094232408</x_coord>
+    <y_coord>294.426866096936</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>timeRedYellow</name>
+    <x_coord>113.59905461128858</x_coord>
+    <y_coord>343.55143165228094</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>init1</name>
+    <x_coord>60.20282695439687</x_coord>
+    <y_coord>16.460512961544055</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>timeYellow</name>
+    <x_coord>454.14623450865554</x_coord>
+    <y_coord>480.77199648320243</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transTimeRedYellow</name>
+    <x_coord>168.5</x_coord>
+    <y_coord>399.08755014567714</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>initCamera</name>
+    <x_coord>393.82877434422903</x_coord>
+    <y_coord>59.68715953831213</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>ss1</name>
+    <x_coord>229.2175919134071</x_coord>
+    <y_coord>67.11801402724649</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>ss2</name>
+    <x_coord>246.67437819081704</x_coord>
+    <y_coord>337.99389693688363</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transCarStop3</name>
+    <x_coord>161.19167720764722</x_coord>
+    <y_coord>602.4761779826242</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transCarStop2</name>
+    <x_coord>448.58551558734246</x_coord>
+    <y_coord>651.1440309277459</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>timeGreen</name>
+    <x_coord>468.41916082789</x_coord>
+    <y_coord>388.5371651067753</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transLamp</name>
+    <x_coord>359.51912632867777</x_coord>
+    <y_coord>343.5</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>red</name>
+    <x_coord>180.10333124389183</x_coord>
+    <y_coord>475.6273565303077</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>ssCameraOff</name>
+    <x_coord>222.67494965362573</x_coord>
+    <y_coord>209.24341617003336</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transCarStop1</name>
+    <x_coord>436.86811808504194</x_coord>
+    <y_coord>603.4970009478686</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transCamSwitch2</name>
+    <x_coord>408.24908380098645</x_coord>
+    <y_coord>264.90727336562406</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>initRed</name>
+    <x_coord>566.0563022025043</x_coord>
+    <y_coord>536.9066921704439</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>count2</name>
+    <x_coord>332.85264949403745</x_coord>
+    <y_coord>644.970928082219</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transTimeRed</name>
+    <x_coord>26.00322454960667</x_coord>
+    <y_coord>603.7311311142487</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transCamSwitch1</name>
+    <x_coord>408.5</x_coord>
+    <y_coord>217.9745192447349</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>count1</name>
+    <x_coord>333.435479802944</x_coord>
+    <y_coord>595.5293876505298</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>count0</name>
+    <x_coord>330.5533237482213</x_coord>
+    <y_coord>536.7628323082547</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <node type="Object">
+    <name>transCam</name>
+    <x_coord>389.27570447125595</x_coord>
+    <y_coord>141.37409904854348</y_coord>
+    <hidden>false</hidden>
+  </node>
+  <edge type="BinaryEdge">
+    <source>transCamSwitch2</source>
+    <target>ssCameraOn</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>352.0</x_coord>
+      <y_coord>275.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>333.0</x_coord>
+      <y_coord>269.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>318.109375</x_coord>
+      <y_coord>268.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>360.359375</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>415.0</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>413.0</x_coord>
+      <y_coord>282.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>331.0</x_coord>
+      <y_coord>297.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs3</source>
+    <target>ssCameraOff</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>163.5</x_coord>
+      <y_coord>223.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>172.46875</x_coord>
+      <y_coord>267.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>220.0</x_coord>
+      <y_coord>267.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>178.0</x_coord>
+      <y_coord>205.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>150.359375</x_coord>
+      <y_coord>205.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>176.0</x_coord>
+      <y_coord>241.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>218.0</x_coord>
+      <y_coord>234.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeRed</source>
+    <target>redYellow</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>55.0</x_coord>
+      <y_coord>543.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>549.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>62.109375</x_coord>
+      <y_coord>549.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>578.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>578.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>599.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>516.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCam</source>
+    <target>ssCameraOff</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>343.0</x_coord>
+      <y_coord>168.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>320.0</x_coord>
+      <y_coord>177.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>305.109375</x_coord>
+      <y_coord>176.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>355.359375</x_coord>
+      <y_coord>185.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>410.0</x_coord>
+      <y_coord>185.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>408.0</x_coord>
+      <y_coord>159.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>318.0</x_coord>
+      <y_coord>205.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs2</source>
+    <target>red</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="true">
+      <name>ContainsState</name>
+      <x_coord>78.0</x_coord>
+      <y_coord>424.01318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>130.46875</x_coord>
+      <y_coord>436.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>178.0</x_coord>
+      <y_coord>436.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>377.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>47.359375</x_coord>
+      <y_coord>377.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>0</name>
+      <x_coord>73.0</x_coord>
+      <y_coord>336.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+      <deltaX>37.60505542345277</deltaX>
+      <deltaY>47.006063911493584</deltaY>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>1</name>
+      <x_coord>176.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+      <deltaX>-4.10333124389183</deltaX>
+      <deltaY>-3.6273565303076793</deltaY>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>t1</source>
+    <target>ss1</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>142.5</x_coord>
+      <y_coord>67.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>200.40625</x_coord>
+      <y_coord>53.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>227.0</x_coord>
+      <y_coord>52.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>102.0</x_coord>
+      <y_coord>60.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>86.453125</x_coord>
+      <y_coord>60.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>100.0</x_coord>
+      <y_coord>81.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>225.0</x_coord>
+      <y_coord>81.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeYellow</source>
+    <target>yellow</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>343.7734375</x_coord>
+      <y_coord>462.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>344.953125</x_coord>
+      <y_coord>499.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>499.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>465.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>465.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>370.0</x_coord>
+      <y_coord>486.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>370.0</x_coord>
+      <y_coord>466.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeYellow</source>
+    <target>timeYellow</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>423.5</x_coord>
+      <y_coord>481.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>409.375</x_coord>
+      <y_coord>468.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>452.0</x_coord>
+      <y_coord>467.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>433.0</x_coord>
+      <y_coord>522.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>417.453125</x_coord>
+      <y_coord>522.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>431.0</x_coord>
+      <y_coord>496.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>450.0</x_coord>
+      <y_coord>496.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop3</source>
+    <target>count2</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>261.2734375</x_coord>
+      <y_coord>618.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>302.953125</x_coord>
+      <y_coord>616.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>330.0</x_coord>
+      <y_coord>615.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>249.0</x_coord>
+      <y_coord>646.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>233.453125</x_coord>
+      <y_coord>646.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>247.0</x_coord>
+      <y_coord>620.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>328.0</x_coord>
+      <y_coord>644.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop1</source>
+    <target>count0</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>410.2734375</x_coord>
+      <y_coord>570.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>409.0</x_coord>
+      <y_coord>602.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>394.109375</x_coord>
+      <y_coord>602.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>415.984375</x_coord>
+      <y_coord>578.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>468.0</x_coord>
+      <y_coord>578.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>466.0</x_coord>
+      <y_coord>599.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>407.0</x_coord>
+      <y_coord>569.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transOn2Off</source>
+    <target>ss1</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>151.0</x_coord>
+      <y_coord>94.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>200.40625</x_coord>
+      <y_coord>126.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>227.0</x_coord>
+      <y_coord>126.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>119.0</x_coord>
+      <y_coord>103.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>103.453125</x_coord>
+      <y_coord>103.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>117.0</x_coord>
+      <y_coord>124.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>225.0</x_coord>
+      <y_coord>93.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transSwitch</source>
+    <target>switch1</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>272.0</x_coord>
+      <y_coord>147.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>263.375</x_coord>
+      <y_coord>183.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>306.0</x_coord>
+      <y_coord>183.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>276.0</x_coord>
+      <y_coord>153.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>260.453125</x_coord>
+      <y_coord>153.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>274.0</x_coord>
+      <y_coord>174.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>304.0</x_coord>
+      <y_coord>150.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCam</source>
+    <target>initCamera</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>401.7734375</x_coord>
+      <y_coord>100.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>430.0</x_coord>
+      <y_coord>125.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>415.109375</x_coord>
+      <y_coord>125.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>430.0</x_coord>
+      <y_coord>116.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>430.0</x_coord>
+      <y_coord>116.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>428.0</x_coord>
+      <y_coord>137.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>428.0</x_coord>
+      <y_coord>92.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop1</source>
+    <target>count1</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>407.5</x_coord>
+      <y_coord>596.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>425.0</x_coord>
+      <y_coord>582.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>410.109375</x_coord>
+      <y_coord>581.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>379.359375</x_coord>
+      <y_coord>589.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>434.0</x_coord>
+      <y_coord>589.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>432.0</x_coord>
+      <y_coord>610.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>423.0</x_coord>
+      <y_coord>610.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop3</source>
+    <target>carStop3</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>195.0</x_coord>
+      <y_coord>619.3125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>214.0</x_coord>
+      <y_coord>619.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>214.0</x_coord>
+      <y_coord>618.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>214.0</x_coord>
+      <y_coord>646.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>198.453125</x_coord>
+      <y_coord>646.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>212.0</x_coord>
+      <y_coord>620.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>212.0</x_coord>
+      <y_coord>647.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transLamp</source>
+    <target>initLamp</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>437.2734375</x_coord>
+      <y_coord>336.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>454.953125</x_coord>
+      <y_coord>322.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>482.0</x_coord>
+      <y_coord>321.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>449.0</x_coord>
+      <y_coord>376.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>433.453125</x_coord>
+      <y_coord>376.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>447.0</x_coord>
+      <y_coord>350.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>480.0</x_coord>
+      <y_coord>350.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop3</source>
+    <target>redYellow</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>128.0</x_coord>
+      <y_coord>543.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>100.0</x_coord>
+      <y_coord>549.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>85.109375</x_coord>
+      <y_coord>549.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>145.359375</x_coord>
+      <y_coord>577.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>200.0</x_coord>
+      <y_coord>577.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>198.0</x_coord>
+      <y_coord>598.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>98.0</x_coord>
+      <y_coord>516.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCamSwitch2</source>
+    <target>cameraSwitch2</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>450.0</x_coord>
+      <y_coord>271.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>469.0</x_coord>
+      <y_coord>262.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>469.0</x_coord>
+      <y_coord>261.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>469.0</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>469.0</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>467.0</x_coord>
+      <y_coord>282.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>467.0</x_coord>
+      <y_coord>290.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCamSwitch1</source>
+    <target>ssCameraOff</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>354.0</x_coord>
+      <y_coord>210.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>346.0</x_coord>
+      <y_coord>196.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>331.109375</x_coord>
+      <y_coord>195.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>351.359375</x_coord>
+      <y_coord>203.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>406.0</x_coord>
+      <y_coord>203.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>404.0</x_coord>
+      <y_coord>224.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>344.0</x_coord>
+      <y_coord>224.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transOn2Off</source>
+    <target>switch2</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>130.0</x_coord>
+      <y_coord>119.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>125.375</x_coord>
+      <y_coord>106.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>168.0</x_coord>
+      <y_coord>105.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>130.0</x_coord>
+      <y_coord>113.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>114.453125</x_coord>
+      <y_coord>113.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>128.0</x_coord>
+      <y_coord>134.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>166.0</x_coord>
+      <y_coord>134.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop2</source>
+    <target>carStop2</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>548.0</x_coord>
+      <y_coord>643.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>534.375</x_coord>
+      <y_coord>630.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>577.0</x_coord>
+      <y_coord>629.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>557.0</x_coord>
+      <y_coord>637.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>541.453125</x_coord>
+      <y_coord>637.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>555.0</x_coord>
+      <y_coord>658.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>575.0</x_coord>
+      <y_coord>658.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>t1</source>
+    <target>init1</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>50.2734375</x_coord>
+      <y_coord>45.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>51.953125</x_coord>
+      <y_coord>82.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>79.0</x_coord>
+      <y_coord>82.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>78.0</x_coord>
+      <y_coord>48.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>62.453125</x_coord>
+      <y_coord>48.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>76.0</x_coord>
+      <y_coord>69.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>49.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transSwitch</source>
+    <target>cs1</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>136.7734375</x_coord>
+      <y_coord>171.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>119.0</x_coord>
+      <y_coord>149.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>104.109375</x_coord>
+      <y_coord>149.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>158.984375</x_coord>
+      <y_coord>164.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>211.0</x_coord>
+      <y_coord>164.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>209.0</x_coord>
+      <y_coord>185.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>117.0</x_coord>
+      <y_coord>185.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeRedYellow</source>
+    <target>ss2</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="true">
+      <name>TransTo</name>
+      <x_coord>187.0</x_coord>
+      <y_coord>410.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>241.40625</x_coord>
+      <y_coord>403.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>268.0</x_coord>
+      <y_coord>403.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>246.0</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>230.453125</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>395.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>266.0</x_coord>
+      <y_coord>370.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeGreen</source>
+    <target>ss2</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>304.2734375</x_coord>
+      <y_coord>368.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>312.0</x_coord>
+      <y_coord>403.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>297.109375</x_coord>
+      <y_coord>403.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>300.984375</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>353.0</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>351.0</x_coord>
+      <y_coord>395.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>310.0</x_coord>
+      <y_coord>370.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeGreen</source>
+    <target>timeGreen</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>429.5</x_coord>
+      <y_coord>389.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>423.375</x_coord>
+      <y_coord>376.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>466.0</x_coord>
+      <y_coord>375.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>431.0</x_coord>
+      <y_coord>383.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>415.453125</x_coord>
+      <y_coord>383.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>429.0</x_coord>
+      <y_coord>404.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>464.0</x_coord>
+      <y_coord>404.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCamSwitch2</source>
+    <target>ssCameraOff</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>356.2734375</x_coord>
+      <y_coord>235.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>346.0</x_coord>
+      <y_coord>272.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>331.109375</x_coord>
+      <y_coord>272.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>370.984375</x_coord>
+      <y_coord>239.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>423.0</x_coord>
+      <y_coord>239.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>421.0</x_coord>
+      <y_coord>260.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>344.0</x_coord>
+      <y_coord>239.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop2</source>
+    <target>count1</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="true">
+      <name>TransFrom</name>
+      <x_coord>368.2734375</x_coord>
+      <y_coord>636.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>424.0</x_coord>
+      <y_coord>661.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>409.109375</x_coord>
+      <y_coord>661.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>420.984375</x_coord>
+      <y_coord>626.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>473.0</x_coord>
+      <y_coord>626.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>471.0</x_coord>
+      <y_coord>647.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>422.0</x_coord>
+      <y_coord>628.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCamSwitch1</source>
+    <target>cameraSwitch1</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>451.0</x_coord>
+      <y_coord>193.3125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>470.0</x_coord>
+      <y_coord>235.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>470.0</x_coord>
+      <y_coord>235.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>434.109375</x_coord>
+      <y_coord>192.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>470.0</x_coord>
+      <y_coord>192.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>468.0</x_coord>
+      <y_coord>213.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>468.0</x_coord>
+      <y_coord>202.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>red</source>
+    <target>count0</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>273.5</x_coord>
+      <y_coord>511.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>280.46875</x_coord>
+      <y_coord>505.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>328.0</x_coord>
+      <y_coord>504.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>290.0</x_coord>
+      <y_coord>559.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>262.359375</x_coord>
+      <y_coord>559.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>288.0</x_coord>
+      <y_coord>518.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>326.0</x_coord>
+      <y_coord>533.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeGreen</source>
+    <target>yellow</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>350.0</x_coord>
+      <y_coord>409.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>401.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>400.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>443.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>372.0</x_coord>
+      <y_coord>443.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>370.0</x_coord>
+      <y_coord>417.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>370.0</x_coord>
+      <y_coord>429.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>red</source>
+    <target>count1</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>260.5</x_coord>
+      <y_coord>543.01318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>284.46875</x_coord>
+      <y_coord>563.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>332.0</x_coord>
+      <y_coord>562.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>260.0</x_coord>
+      <y_coord>564.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>232.359375</x_coord>
+      <y_coord>564.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>258.0</x_coord>
+      <y_coord>523.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>1</name>
+      <x_coord>330.0</x_coord>
+      <y_coord>591.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+      <deltaX>-3.4354798029439735</deltaX>
+      <deltaY>-4.52938765052977</deltaY>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs3</source>
+    <target>ssCameraOn</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>167.5</x_coord>
+      <y_coord>264.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>180.46875</x_coord>
+      <y_coord>262.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>228.0</x_coord>
+      <y_coord>261.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>178.0</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>150.359375</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>176.0</x_coord>
+      <y_coord>267.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>226.0</x_coord>
+      <y_coord>290.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop1</source>
+    <target>carStop1</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>537.5</x_coord>
+      <y_coord>596.8125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>525.375</x_coord>
+      <y_coord>583.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>568.0</x_coord>
+      <y_coord>582.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>545.0</x_coord>
+      <y_coord>590.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>529.453125</x_coord>
+      <y_coord>590.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>543.0</x_coord>
+      <y_coord>611.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>566.0</x_coord>
+      <y_coord>611.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCarStop2</source>
+    <target>count2</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>413.0</x_coord>
+      <y_coord>644.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>424.0</x_coord>
+      <y_coord>630.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>409.109375</x_coord>
+      <y_coord>629.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>391.359375</x_coord>
+      <y_coord>637.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>446.0</x_coord>
+      <y_coord>637.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>444.0</x_coord>
+      <y_coord>658.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>422.0</x_coord>
+      <y_coord>658.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs2</source>
+    <target>ss2</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>146.5</x_coord>
+      <y_coord>312.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>196.46875</x_coord>
+      <y_coord>308.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>307.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>120.0</x_coord>
+      <y_coord>358.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>92.359375</x_coord>
+      <y_coord>358.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>118.0</x_coord>
+      <y_coord>317.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>1</name>
+      <x_coord>242.0</x_coord>
+      <y_coord>336.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+      <deltaX>-4.674378190817038</deltaX>
+      <deltaY>-1.9938969368836297</deltaY>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeRed</source>
+    <target>red</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="true">
+      <name>TransFrom</name>
+      <x_coord>130.7734375</x_coord>
+      <y_coord>569.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>170.953125</x_coord>
+      <y_coord>564.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>198.0</x_coord>
+      <y_coord>564.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>93.0</x_coord>
+      <y_coord>578.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>77.453125</x_coord>
+      <y_coord>578.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>91.0</x_coord>
+      <y_coord>599.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>196.0</x_coord>
+      <y_coord>523.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transLamp</source>
+    <target>ss2</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>318.0</x_coord>
+      <y_coord>337.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>323.0</x_coord>
+      <y_coord>323.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>308.109375</x_coord>
+      <y_coord>322.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>302.359375</x_coord>
+      <y_coord>330.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>357.0</x_coord>
+      <y_coord>330.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>355.0</x_coord>
+      <y_coord>351.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>321.0</x_coord>
+      <y_coord>351.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transRed</source>
+    <target>count0</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>413.5</x_coord>
+      <y_coord>537.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>422.0</x_coord>
+      <y_coord>523.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>407.109375</x_coord>
+      <y_coord>522.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>394.359375</x_coord>
+      <y_coord>530.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>449.0</x_coord>
+      <y_coord>530.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>447.0</x_coord>
+      <y_coord>551.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>420.0</x_coord>
+      <y_coord>551.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transRed</source>
+    <target>initRed</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>520.7734375</x_coord>
+      <y_coord>537.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>536.953125</x_coord>
+      <y_coord>523.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>564.0</x_coord>
+      <y_coord>522.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>534.0</x_coord>
+      <y_coord>577.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>518.453125</x_coord>
+      <y_coord>577.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>532.0</x_coord>
+      <y_coord>551.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>562.0</x_coord>
+      <y_coord>551.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeRedYellow</source>
+    <target>timeRedYellow</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>190.0</x_coord>
+      <y_coord>371.3125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>196.0</x_coord>
+      <y_coord>409.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>180.453125</x_coord>
+      <y_coord>409.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>186.109375</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>222.0</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>220.0</x_coord>
+      <y_coord>395.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>194.0</x_coord>
+      <y_coord>376.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>red</source>
+    <target>count2</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>255.0</x_coord>
+      <y_coord>568.01318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>282.46875</x_coord>
+      <y_coord>613.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>330.0</x_coord>
+      <y_coord>612.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>251.0</x_coord>
+      <y_coord>564.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>223.359375</x_coord>
+      <y_coord>564.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>249.0</x_coord>
+      <y_coord>523.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>1</name>
+      <x_coord>327.0</x_coord>
+      <y_coord>638.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>0</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>2</name>
+      <x_coord>328.0</x_coord>
+      <y_coord>641.0</y_coord>
+      <hidden>false</hidden>
+      <id>2</id>
+      <specialid>2</specialid>
+      <deltaX>-4.8526494940374505</deltaX>
+      <deltaY>-3.970928082218961</deltaY>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs2</source>
+    <target>redYellow</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>41.5</x_coord>
+      <y_coord>393.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>451.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>450.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>20.625</x_coord>
+      <y_coord>377.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>377.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>336.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>479.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs1</source>
+    <target>cs2</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>41.5</x_coord>
+      <y_coord>233.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>248.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>50.3125</x_coord>
+      <y_coord>248.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>252.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>252.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>211.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>284.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transSwitch</source>
+    <target>ss1</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>241.5</x_coord>
+      <y_coord>123.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>238.40625</x_coord>
+      <y_coord>133.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>265.0</x_coord>
+      <y_coord>133.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>262.0</x_coord>
+      <y_coord>153.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>246.453125</x_coord>
+      <y_coord>153.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>260.0</x_coord>
+      <y_coord>174.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>263.0</x_coord>
+      <y_coord>100.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeYellow</source>
+    <target>red</target>
+    <name>TransTo</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransTo</name>
+      <x_coord>278.5</x_coord>
+      <y_coord>483.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>dst</name>
+      <x_coord>290.0</x_coord>
+      <y_coord>461.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>275.109375</x_coord>
+      <y_coord>461.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>incomimg</name>
+      <x_coord>256.359375</x_coord>
+      <y_coord>476.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>311.0</x_coord>
+      <y_coord>476.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>309.0</x_coord>
+      <y_coord>497.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>288.0</x_coord>
+      <y_coord>497.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeRed</source>
+    <target>timeRed</target>
+    <name>Trigger</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>Trigger</name>
+      <x_coord>58.0</x_coord>
+      <y_coord>619.3125</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>trigger</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>618.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>617.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trans</name>
+      <x_coord>77.0</x_coord>
+      <y_coord>647.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>61.453125</x_coord>
+      <y_coord>647.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>621.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>75.0</x_coord>
+      <y_coord>646.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transOn2Off</source>
+    <target>cs1</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>49.7734375</x_coord>
+      <y_coord>138.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>78.0</x_coord>
+      <y_coord>123.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>78.0</x_coord>
+      <y_coord>123.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>78.0</x_coord>
+      <y_coord>172.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>78.0</x_coord>
+      <y_coord>172.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>76.0</x_coord>
+      <y_coord>146.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>76.0</x_coord>
+      <y_coord>159.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>cs1</source>
+    <target>cs3</target>
+    <name>ContainsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>ContainsState</name>
+      <x_coord>70.5</x_coord>
+      <y_coord>202.51318359375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>content</name>
+      <x_coord>63.46875</x_coord>
+      <y_coord>186.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1..*</name>
+      <x_coord>111.0</x_coord>
+      <y_coord>186.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>container</name>
+      <x_coord>101.0</x_coord>
+      <y_coord>252.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>73.359375</x_coord>
+      <y_coord>252.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>99.0</x_coord>
+      <y_coord>211.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>109.0</x_coord>
+      <y_coord>222.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transTimeRedYellow</source>
+    <target>redYellow</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="true">
+      <name>TransFrom</name>
+      <x_coord>124.7734375</x_coord>
+      <y_coord>459.15380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>93.0</x_coord>
+      <y_coord>451.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>78.109375</x_coord>
+      <y_coord>450.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>162.984375</x_coord>
+      <y_coord>443.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>215.0</x_coord>
+      <y_coord>443.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>213.0</x_coord>
+      <y_coord>417.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="true">
+      <name>1</name>
+      <x_coord>91.0</x_coord>
+      <y_coord>479.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+      <deltaX>66.62199774146234</deltaX>
+      <deltaY>-4.014166055877467</deltaY>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>transCamSwitch1</source>
+    <target>ssCameraOn</target>
+    <name>TransFrom</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>TransFrom</name>
+      <x_coord>352.7734375</x_coord>
+      <y_coord>248.65380859375</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>src</name>
+      <x_coord>316.0</x_coord>
+      <y_coord>262.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>1</name>
+      <x_coord>301.109375</x_coord>
+      <y_coord>261.5</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>outgoing</name>
+      <x_coord>393.984375</x_coord>
+      <y_coord>261.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>446.0</x_coord>
+      <y_coord>261.0</y_coord>
+      <hidden>false</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>444.0</x_coord>
+      <y_coord>235.0</y_coord>
+      <hidden>false</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>314.0</x_coord>
+      <y_coord>290.0</y_coord>
+      <hidden>false</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>false</hidden>
+  </edge>
+  <node type="Object">
+    <name>sc1</name>
+    <x_coord>209.95929897676257</x_coord>
+    <y_coord>497.9974928037534</y_coord>
+    <hidden>true</hidden>
+  </node>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transCarStop3</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>201.0</x_coord>
+      <y_coord>394.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>218.0</x_coord>
+      <y_coord>350.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>202.453125</x_coord>
+      <y_coord>350.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>193.375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>246.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>216.0</x_coord>
+      <y_coord>324.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>ssCameraOff</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>173.0</x_coord>
+      <y_coord>409.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>164.0</x_coord>
+      <y_coord>387.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>148.453125</x_coord>
+      <y_coord>387.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>197.546875</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>241.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>239.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>162.0</x_coord>
+      <y_coord>354.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>cs2</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>249.5</x_coord>
+      <y_coord>433.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>268.6875</x_coord>
+      <y_coord>442.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>304.0</x_coord>
+      <y_coord>442.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>254.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>226.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>252.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>302.0</x_coord>
+      <y_coord>401.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>ss2</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>270.0</x_coord>
+      <y_coord>375.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>310.6875</x_coord>
+      <y_coord>318.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>346.0</x_coord>
+      <y_coord>318.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>253.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>225.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>251.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>344.0</x_coord>
+      <y_coord>285.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>count2</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>179.5</x_coord>
+      <y_coord>435.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>178.0</x_coord>
+      <y_coord>438.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>162.453125</x_coord>
+      <y_coord>438.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>196.546875</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>240.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>238.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>176.0</x_coord>
+      <y_coord>405.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transRed</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>160.5</x_coord>
+      <y_coord>405.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>143.0</x_coord>
+      <y_coord>372.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>127.453125</x_coord>
+      <y_coord>372.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>187.375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>240.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>238.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>141.0</x_coord>
+      <y_coord>346.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>redYellow</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>294.0</x_coord>
+      <y_coord>368.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>356.6875</x_coord>
+      <y_coord>304.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>392.0</x_coord>
+      <y_coord>304.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>255.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>227.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>253.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>390.0</x_coord>
+      <y_coord>271.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transCamSwitch1</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>239.0</x_coord>
+      <y_coord>422.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>232.828125</x_coord>
+      <y_coord>406.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>288.0</x_coord>
+      <y_coord>406.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>252.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>224.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>250.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>286.0</x_coord>
+      <y_coord>380.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transCam</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>229.5</x_coord>
+      <y_coord>379.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>216.828125</x_coord>
+      <y_coord>320.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>272.0</x_coord>
+      <y_coord>320.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>249.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>221.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>247.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>270.0</x_coord>
+      <y_coord>294.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>cs1</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>226.0</x_coord>
+      <y_coord>363.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>226.6875</x_coord>
+      <y_coord>303.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>262.0</x_coord>
+      <y_coord>303.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>249.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>221.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>247.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>260.0</x_coord>
+      <y_coord>262.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>ssCameraOn</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>289.0</x_coord>
+      <y_coord>389.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>345.6875</x_coord>
+      <y_coord>346.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>381.0</x_coord>
+      <y_coord>346.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>256.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>228.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>254.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>379.0</x_coord>
+      <y_coord>313.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>red</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>250.0</x_coord>
+      <y_coord>354.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>272.6875</x_coord>
+      <y_coord>284.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>308.0</x_coord>
+      <y_coord>284.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>251.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>223.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>249.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>306.0</x_coord>
+      <y_coord>243.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transOn2Off</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>184.5</x_coord>
+      <y_coord>395.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>187.0</x_coord>
+      <y_coord>351.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>171.453125</x_coord>
+      <y_coord>351.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>191.375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>242.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>185.0</x_coord>
+      <y_coord>325.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transCarStop2</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>230.0</x_coord>
+      <y_coord>405.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>216.828125</x_coord>
+      <y_coord>371.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>272.0</x_coord>
+      <y_coord>371.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>250.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>222.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>248.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>270.0</x_coord>
+      <y_coord>345.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>count1</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>277.5</x_coord>
+      <y_coord>437.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>317.6875</x_coord>
+      <y_coord>443.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>353.0</x_coord>
+      <y_coord>443.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>261.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>233.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>259.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>351.0</x_coord>
+      <y_coord>410.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transCamSwitch2</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>216.0</x_coord>
+      <y_coord>400.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>246.0</x_coord>
+      <y_coord>361.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>230.453125</x_coord>
+      <y_coord>361.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>195.375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>248.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>246.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>335.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>yellow</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>205.0</x_coord>
+      <y_coord>377.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>222.0</x_coord>
+      <y_coord>322.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>206.453125</x_coord>
+      <y_coord>322.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>203.546875</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>247.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>245.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>220.0</x_coord>
+      <y_coord>289.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>init1</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>197.5</x_coord>
+      <y_coord>419.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>210.0</x_coord>
+      <y_coord>407.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>194.453125</x_coord>
+      <y_coord>407.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>200.546875</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>242.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>208.0</x_coord>
+      <y_coord>374.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>cs3</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>263.5</x_coord>
+      <y_coord>429.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>293.6875</x_coord>
+      <y_coord>435.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>329.0</x_coord>
+      <y_coord>435.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>257.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>229.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>255.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>327.0</x_coord>
+      <y_coord>394.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>ss1</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>242.0</x_coord>
+      <y_coord>369.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>257.6875</x_coord>
+      <y_coord>306.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>293.0</x_coord>
+      <y_coord>306.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>250.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>222.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>248.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>291.0</x_coord>
+      <y_coord>273.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>count0</target>
+    <name>OwnsState</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsState</name>
+      <x_coord>183.0</x_coord>
+      <y_coord>427.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>state</name>
+      <x_coord>184.0</x_coord>
+      <y_coord>422.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>168.453125</x_coord>
+      <y_coord>422.5</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>owner</name>
+      <x_coord>197.546875</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>241.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>239.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>182.0</x_coord>
+      <y_coord>389.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>t1</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>268.5</x_coord>
+      <y_coord>439.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>283.828125</x_coord>
+      <y_coord>439.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>339.0</x_coord>
+      <y_coord>439.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>260.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>232.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>258.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>337.0</x_coord>
+      <y_coord>413.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transCarStop1</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>208.0</x_coord>
+      <y_coord>421.51318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>232.0</x_coord>
+      <y_coord>404.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>216.453125</x_coord>
+      <y_coord>404.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>193.375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>246.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>244.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>230.0</x_coord>
+      <y_coord>378.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transLamp</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>221.0</x_coord>
+      <y_coord>429.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>199.828125</x_coord>
+      <y_coord>419.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>255.0</x_coord>
+      <y_coord>419.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>249.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>221.359375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>247.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>253.0</x_coord>
+      <y_coord>393.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+  <edge type="BinaryEdge">
+    <source>sc1</source>
+    <target>transTimeRed</target>
+    <name>OwnsTrans</name>
+    <edgeproperty type="associationName" userDefined="false">
+      <name>OwnsTrans</name>
+      <x_coord>214.0</x_coord>
+      <y_coord>388.01318359375</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="rolename" userDefined="false">
+      <name>transition</name>
+      <x_coord>242.0</x_coord>
+      <y_coord>337.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="target" type="multiplicity" userDefined="false">
+      <name>*</name>
+      <x_coord>226.453125</x_coord>
+      <y_coord>337.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="rolename" userDefined="false">
+      <name>trOwner</name>
+      <x_coord>195.375</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty kind="source" type="multiplicity" userDefined="false">
+      <name>0..1</name>
+      <x_coord>248.0</x_coord>
+      <y_coord>472.0</y_coord>
+      <hidden>true</hidden>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>0</name>
+      <x_coord>246.0</x_coord>
+      <y_coord>493.0</y_coord>
+      <hidden>true</hidden>
+      <id>0</id>
+      <specialid>1</specialid>
+    </edgeproperty>
+    <edgeproperty type="WayPoint" userDefined="false">
+      <name>1</name>
+      <x_coord>240.0</x_coord>
+      <y_coord>311.0</y_coord>
+      <hidden>true</hidden>
+      <id>1</id>
+      <specialid>2</specialid>
+    </edgeproperty>
+    <hidden>true</hidden>
+  </edge>
+</diagram_Layout>

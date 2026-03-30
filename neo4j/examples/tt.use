@@ -1,0 +1,273 @@
+enum BookStatus {
+  AVAILABLE,
+  BORROWED,
+  RESERVED,
+  OVERDUE,
+  LOST
+}
+
+enum EmployeeRole {
+  MANAGER,
+  DEVELOPER,
+  ANALYST,
+  TESTER,
+  INTERN
+}
+
+
+class Library {
+  name: String
+  address: String
+  foundedYear: Integer
+  rating: Real
+  isActive: Boolean
+  inv: name <> ''
+  inv: foundedYear > 1800
+}
+
+class Book {
+  isbn: String
+  title: String
+  author: String
+  publicationYear: Integer
+  status: BookStatus
+  price: Real
+  inv: isbn->size() = 13
+  inv: price >= 0.0
+}
+
+class Member {
+  memberId: String
+  firstName: String
+  lastName: String
+  email: String
+  phone: String
+  joinDate: String -- USE uses String for dates
+  isActive: Boolean
+  inv: email->matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$')
+  inv: memberId <> ''
+}
+
+class Employee {
+  employeeId: String
+  firstName: String
+  lastName: String
+  email: String
+  salary: Real
+  hireDate: String
+  role: EmployeeRole
+  inv: salary > 0
+}
+
+
+abstract class Vehicle {
+  vehicleId: String
+  brand: String
+  model: String
+  year: Integer
+  isActive: Boolean
+  inv: year > 1886 -- First automobile
+  inv: vehicleId <> ''
+}
+
+class Serializable {
+  -- Interface-like: only operations, no attributes
+  operation serialize(): String
+  operation deserialize(data: String): Boolean
+}
+
+class Loggable {
+  operation logAction(action: String): Boolean
+  operation getLogEntries(): Set(String)
+}
+
+class MathUtils {
+  operation calculateDistance(p1: Point, p2: Point): Real
+}
+
+class Address {
+  street: String
+  city: String
+  state: String
+  zipCode: String
+  country: String
+  inv: zipCode->size() = 5 or zipCode->size() = 10
+}
+
+class Point {
+  x: Real
+  y: Real
+}
+
+class Date {
+  year: Integer
+  month: Integer
+  day: Integer
+  inv: month >= 1 and month <= 12
+  inv: day >= 1 and day <= 31
+}
+
+class Car extends Vehicle {
+  numberOfDoors: Integer
+  fuelType: String
+  engineCapacity: Real
+  inv: numberOfDoors >= 2 and numberOfDoors <= 5
+}
+
+class Motorcycle extends Vehicle {
+  engineSize: Integer
+  hasSidecar: Boolean
+  inv: engineSize >= 50
+}
+
+class Truck extends Vehicle {
+  loadCapacity: Real
+  numberOfAxles: Integer
+  inv: loadCapacity >= 1000
+}
+
+association memberOf between
+  Member[0..*] role members
+  Library[1..*] role libraries
+
+
+association hasDepartments between
+  Library[1] role library
+  Department[1..*] role departments
+
+class Department {
+  deptId: String
+  name: String
+  budget: Real
+}
+
+class LibraryBranch {
+  branchId: String
+  name: String
+  address: Address
+}
+
+association composesBranches between
+  Library[1] role library
+  LibraryBranch[1..*] role branches
+
+association hasManager between
+  Department[1] role department
+  Employee[0..1] role manager
+
+association employs between
+  Library[1..*] role employer
+  Employee[1..*] role employees
+
+association borrows between
+  Member[1..*] role borrowers
+  Book[0..*] role borrowedBooks
+
+association supervises between
+  Employee[0..*] role subordinates
+  Employee[0..1] role supervisor
+
+class Project {
+  projectId: String
+  name: String
+  budget: Real
+}
+
+association worksOn between
+  Employee[0..*] role employees
+  Project[1..*] role projects
+
+class Borrowing {
+  borrowId: String
+  borrowDate: String
+  dueDate: String
+  returnDate: String
+}
+
+association borrowingRecord between
+  Member[1] role borrower
+  Book[1] role book
+  Borrowing[1..*] role records
+  Employee[0..1] role librarian
+
+association owns between
+  Member[1] role owner
+  Book[0..5] role ownedBooks -- Personal collection
+
+
+association locatedIn between
+  LibraryBranch[1] role branch
+  Address[1] role location
+
+class Library operation
+  addBook(b: Book): Boolean
+  removeBook(isbn: String): Boolean
+  findBookByTitle(title: String): Set(Book)
+  calculateFine(daysOverdue: Integer): Real
+
+class Member operation
+  borrowBook(book: Book, branch: LibraryBranch): Boolean
+  returnBook(book: Book): Boolean
+  getBorrowedBooks(): Set(Book)
+
+context Library inv:
+  self.libraries->size() >= 1 -- Must have at least one branch
+
+context Member inv maxBooks:
+  self.borrowedBooks->size() <= 5
+
+context Book inv validISBN:
+  self.isbn->matches('^[0-9]{10}|[0-9]{13}$')
+
+context Employee inv validEmailDomain:
+  self.email->endsWith('@library.org')
+
+context Borrowing inv validDates:
+  self.borrowDate <= self.dueDate and
+  (self.returnDate = null or self.returnDate >= self.borrowDate)
+
+context Department inv validBudget:
+  self.budget >= 10000.0
+
+context Library::addBook(b: Book): Boolean
+pre: b <> null and b.status = BookStatus::AVAILABLE
+post:
+  result = true implies
+  (self.books->includes(b) and b.status = BookStatus::BORROWED)
+
+context Member::borrowBook(book: Book, branch: LibraryBranch): Boolean
+pre:
+  book.status = BookStatus::AVAILABLE and
+  self.borrowedBooks->size() < 5
+post:
+  result = true implies
+  (self.borrowedBooks->includes(book) and
+   not book.status = BookStatus::AVAILABLE)
+
+context Library inv uniqueISBNs:
+  self.books.isbn->isUnique()
+
+context Member inv activeBooks:
+  self.borrowedBooks->select(b | b.status = BookStatus::BORROWED)->size() <= 3
+
+context Employee inv teamSize:
+  self.subordinates->size() <= 10
+
+context Library inv validDepartments:
+  self.departments->forAll(d | d.budget > 0)
+
+context Department inv validEmployees:
+  self.employees->forAll(e | e.salary > 30000)
+
+context Project inv validAssignments:
+  self.employees->exists(e | e.role = EmployeeRole::DEVELOPER)
+
+context Library inv noCircularReferences:
+  not self.library.branches.library = self
+
+context Borrowing inv borrowingRules:
+  self.book.borrowedBooks->one(b | b = self.book) and
+  self.borrower.borrowedBooks->includes(self.book)
+
+
+end

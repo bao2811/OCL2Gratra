@@ -1,0 +1,26 @@
+model BWTest
+
+class Cass1
+attributes
+    name: String
+    age: Integer
+end
+
+
+class Cass2
+attributes
+    name: String
+    age: Integer
+end
+
+class Cass3
+attributes
+    name: String
+    age: Integer
+end
+
+
+association Connect between
+    Cass1[1] role role1
+    Cass2[1] role role2
+end

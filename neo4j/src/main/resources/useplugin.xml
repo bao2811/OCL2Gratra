@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?use version="3.0.0"?>
+<plugin name="Neo4jPlugin" version="0.1">
+    <actions>
+        <action label="Open connection"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionOpenNeo4j"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Open connection"
+                id="org.uet.dse.neo4j.action_phase2.ActionOpenNeo4j">
+        </action>
+        <action label="Open dashboard"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionOpenDashboard"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Open dashboard"
+                id="org.uet.dse.neo4j.action_phase2.ActionOpenDashboard">
+        </action>
+        <action label="OpenSetting"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionOpenSettings"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="OpenSetting"
+                id="org.uet.dse.neo4j.action_phase2.ActionOpenSettings">
+        </action>
+        <action label="Sync model forward"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionSyncModelForward"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Sync model forward"
+                id="org.uet.dse.neo4j.action_phase2.ActionSyncModelForward">
+        </action>
+        <action label="Sync model backward"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionSyncModelBackward"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Sync model backward"
+                id="org.uet.dse.neo4j.action_phase2.ActionSyncModelBackward">
+        </action>
+        <action label="Sync object forward"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionSyncObjectForward"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Sync object forward"
+                id="org.uet.dse.neo4j.action_phase2.ActionSyncObjectForward">
+        </action>
+        <action label="Sync object backward"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionSyncObjectBackward"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Sync object backward"
+                id="org.uet.dse.neo4j.action_phase2.ActionSyncObjectBackward">
+        </action>
+        <action label="OCL evaluator"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionOpenOclEvaluator"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="OCL evaluator"
+                id="org.uet.dse.neo4j.action_phase2.ActionOpenOclEvaluator">
+        </action>
+        <action label="Incremental model update"
+                icon="images/rtl.png"
+                class="org.uet.dse.neo4j.action_phase2.ActionOpenIncrementalUpdate"
+                tooltip="Compare between USE and Neo4j"
+                menu="Neo4j Plugin phase 2"
+                menuitem="Incremental model update"
+                id="org.uet.dse.neo4j.action_phase2.ActionOpenIncrementalUpdate">
+        </action>
+
+    </actions>
+</plugin>

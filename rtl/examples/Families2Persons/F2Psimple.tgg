@@ -1,0 +1,26 @@
+transformation Families2Persons
+direction forward
+
+
+rule Father2Male
+checkSource(
+	fr: FamilyRegister
+	fm: Family
+	(fr, fm): FamilyRegistration
+
+){
+	father: FamilyMember
+	(fm, father): Father
+}checkTarget(
+	pr: PersonRegister
+){
+	mp: Male
+	(pr, mp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(father, mp) as (f, mp) in f2mp:F2MP
+	(fm*, mp) as (fm, mp) in fm2mp:FM2MP
+
+}
+end

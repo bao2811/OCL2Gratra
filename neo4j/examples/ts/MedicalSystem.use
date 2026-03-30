@@ -1,0 +1,199 @@
+model MedicalSystem
+
+enum Gender { MALE, FEMALE, OTHER }
+enum HealthStatus { CRITICAL, STABLE, RECOVERING }
+enum Brand { ASCRIPTIN, AXOTAL, BUFFAPRIN, IBUPRIN }
+enum Administration { ENTERAL, PARENTERAL, OTHER }
+enum Specialty { CARDIOLOGY, NEUROLOGY, ONCOLOGY, EMERGENCY }
+enum BloodType { A_POS, A_NEG, B_POS, B_NEG, O_POS, O_NEG, AB_POS, AB_NEG }
+
+abstract class Person
+attributes
+    name : String
+    age : Integer
+    gender : Gender
+    address : String
+    phoneNumber : String
+    email : String
+    dateOfBirth : String
+    emergencyContacts : Set(Person)
+    kk : OrderedSet(Set(Set(Bag(Set(Person)))))
+    nono : Set(Integer)
+end
+
+class Doctor < Person
+attributes
+    doctorID : String
+    specialty : Specialty
+    consultationFee : Real
+    yearsOfExperience : Integer
+    qualification : String
+    isAvailable : Boolean
+    shiftSchedule : Sequence(Set(Integer))
+    patientQueue : Sequence(Patient)
+    assignedNurses : Set(Nurse)
+    collaborationHistory : Sequence(Set(Doctor))
+    favNurse: Nurse
+
+    hotNurse: Set(Set(Nurse))
+    gd: Set(Gender)
+operations
+    prescribe(p : Patient, m : Medication, quantity : Integer)
+    getChiefResident() : Doctor
+end
+
+class Patient < Person
+attributes
+    patientID : String
+    isEmergency : Boolean
+    bloodType : BloodType
+    weight : Real
+    height : Real
+    symptoms : Sequence(String)
+    treatmentHistory : Set(Sequence(String))
+    allergies : Set(String)
+    attendingPhysicians : Set(Doctor)
+    currentMeds : Set(Medication)
+    prescriptionHistory : Sequence(Sequence(Medication))
+operations
+    checkCriticalStatus() : Boolean =
+        self.isEmergency = true or self.age > 80
+end
+
+class Nurse < Person
+attributes
+    nurseID : String
+    isHeadNurse : Boolean
+    certificationLevel : Integer
+    assignedWard : String
+    onCall : Boolean
+    hourlyRate : Real
+    lastTrainingDate : String
+end
+
+class Hospital
+attributes
+    name : String
+    totalBudget : Real
+    location : String
+    totalBeds : Integer
+    availableICUs : Integer
+    rating : Real
+    isPublic : Boolean
+    emergencyContact : String
+    medicalStaff : Set(Person)
+end
+
+class Medication
+attributes
+    brandName : String
+    genericName : String
+    price : Real
+end
+
+class Department
+attributes
+    deptName : String
+end
+
+class MedicalRecord
+end
+
+class RecordEntry
+attributes
+    entryDate : String
+    description : String
+end
+
+composition PatientRecord between
+    Patient [0..7] role owner
+    MedicalRecord [0..1] role record
+end
+
+composition RecordEntries between
+    MedicalRecord [0..7] role parent
+    RecordEntry [*] role entries
+end
+
+class Dosage
+attributes
+    patientNumber : Integer
+    adminMethod : Administration
+    brandName : Brand
+end
+
+class DosagePlan
+end
+
+class Disease
+attributes
+    diseaseName : String
+end
+
+association Consultation between
+    Doctor [1..*] role consultants
+    Patient [1..*] role patients
+    Disease [0..7] role condition
+end
+
+associationclass Hospitalization between
+    Patient [*] role inpatient
+    Department [0..7] role ward
+attributes
+    admissionDate : String
+    roomNumber : Integer
+end
+
+
+associationclass Prescription between
+    Doctor [1..*] role physician
+    Patient [0..*] role patient
+attributes
+    prescriptionID : String
+    dosageInstructions : String
+operations
+    updateDosage(newDosage : String)
+end
+
+association Appointment between
+    Doctor [1..*]
+    Patient [1..*]
+    Department [1..*]
+end
+
+aggregation HospitalStructure between
+    Hospital [1..*] role parentHospital
+    Department [1..*] role departments
+end
+
+constraints
+
+context Person
+    inv AgeValid: self.age >= 0
+
+context Hospital
+    inv BudgetPositive: self.totalBudget > 0
+
+context Doctor
+    inv ValidSchedule:
+        self.shiftSchedule->forAll(s | s->size() <= 3) -- Mỗi ca không trực quá 3 phòng
+
+context Doctor::prescribe(p : Patient, m : Medication, quantity : Integer)
+    -- Kiểm tra tham số đầu vào (Parameters) [24]
+    pre patientIsDefined: p.isDefined()
+    pre medicationIsDefined: m.isDefined()
+    pre validQuantity: quantity > 0
+
+    -- Hậu điều kiện kiểm tra sự thay đổi trạng thái [23, 25]
+    post prescriptionCreated:
+        Prescription.allInstances->exists(pr |
+            pr.physician = self and pr.patient = p)
+
+context Prescription::updateDosage(newDosage : String)
+    pre dosageNotEmpty: newDosage <> ''
+    -- Sử dụng @pre để so sánh giá trị cũ và mới [25, 26]
+    post dosageChanged: self.dosageInstructions <> self.dosageInstructions@pre
+
+context Doctor
+    inv WorkingLoadLimit:
+        self.shiftSchedule->forAll(s | s->size() <= 3)

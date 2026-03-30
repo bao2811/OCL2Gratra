@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Plugin-Name: Neo4jPlugin
+Plugin-Version: 1.0
+Main-Class: org.uet.dse.neo4j.Main
+Plugin-Publisher: Chi-Kien Cao
