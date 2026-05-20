@@ -290,6 +290,18 @@
                 <version>1.5</version>
                 <executions>
                     <execution>
+                        <id>add-antlr-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>target/generated-sources/antlr3</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>add-test-source</id>
                         <phase>process-resources</phase>
                         <goals>

@@ -1,0 +1,86 @@
+// BƯỚC 1: TẤT CẢ LỆNH IMPORT PHẢI ĐẶT Ở ĐÂY (TRÊN CÙNG)
+import "platform:/resource/FamiliesToPersons/src/Metamodels.msl"
+import "platform:/resource/FamiliesToPersons/src/Families2Persons.msl"
+import "platform:/resource/FamiliesToPersons/src/MotherToFemale.msl"
+import "platform:/resource/FamiliesToPersons/src/MotherOfExistingFamilyToFemale.msl"
+import "platform:/resource/FamiliesToPersons/src/DaughterOfExistingFamilyToFemale.msl"
+import "platform:/resource/FamiliesToPersons/src/DaughterToFemale.msl"
+import "platform:/resource/FamiliesToPersons/src/FatherOfExistingFamilyToMale.msl"
+import "platform:/resource/FamiliesToPersons/src/FatherToMale.msl"
+import "platform:/resource/FamiliesToPersons/src/SonOfExistingFamilyToMale.msl"
+import "platform:/resource/FamiliesToPersons/src/SonToMale.msl"
+
+//// BƯỚC 2: KHAI BÁO CÁC METAMODEL NGHIỆP VỤ
+//metamodel Families {
+//	FamilyRegister {
+//		<>-families(0..*)->Family
+//	}
+//	
+//	Family {
+//		.name : EString
+//		<>-father(0..1)->FamilyMember
+//		<>-mother(0..1)->FamilyMember
+//		<>-daughters(0..*)->FamilyMember
+//		<>-sons(0..*)->FamilyMember
+//	}
+//	
+//	FamilyMember {
+//		.name : EString
+//	}
+//}
+//
+//metamodel Persons {
+//	PersonRegister {
+//		<>-persons(0..*)->Person
+//	}
+//	
+//	abstract Person {
+//		.name : EString
+//		.birthday : EDate
+//	}
+//	
+//	Male : Person
+//	Female : Person
+//}
+//
+//// BƯỚC 3: KHAI BÁO METAMODEL LIÊN KẾT (CORRESPONDENCE)
+//metamodel IBeXTGGFamiliesToPersons {
+//    FamiliesReg2PersonsRegCorr {
+//        -source(1..1)-> Families.FamilyRegister
+//        -target(1..1)-> Persons.PersonRegister
+//    }
+//    
+//    FamilyMember2Person {
+//        -source(1..1)-> Families.FamilyMember
+//        -target(1..1)-> Persons.Person
+//    }
+//}
+
+// BƯỚC 4: KHAI BÁO TRIPLE GRAMMAR (NẰM RIÊNG BIỆT Ở CUỐI)
+tripleGrammar FamiliesToPersons {
+	source {
+		Families
+	}
+
+	target { 
+		Persons
+	} 
+
+	correspondence {
+//		IBeXTGGFamiliesToPersons
+		FamilyRegister <-FamiliesToPersons->PersonRegister
+		FamilyMember<-FamilyMemberToPerson->Person
+	}
+	
+	rules {
+		Families2Persons
+		MotherToFemale
+		MotherOfExistingFamilyToFemale
+		FatherToMale
+		FatherOfExistingFamilyToMale
+		DaughterToFemale
+		DaughterOfExistingFamilyToFemale
+		SonToMale
+		SonOfExistingFamilyToMale
+	}
+}

@@ -7,6 +7,7 @@ import org.uet.dse.neo4j.manager.WorkLogManager;
 import org.uet.dse.neo4j.repo.Neo4jModelRepository;
 import org.uet.dse.neo4j.repo.Neo4jObjectRepository;
 import org.uet.dse.neo4j.repo.Neo4jVersionRepository;
+import org.uet.dse.neo4j.sync.LegacySyncGuard;
 import org.uet.dse.neo4j.sync.helper.GUIHelper;
 import org.uet.dse.neo4j.sync.lock.LockManager;
 import org.uet.dse.neo4j.sync.feedback.SyncFeedbackHandler;
@@ -51,6 +52,9 @@ public class ObjectSyncCoordinator {
     }
 
     public void syncObjectsForward(boolean isManual) {
+        if (LegacySyncGuard.isDisabled()) {
+            throw new IllegalStateException(LegacySyncGuard.getReason());
+        }
         SyncFeedbackHandler feedback = isManual
                 ? new ManualSyncFeedbackHandler(GUIHelper::showSyncPreview)
                 : new AutoSyncFeedbackHandler();
@@ -83,6 +87,9 @@ public class ObjectSyncCoordinator {
     }
 
     public void syncObjectsBackward(boolean isManual) {
+        if (LegacySyncGuard.isDisabled()) {
+            throw new IllegalStateException(LegacySyncGuard.getReason());
+        }
         SyncFeedbackHandler feedback = isManual
                 ? new ManualPullFeedbackHandler()
                 : new AutoPullFeedbackHandler();
@@ -120,6 +127,9 @@ public class ObjectSyncCoordinator {
     }
 
     public void pushToNeo4j(ObjectDiff diff) {
+        if (LegacySyncGuard.isDisabled()) {
+            throw new IllegalStateException(LegacySyncGuard.getReason());
+        }
         objectPushService.pushToNeo4j(diff);
     }
 
@@ -188,6 +198,7 @@ public class ObjectSyncCoordinator {
 
 
     public void syncObjectsForwardRealtime() {
+        if (LegacySyncGuard.isDisabled()) return;
         String user = Neo4jDriverManager.getInstance().getSessionManager().getUserDisplayName();
 
         LockManager.LockResult lock = LockManager.acquireLock(user);
@@ -207,6 +218,7 @@ public class ObjectSyncCoordinator {
     }
 
     public void syncObjectsBackwardRealtime() {
+        if (LegacySyncGuard.isDisabled()) return;
         try {
             isApplyingInternalChange = true;
 

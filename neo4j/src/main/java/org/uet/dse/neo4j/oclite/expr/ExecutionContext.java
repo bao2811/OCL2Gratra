@@ -42,6 +42,12 @@ public class ExecutionContext {
   }
 
   public Object resolveVariable(String name) {
+    for (Map<String, Object> scope : scopeStack) {
+      if (scope.containsKey(name)) {
+        return scope.get(name);
+      }
+    }
+
     if (variables.containsKey(name)) {
       return variables.get(name);
     }

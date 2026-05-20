@@ -21,10 +21,12 @@ expression
 primary
     : literal                                      #LiteralExpr
     | Identifier                                   #IdExpr
+    | 'if' condition=expression 'then' thenBranch=expression 'else' elseBranch=expression 'endif' #IfExp
     | primary '.' Identifier '(' argList? ')'     #MethodCallExpr
     | primary '.' Identifier                       #NavigationExpr
-    | primary '->' Identifier '(' Identifier '|' expression ')' #IteratorExpr
+    | primary '->' iteratorOp=Identifier '(' iteratorVar=Identifier (':' iteratorType=Identifier)? '|' expression ')' #IteratorExpr
     | primary '->' Identifier '(' argList? ')'     #CollectionOpExpr
+    | 'let' varName=Identifier '=' value=expression 'in' body=expression #LetExpr
     | '(' expression ')'                           #ParenExpr
     ;
 

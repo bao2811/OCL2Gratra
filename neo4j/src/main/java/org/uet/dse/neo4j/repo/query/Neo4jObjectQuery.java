@@ -10,11 +10,34 @@ public class Neo4jObjectQuery {
         );
     }
 
+    public static String upsertObjectNodeInModel(String className) {
+        return String.format(
+                "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
+                        "MATCH (cls {name: $clsName})-[:InstanceOf]->(meta) " +
+                        "MERGE (obj:`%s` {use_id: $objName}) " +
+                        "MERGE (obj)-[:ObjectInstanceOf]->(cls)",
+                className
+        );
+    }
+
     public static final String DELETE_ATTRIBUTE_VALUE =
             "MATCH (v:AttributeValue {name: $vId}) DETACH DELETE v";
 
     public static final String CREATE_ATTRIBUTE_VALUE =
             "MATCH (obj {use_id: $objName}), (attrDef:Attribute {name: $attrDefId}) " +
+                    "CREATE (val:AttributeValue {name: $valId}) " +
+                    "SET val.type              = $type, " +
+                    "    val.value             = $val, " +
+                    "    val.isCollection      = $isColl, " +
+                    "    val.collectionType    = $collType, " +
+                    "    val.isNestedCollection = $isNested " +
+                    "CREATE (obj)-[:ObjectHasAttribute]->(val) " +
+                    "CREATE (val)-[:InstanceOf]->(attrDef)";
+
+    public static final String CREATE_ATTRIBUTE_VALUE_IN_MODEL =
+            "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
+                    "MATCH (obj {use_id: $objName})-[:ObjectInstanceOf]->(cls)-[:InstanceOf]->(meta) " +
+                    "MATCH (cls)-[:HasAttribute]->(attrDef:Attribute {name: $attrDefId}) " +
                     "CREATE (val:AttributeValue {name: $valId}) " +
                     "SET val.type              = $type, " +
                     "    val.value             = $val, " +

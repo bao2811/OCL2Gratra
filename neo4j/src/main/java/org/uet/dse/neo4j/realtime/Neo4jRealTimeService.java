@@ -5,6 +5,7 @@ import org.tzi.use.main.ChangeEvent;
 import org.tzi.use.main.ChangeListener;
 import org.uet.dse.neo4j.config.SyncConfig;
 import org.uet.dse.neo4j.manager.WorkLogManager;
+import org.uet.dse.neo4j.sync.LegacySyncGuard;
 import org.uet.dse.neo4j.sync.object.ObjectDiff;
 import org.uet.dse.neo4j.sync.object.ObjectSyncCoordinator;
 import org.uet.dse.neo4j.sync.RealtimeModelSyncCoordinator;
@@ -29,11 +30,23 @@ public class Neo4jRealTimeService implements ChangeListener, Session.EvaluatedSt
     }
 
     public static synchronized void start(Session session) {
+        if (LegacySyncGuard.isDisabled()) {
+            WorkLogManager.getInstance().log("REALTIME_BLOCKED", LegacySyncGuard.getReason());
+            return;
+        }
         if (instance != null) instance.stop();
         instance = new Neo4jRealTimeService(session);
         session.addChangeListener(instance);
         session.addEvaluatedStatementListener(instance);
         WorkLogManager.getInstance().log("REALTIME", "Deep Scan Service Started");
+    }
+
+    public static synchronized void stopIfRunning() {
+        if (instance != null) {
+            instance.stop();
+            instance = null;
+            WorkLogManager.getInstance().log("REALTIME", "Deep Scan Service Stopped");
+        }
     }
 
     private void performLocalScan() {
@@ -132,6 +145,11 @@ public class Neo4jRealTimeService implements ChangeListener, Session.EvaluatedSt
     }
 
     public static synchronized void restart() {
+        if (LegacySyncGuard.isDisabled()) {
+            stopIfRunning();
+            WorkLogManager.getInstance().log("REALTIME_BLOCKED", LegacySyncGuard.getReason());
+            return;
+        }
         if (instance != null) {
             instance.startSchedulers();
             WorkLogManager.getInstance().log("REALTIME", "Service restarted with new frequency.");

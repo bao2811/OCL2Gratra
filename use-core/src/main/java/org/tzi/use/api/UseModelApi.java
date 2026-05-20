@@ -18,13 +18,7 @@
  */
 package org.tzi.use.api;
 
-import org.antlr.runtime.ANTLRInputStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
 import org.tzi.use.parser.*;
-import org.tzi.use.parser.generator.GeneratorLexer;
-import org.tzi.use.parser.generator.GeneratorParser;
-import org.tzi.use.parser.ocl.ASTExpression;
 import org.tzi.use.parser.ocl.OCLCompiler;
 import org.tzi.use.parser.soil.SoilCompiler;
 import org.tzi.use.parser.soil.ast.ASTStatement;
@@ -545,47 +539,24 @@ public class UseModelApi {
 		StringWriter errBuffer = new StringWriter();
 		PrintWriter errorPrinter = new PrintWriter(errBuffer, true);
 
-		ParseErrorHandler errHandler = new ParseErrorHandler("UseModelApi", errorPrinter);
-		InputStream inStream = new ByteArrayInputStream(condition.getBytes());
-
 		Expression exp = null;
 
 		try {
-			ANTLRInputStream aInput = new ANTLRInputStream(inStream);
-			aInput.name = "UseModelApi";
-
-			GeneratorLexer lexer = new GeneratorLexer(aInput);
-			CommonTokenStream tStream = new CommonTokenStream(lexer);
-			GeneratorParser parser = new GeneratorParser(tStream);
-
-			lexer.init(errHandler);
-			parser.init(errHandler);
-
-			// Parse the specification
-			ASTExpression astCondition = parser.expressionOnly();
-
-			if (errHandler.errorCount() == 0 ) {
-				ModelFactory modelFactory = new ModelFactory();
-				Context ctx = new Context("UseModelApi",
-						errorPrinter,
-						null,
-						modelFactory);
-				ctx.setModel(this.getModel());
-
-				Symtable vars = ctx.varTable();
-
-				// create pseudo-variable "self"
-				vars.add("self", cls, null);
-				ctx.exprContext().push("self", cls);
-				// add special variable `result' in postconditions with result value
-				if (! isPre && op.hasResultType() )
-					vars.add("result", op.resultType(), null);
-
-				ctx.setInsidePostCondition(! isPre);
-
-				exp = astCondition.gen(ctx);
+			Symtable vars = new Symtable();
+			vars.add("self", cls, null);
+			if (!isPre && op.hasResultType()) {
+				vars.add("result", op.resultType(), null);
 			}
-		} catch (RecognitionException | SemanticException | IOException e) {
+
+			exp = OCLCompiler.compileExpression(
+					mModel,
+					condition,
+					"UseModelApi",
+					errorPrinter,
+					vars,
+					cls,
+					!isPre);
+		} catch (SemanticException e) {
             throw new UseApiException("Error adding condition!", e);
         }
 

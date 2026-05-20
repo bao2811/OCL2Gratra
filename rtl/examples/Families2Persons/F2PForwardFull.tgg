@@ -1,0 +1,315 @@
+transformation Families2Persons
+direction forward
+
+// Expanded TGG derived from examples/families2person/src/*.msl.
+// This file keeps the simple parser-friendly shape of F2PForward.tgg, while
+// preserving the rule split from the EMSL source:
+// - Families2Persons
+// - FamilyMember2Person
+// - ExistingFamily2Person
+// - Father/Mother/Son/Daughter variants for new and existing families
+//
+// Notes for the current runtime:
+// - "abstract" and "forbid" are documented as comments because the current
+//   workspace loader only executes rule/checkSource/checkTarget/checkCorr.
+// - Operational forward support is currently hardcoded for Families2Persons.
+//   This file is intended as the richer rule model to implement against next.
+
+rule Families2Persons
+checkSource(
+){
+	fr: FamilyRegister
+}checkTarget(
+){
+	pr: PersonRegister
+}checkCorr(
+){
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+}
+end
+
+// abstract tripleRule FamilyMember2Person : Families2Persons
+rule FamilyMember2Person
+checkSource(
+	fr: FamilyRegister
+	(fr, fm): FamilyRegistration
+	[fm.name <> Undefined]
+){
+	fm: Family
+	member: FamilyMember
+	[member.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	person: Person
+	(pr, person): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(member, person) as (member, person) in fm2p:FamilyMemberToPerson
+	FamilyMemberToPerson:[self.person.name.split(', ')->at(2) = self.member.name]
+	`self.person.name := self.member.name`
+	``
+}
+end
+
+// abstract tripleRule ExistingFamily2Person : Families2Persons -> FamilyMember2Person
+rule ExistingFamily2Person
+checkSource(
+	fr: FamilyRegister
+	(fr, fm): FamilyRegistration
+	[fm.name <> Undefined]
+){
+	fm: Family
+}checkTarget(
+	pr: PersonRegister
+){
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+}
+end
+
+rule FatherToMale
+checkSource(
+	fr: FamilyRegister
+	[fm.name <> Undefined]
+){
+	fm: Family
+	father: FamilyMember
+	(fr, fm): FamilyRegistration
+	(fm, father): Father
+	[father.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	mp: Male
+	(pr, mp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(father, mp) as (father, mp) in fm2p:FamilyMemberToPerson
+	(father, mp) as (f, mp) in f2mp:F2MP
+	(fm*, mp) as (fm, mp) in fm2mp:FM2MP
+	F2MP:[self.mp.name.split(', ')->at(2) = self.f.name]
+	`self.mp.name := self.f.familyFather.name + ', ' + self.f.name`
+	``
+	FM2MP:[self.mp.name.split(', ')->at(1)= self.fm.name]
+	``
+	``
+}
+end
+
+rule FatherOfExistingFamilyToMale
+// forbid src(existingFather):
+// pattern existingFather { f : Family { -father->existingFather } existingFather : FamilyMember }
+checkSource(
+	fr: FamilyRegister
+	fm: Family
+	(fr, fm): FamilyRegistration
+	[fm.name <> Undefined]
+){
+	father: FamilyMember
+	(fm, father): Father
+	[father.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	mp: Male
+	(pr, mp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(father, mp) as (father, mp) in fm2p:FamilyMemberToPerson
+	(father, mp) as (f, mp) in f2mp:F2MP
+	(fm*, mp) as (fm, mp) in fm2mp:FM2MP
+	F2MP:[self.mp.name.split(', ')->at(2) = self.f.name]
+	`self.mp.name := self.f.familyFather.name + ', ' + self.f.name`
+	``
+	FM2MP:[self.mp.name.split(', ')->at(1)= self.fm.name]
+	``
+	``
+}
+end
+
+rule MotherToFemale
+checkSource(
+	fr: FamilyRegister
+	[fm.name <> Undefined]
+){
+	fm: Family
+	mother: FamilyMember
+	(fr, fm): FamilyRegistration
+	(fm, mother): Mother
+	[mother.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	fp: Female
+	(pr, fp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(mother, fp) as (mother, fp) in fm2p:FamilyMemberToPerson
+	(mother, fp) as (m, fp) in m2fp:M2FP
+	(fm*, fp) as (fm, fp) in fm2fp:FM2FP
+	M2FP:[self.fp.name.split(', ')->at(2) = self.m.name]
+	`self.fp.name := self.m.familyMother.name + ', ' + self.m.name`
+	``
+	FM2FP:[self.fp.name.split(', ')->at(1) = self.fm.name]
+	``
+	``
+}
+end
+
+rule MotherOfExistingFamilyToFemale
+// forbid src(existingMother):
+// pattern existingMother { f : Family { -mother->existingMother } existingMother : FamilyMember }
+checkSource(
+	fr: FamilyRegister
+	fm: Family
+	(fr, fm): FamilyRegistration
+	[fm.name <> Undefined]
+){
+	mother: FamilyMember
+	(fm, mother): Mother
+	[mother.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	fp: Female
+	(pr, fp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(mother, fp) as (mother, fp) in fm2p:FamilyMemberToPerson
+	(mother, fp) as (m, fp) in m2fp:M2FP
+	(fm*, fp) as (fm, fp) in fm2fp:FM2FP
+	M2FP:[self.fp.name.split(', ')->at(2) = self.m.name]
+	`self.fp.name := self.m.familyMother.name + ', ' + self.m.name`
+	``
+	FM2FP:[self.fp.name.split(', ')->at(1) = self.fm.name]
+	``
+	``
+}
+end
+
+rule SonToMale
+checkSource(
+	fr: FamilyRegister
+	[fm.name <> Undefined]
+){
+	fm: Family
+	son: FamilyMember
+	(fr, fm): FamilyRegistration
+	(fm, son): Sons
+	[son.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	mp: Male
+	(pr, mp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(son, mp) as (son, mp) in fm2p:FamilyMemberToPerson
+	(son, mp) as (s, mp) in s2mp:S2MP
+	(fm*, mp) as (fm, mp) in fm2mp:FM2MP
+	S2MP:[self.mp.name.split(', ')->at(2) = self.s.name]
+	`self.mp.name := self.s.familySon.name + ', ' + self.s.name`
+	``
+	FM2MP:[self.mp.name.split(', ')->at(1) = self.fm.name]
+	``
+	`self.fm.name := self.mp.name.split(', ')->at(1)`
+}
+end
+
+rule SonOfExistingFamilyToMale
+checkSource(
+	fr: FamilyRegister
+	fm: Family
+	(fr, fm): FamilyRegistration
+	[fm.name <> Undefined]
+){
+	son: FamilyMember
+	(fm, son): Sons
+	[son.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	mp: Male
+	(pr, mp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(son, mp) as (son, mp) in fm2p:FamilyMemberToPerson
+	(son, mp) as (s, mp) in s2mp:S2MP
+	(fm*, mp) as (fm, mp) in fm2mp:FM2MP
+	S2MP:[self.mp.name.split(', ')->at(2) = self.s.name]
+	`self.mp.name := self.s.familySon.name + ', ' + self.s.name`
+	``
+	FM2MP:[self.mp.name.split(', ')->at(1) = self.fm.name]
+	``
+	`self.fm.name := self.mp.name.split(', ')->at(1)`
+}
+end
+
+rule DaughterToFemale
+checkSource(
+	fr: FamilyRegister
+	[fm.name <> Undefined]
+){
+	fm: Family
+	daughter: FamilyMember
+	(fr, fm): FamilyRegistration
+	(fm, daughter): Daughters
+	[daughter.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	fp: Female
+	(pr, fp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(daughter, fp) as (daughter, fp) in fm2p:FamilyMemberToPerson
+	(daughter, fp) as (d, fp) in d2fp:D2FP
+	(fm*, fp) as (fm, fp) in fm2fp:FM2FP
+	D2FP:[self.fp.name.split(', ')->at(2) = self.d.name]
+	`self.fp.name := self.d.familyDaughter.name + ', ' + self.d.name`
+	``
+	FM2FP:[self.fp.name.split(', ')->at(1) = self.fm.name]
+	``
+	``
+}
+end
+
+rule DaughterOfExistingFamilyToFemale
+checkSource(
+	fr: FamilyRegister
+	fm: Family
+	(fr, fm): FamilyRegistration
+	[fm.name <> Undefined]
+){
+	daughter: FamilyMember
+	(fm, daughter): Daughters
+	[daughter.name <> Undefined]
+}checkTarget(
+	pr: PersonRegister
+){
+	fp: Female
+	(pr, fp): PersonRegistration
+}checkCorr(
+	(fr, pr) as (fr, pr) in fr2pr:FR2PR
+){
+	(daughter, fp) as (daughter, fp) in fm2p:FamilyMemberToPerson
+	(daughter, fp) as (d, fp) in d2fp:D2FP
+	(fm*, fp) as (fm, fp) in fm2fp:FM2FP
+	D2FP:[self.fp.name.split(', ')->at(2) = self.d.name]
+	`self.fp.name := self.d.familyDaughter.name + ', ' + self.d.name`
+	``
+	FM2FP:[self.fp.name.split(', ')->at(1) = self.fm.name]
+	``
+	``
+}
+end

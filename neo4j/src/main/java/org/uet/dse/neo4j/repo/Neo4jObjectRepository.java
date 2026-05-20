@@ -12,6 +12,11 @@ public class Neo4jObjectRepository {
     tx.run(Neo4jObjectQuery.upsertObjectNode(className), Values.parameters("clsName", className, "objName", objName));
   }
 
+  public void upsertObjectNode(TransactionContext tx, String modelName, String objName, String className) {
+    tx.run(Neo4jObjectQuery.upsertObjectNodeInModel(className),
+        Values.parameters("modelName", modelName, "clsName", className, "objName", objName));
+  }
+
   public void deleteObjectDeeply(TransactionContext tx, String objName) {
     tx.run(Neo4jObjectQuery.DELETE_OBJECT_DEEPLY, Map.of("name", objName));
   }
@@ -21,6 +26,10 @@ public class Neo4jObjectRepository {
   }
 
   public void setAttributeValueNode(TransactionContext tx, String objName, String ownerClassName, String attrName, Object value, Map<String, Object> metadata) {
+    setAttributeValueNode(tx, null, objName, ownerClassName, attrName, value, metadata);
+  }
+
+  public void setAttributeValueNode(TransactionContext tx, String modelName, String objName, String ownerClassName, String attrName, Object value, Map<String, Object> metadata) {
 
     String valNodeId = attributeValueId(objName, attrName);
     String attrDefId = attributeDefId(ownerClassName, attrName);
@@ -59,17 +68,23 @@ public class Neo4jObjectRepository {
         "OPTIONAL MATCH (val)-[:HasNestedCollectionValue*1..5]->(n) " +
         "DETACH DELETE val, n", Map.of("objName", objName, "valId", valNodeId));
 
-    tx.run(Neo4jObjectQuery.CREATE_ATTRIBUTE_VALUE, Values.parameters(
-        "objName", objName,
-        "attrDefId", attrDefId,
-        "valId", valNodeId,
-        "type", metadata.get("type"),
-        "val", valueForNeo4j,
-        "isColl", isColl,
-        "collType", metadata.get("collectionType"),
-        "isNested", isNested,
-        "isObjRef", isObjRef
-    ));
+    String createAttributeQuery = modelName == null
+        ? Neo4jObjectQuery.CREATE_ATTRIBUTE_VALUE
+        : Neo4jObjectQuery.CREATE_ATTRIBUTE_VALUE_IN_MODEL;
+    Map<String, Object> parameters = new HashMap<>();
+    if (modelName != null) {
+      parameters.put("modelName", modelName);
+    }
+    parameters.put("objName", objName);
+    parameters.put("attrDefId", attrDefId);
+    parameters.put("valId", valNodeId);
+    parameters.put("type", metadata.get("type"));
+    parameters.put("val", valueForNeo4j);
+    parameters.put("isColl", isColl);
+    parameters.put("collType", metadata.get("collectionType"));
+    parameters.put("isNested", isNested);
+    parameters.put("isObjRef", isObjRef);
+    tx.run(createAttributeQuery, parameters);
 
     if (value != null) {
       if (isColl && isObjRef && value instanceof Map && !isNested) {

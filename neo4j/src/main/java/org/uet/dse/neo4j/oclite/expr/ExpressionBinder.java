@@ -151,7 +151,7 @@ public class ExpressionBinder {
             switch (itAST.operation.toLowerCase()) {
                 case "select":
                     return new SelectExpression(sourceNode, itAST.iteratorName, bodyNode);
-                case "forAll":
+                case "forall":
                     return new ForAllExpression(sourceNode, itAST.iteratorName, bodyNode);
                 case "exists":
                     return new ExistsExpression(sourceNode, itAST.iteratorName, bodyNode);

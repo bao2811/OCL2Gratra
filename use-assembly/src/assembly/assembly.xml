@@ -74,5 +74,26 @@
                 <include>*</include>
             </includes>
         </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../rtl/target</directory>
+            <outputDirectory>lib/plugins</outputDirectory>
+            <includes>
+                <include>rtl*.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../neo4j/target</directory>
+            <outputDirectory>lib/plugins</outputDirectory>
+            <includes>
+                <include>neo4j*.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../neo4j-tgg/target</directory>
+            <outputDirectory>lib/plugins</outputDirectory>
+            <includes>
+                <include>neo4j-tgg*.jar</include>
+            </includes>
+        </fileSet>
     </fileSets>
 </assembly>

@@ -43,6 +43,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -77,15 +78,14 @@ public final class Main {
 		MSystem system = null;
 
 		if (!Options.disableExtensions) {
-			ExtensionManager.EXTENSIONS_FOLDER = Options.homeDir + "/oclextensions";
+			ExtensionManager.EXTENSIONS_FOLDER = resolveExtensionsFolder().toString();
 			ExtensionManager.getInstance().loadExtensions();
 		}
 		
 		// Plugin Framework
 		if (Options.doPLUGIN) {
 			// create URL from plugin directory
-			Path pluginDirURL = Options.pluginDir;
-			pluginDirURL = Path.of("/Users/kiencc/Downloads/thesis/use-neo4j/use-assembly/src/main/resources/plugins/officalVersion");
+			Path pluginDirURL = resolvePluginDirectory();
 			Log.verbose("Plugin path: [" + pluginDirURL + "]");
 			Class<?> mainPluginRuntimeClass = null;
 			try {
@@ -177,6 +177,49 @@ public final class Main {
 		} catch (InterruptedException ex) {
 			// ignored
 		}
+	}
+
+	private static Path resolveExtensionsFolder() {
+		Path defaultPath = Options.homeDir.resolve("oclextensions");
+		if (Files.isDirectory(defaultPath)) {
+			return defaultPath;
+		}
+
+		Path classesPath = Options.homeDir.resolve("classes").resolve("oclextensions");
+		if (Files.isDirectory(classesPath)) {
+			return classesPath;
+		}
+
+		Path devPath = Options.homeDir.getParent().resolve("src").resolve("main")
+				.resolve("resources").resolve("oclextensions");
+		if (Files.isDirectory(devPath)) {
+			return devPath;
+		}
+
+		return defaultPath;
+	}
+
+	private static Path resolvePluginDirectory() {
+		if (Options.pluginDir != null && Files.isDirectory(Options.pluginDir)) {
+			return Options.pluginDir;
+		}
+
+		Path repoRoot = Options.homeDir.getParent() != null ? Options.homeDir.getParent().getParent() : null;
+		if (repoRoot != null) {
+			Path officialPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
+					.resolve("resources").resolve("plugins").resolve("officalVersion");
+			if (Files.isDirectory(officialPlugins)) {
+				return officialPlugins;
+			}
+
+			Path devPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
+					.resolve("resources").resolve("plugins");
+			if (Files.isDirectory(devPlugins)) {
+				return devPlugins;
+			}
+		}
+
+		return Options.pluginDir;
 	}
 }
 

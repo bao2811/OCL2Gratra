@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Plugin-Name: Neo4jTggPlugin
+Plugin-Version: 1.0
+Main-Class: org.uet.dse.neo4jtgg.Main
+Plugin-Publisher: OpenAI Codex

@@ -67,6 +67,22 @@ public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
         return visit(ctx.expression());
     }
 
+    @Override
+    public ASTNode visitIfExp(OCLParser.IfExpContext ctx) {
+        return new ASTIf(
+                (ASTExpression) visit(ctx.condition),
+                (ASTExpression) visit(ctx.thenBranch),
+                (ASTExpression) visit(ctx.elseBranch));
+    }
+
+    @Override
+    public ASTNode visitLetExpr(OCLParser.LetExprContext ctx) {
+        return new ASTLet(
+                ctx.varName.getText(),
+                (ASTExpression) visit(ctx.value),
+                (ASTExpression) visit(ctx.body));
+    }
+
 
     @Override
     public ASTNode visitLiteral(LiteralContext ctx) {
@@ -100,11 +116,12 @@ public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
     @Override
     public ASTNode visitIteratorExpr(OCLParser.IteratorExprContext ctx) {
         ASTExpression source = (ASTExpression) visit(ctx.primary());
-        String op = ctx.Identifier(0).getText();
-        String var = ctx.Identifier(1).getText(); // f
+        String op = ctx.iteratorOp.getText();
+        String var = ctx.iteratorVar.getText();
+        String typeName = ctx.iteratorType != null ? ctx.iteratorType.getText() : null;
         ASTExpression body = (ASTExpression) visit(ctx.expression());
 
-        return new ASTIterator(source, op, var, body);
+        return new ASTIterator(source, op, var, typeName, body);
     }
     @Override
     public ASTNode visitLogicalImpliesExp(OCLParser.LogicalImpliesExpContext ctx) {

@@ -26,6 +26,7 @@ import org.tzi.use.parser.Context;
 import org.tzi.use.parser.ParseErrorHandler;
 import org.tzi.use.parser.SemanticException;
 import org.tzi.use.parser.Symtable;
+import org.tzi.use.uml.mm.MClassifier;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.ocl.expr.Expression;
 import org.tzi.use.uml.ocl.type.Type;
@@ -89,6 +90,26 @@ public class OCLCompiler {
 				null,
 				varTable);
 	}
+
+    public static Expression compileExpression(MModel model,
+                                               String in,
+                                               String inName,
+                                               PrintWriter err,
+                                               Symtable varTable,
+                                               MClassifier selfType,
+                                               boolean insidePostCondition) {
+
+        return compileExpression(
+                model,
+                null,
+                new ByteArrayInputStream(in.getBytes()),
+                inName,
+                err,
+                null,
+                varTable,
+                selfType,
+                insidePostCondition);
+    }
     
     /**
 	 * Compiles an expression.
@@ -155,7 +176,7 @@ public class OCLCompiler {
                                                String inName, 
                                                PrintWriter err,
                                                VarBindings globalBindings) {
-    	return compileExpression(model, state, in, inName, err, globalBindings, null);
+    	return compileExpression(model, state, in, inName, err, globalBindings, null, null, false);
     }
     
     /**
@@ -173,6 +194,18 @@ public class OCLCompiler {
                                                PrintWriter err,
                                                VarBindings globalBindings,
                                                Symtable varTable) {
+        return compileExpression(model, state, in, inName, err, globalBindings, varTable, null, false);
+    }
+
+    private static Expression compileExpression(MModel model,
+                                               MSystemState state,
+                                               InputStream in,
+                                               String inName,
+                                               PrintWriter err,
+                                               VarBindings globalBindings,
+                                               Symtable varTable,
+                                               MClassifier selfType,
+                                               boolean insidePostCondition) {
         Expression expr = null;
         ParseErrorHandler errHandler = new ParseErrorHandler(inName, err);
         
@@ -207,8 +240,12 @@ public class OCLCompiler {
                 ctx.setSystemState(state);
                 if (varTable != null)
                 	ctx.setVarTable(varTable);
+                if (selfType != null)
+                	ctx.exprContext().push("self", selfType);
+                ctx.setInsidePostCondition(insidePostCondition);
                 
                 expr = astExpr.gen(ctx);
+                ctx.setInsidePostCondition(false);
     
                 // check for semantic errors
                 if (ctx.errorCount() > 0 )
