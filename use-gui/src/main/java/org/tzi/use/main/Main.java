@@ -204,22 +204,35 @@ public final class Main {
 			return Options.pluginDir;
 		}
 
-		Path repoRoot = Options.homeDir.getParent() != null ? Options.homeDir.getParent().getParent() : null;
-		if (repoRoot != null) {
-			Path officialPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
-					.resolve("resources").resolve("plugins").resolve("officalVersion");
-			if (Files.isDirectory(officialPlugins)) {
-				return officialPlugins;
-			}
-
+		for (Path repoRoot : candidateRepoRoots()) {
 			Path devPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
 					.resolve("resources").resolve("plugins");
 			if (Files.isDirectory(devPlugins)) {
 				return devPlugins;
 			}
+
+			Path officialPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
+					.resolve("resources").resolve("plugins").resolve("officalVersion");
+			if (Files.isDirectory(officialPlugins)) {
+				return officialPlugins;
+			}
 		}
 
 		return Options.pluginDir;
+	}
+
+	private static Path[] candidateRepoRoots() {
+		Path home = Options.homeDir;
+		Path parent = home != null ? home.getParent() : null;
+		Path grandParent = parent != null ? parent.getParent() : null;
+		Path greatGrandParent = grandParent != null ? grandParent.getParent() : null;
+
+		return new Path[] {
+				home,
+				parent,
+				grandParent,
+				greatGrandParent
+		};
 	}
 }
 

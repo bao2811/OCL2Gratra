@@ -6,6 +6,7 @@ import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.OCLLexer;
 import org.uet.dse.neo4j.OCLParser;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
@@ -43,10 +44,9 @@ class OclCypherPlannerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Family inv TwoAdults: self.children->select(c | c.age >= 18)->size() >= 2 and self.children->exists(c | c.age >= 18)")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery optimized = new OclIrOptimizer().optimizeInvariant(new OclIrBuilder().buildInvariant(bound));
         OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(optimized);
 
@@ -88,10 +88,9 @@ class OclCypherPlannerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Family inv Checks: self.children->forAll(c | c.age >= 18) and self.children->isEmpty()")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery optimized = new OclIrOptimizer().optimizeInvariant(new OclIrBuilder().buildInvariant(bound));
         OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(optimized);
 
@@ -103,5 +102,12 @@ class OclCypherPlannerTest {
         OclCypherPlan.NotExistsSubqueryPlan emptyPlan = (OclCypherPlan.NotExistsSubqueryPlan) predicate.right();
         assertEquals(OclCypherPlan.PredicateMode.NEGATED, forAllPlan.match().predicateMode());
         assertEquals(OclCypherPlan.PredicateMode.NONE, emptyPlan.match().predicateMode());
+    }
+
+    private ASTContext firstContext(ASTNode ast) {
+        assertTrue(ast instanceof ASTFile);
+        ASTFile file = (ASTFile) ast;
+        assertEquals(1, file.invariants().size());
+        return file.invariants().get(0);
     }
 }

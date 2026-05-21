@@ -13,9 +13,17 @@ public class ExpressionBinder {
     private final Deque<Set<String>> scopeStack = new ArrayDeque<>();
     private Neo4jRepository neo4jRepository;
     public ExpressionBinder(String modelName) {
+        this(modelName, List.of());
+    }
+
+    public ExpressionBinder(String modelName, Collection<String> predefinedLocalVariables) {
         this.neo4jRepository = new Neo4jRepository(modelName);
         this.modelName = modelName;
-        scopeStack.push(new HashSet<>());
+        Set<String> initialScope = new HashSet<>();
+        if (predefinedLocalVariables != null) {
+            initialScope.addAll(predefinedLocalVariables);
+        }
+        scopeStack.push(initialScope);
     }
     private void enterScope(String varName) {
         Set<String> newScope = new HashSet<>();
@@ -35,6 +43,13 @@ public class ExpressionBinder {
     }
 
     public ExpressionNode bind(ASTNode node) {
+        if (node instanceof ASTFile file) {
+            List<ASTExpression> expressions = file.freeExpressions();
+            if (expressions.size() == 1) {
+                return bind(expressions.get(0));
+            }
+            throw new RuntimeException("Khong ho tro ASTFile voi " + expressions.size() + " free expressions.");
+        }
 //        if (node instanceof ASTLiteral) {
 //            return new ConstantExpression(((ASTLiteral) node).value);
 //        }

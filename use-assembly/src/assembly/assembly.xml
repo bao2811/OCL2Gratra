@@ -73,6 +73,9 @@
             <includes>
                 <include>*</include>
             </includes>
+            <excludes>
+                <exclude>.DS_Store</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../rtl/target</directory>

@@ -1,6 +1,7 @@
 package org.uet.dse.neo4jtgg.ocl;
 
 import org.tzi.use.uml.mm.MAttribute;
+import org.tzi.use.uml.mm.MOperation;
 import org.tzi.use.uml.ocl.type.Type;
 import org.uet.dse.neo4j.oclite.ast.ASTBinary;
 import org.uet.dse.neo4j.oclite.ast.ASTBooleanLiteral;
@@ -14,6 +15,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTLet;
 import org.uet.dse.neo4j.oclite.ast.ASTMethodCall;
 import org.uet.dse.neo4j.oclite.ast.ASTNot;
 import org.uet.dse.neo4j.oclite.ast.ASTNullLiteral;
+import org.uet.dse.neo4j.oclite.ast.ASTOperationConstraint;
 import org.uet.dse.neo4j.oclite.ast.ASTProperty;
 import org.uet.dse.neo4j.oclite.ast.ASTRealLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTStringLiteral;
@@ -36,11 +38,36 @@ public class OclSemanticBinder {
     }
 
     public BoundContextInvariant bindContext(ASTContext context) {
+        return bindContext(context, Map.of());
+    }
+
+    public BoundContextInvariant bindContext(ASTContext context, Map<String, OclTypeBinding> additionalVariables) {
         metamodelIndex.requireClass(context.className);
         Scope scope = new Scope();
         scope.enter("self", OclTypeBinding.node(context.className));
+        for (Map.Entry<String, OclTypeBinding> entry : additionalVariables.entrySet()) {
+            scope.enter(entry.getKey(), entry.getValue());
+        }
         BoundExpression expression = bind(context.expression, scope);
         return new BoundContextInvariant(context, expression);
+    }
+
+    public BoundContextInvariant bindOperationConstraint(ASTOperationConstraint constraint) {
+        if (!"pre".equalsIgnoreCase(constraint.constraintKind)
+                && !"post".equalsIgnoreCase(constraint.constraintKind)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNSUPPORTED_RULE_KIND,
+                    "Only operation preconditions and the current subset of postconditions are bindable on the current operation path.");
+        }
+        ASTContext syntheticContext = new ASTContext(constraint.className, constraint.ruleName, constraint.expression);
+        Map<String, OclTypeBinding> additionalVariables = resolveOperationParameters(constraint);
+        if ("post".equalsIgnoreCase(constraint.constraintKind)) {
+            OclTypeBinding resultBinding = resolveOperationResultBinding(constraint);
+            if (resultBinding != null) {
+                additionalVariables.put("result", resultBinding);
+            }
+        }
+        return bindContext(syntheticContext, additionalVariables);
     }
 
     public BoundExpression bind(ASTExpression expression, Scope scope) {
@@ -101,33 +128,15 @@ public class OclSemanticBinder {
 
         if (expression instanceof ASTProperty property) {
             BoundExpression source = bind(property.source, scope);
+            if (source.type().isCollection()) {
+                return bindCollectionPropertyProjection(property, source, scope);
+            }
             if (!source.type().isNode()) {
-            throw new OclCodedUnsupportedOperationException(
-                    OclDiagnosticCode.INVALID_PROPERTY_SOURCE,
-                    "Property access requires node source: " + property.name);
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_PROPERTY_SOURCE,
+                        "Property access requires node source: " + property.name);
             }
-
-            MAttribute attribute = metamodelIndex.resolveAttribute(source.type().typeName(), property.name);
-            if (attribute != null) {
-                if (attribute.type().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
-                    throw new OclCodedUnsupportedOperationException(
-                            OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED,
-                            "Collection-valued attributes are not supported yet: " + property.name);
-                }
-                return new BoundProperty(property, source, OclTypeBinding.scalar(attribute.type().shortName()), attribute, null);
-            }
-
-            OclMetamodelIndex.NavigationInfo navigation = metamodelIndex.resolveNavigation(source.type().typeName(), property.name);
-            if (navigation != null) {
-                if (!navigation.supportsDirectCypherNavigation()) {
-                    throw new OclCodedUnsupportedOperationException(navigation.unsupportedCode(), navigation.unsupportedReason());
-                }
-                return new BoundProperty(property, source, navigation.resultBinding(), null, navigation);
-            }
-
-            throw new OclCodedUnsupportedOperationException(
-                    OclDiagnosticCode.UNKNOWN_PROPERTY,
-                    "Unknown property or navigation: " + property.name);
+            return bindNodePropertyAccess(property, source);
         }
 
         if (expression instanceof ASTMethodCall methodCall) {
@@ -168,6 +177,55 @@ public class OclSemanticBinder {
             result.add(bind(argument, scope));
         }
         return List.copyOf(result);
+    }
+
+    private BoundExpression bindCollectionPropertyProjection(ASTProperty property, BoundExpression source, Scope scope) {
+        OclTypeBinding elementType = source.type().elementType();
+        if (!elementType.isNode()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_PROPERTY_SOURCE,
+                    "Property access requires node source: " + property.name);
+        }
+
+        String iteratorName = "__proj_" + property.name;
+        Scope projectionScope = new Scope(scope);
+        projectionScope.enter(iteratorName, elementType);
+        ASTProperty projectedPropertyAst = new ASTProperty(new ASTVar(iteratorName), property.name);
+        BoundExpression body = bind(projectedPropertyAst, projectionScope);
+        projectionScope.exit();
+
+        if (body.type().isCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_PROPERTY_SOURCE,
+                    "Property projection over collection-valued results is not supported yet: " + property.name);
+        }
+
+        ASTIterator collectAst = new ASTIterator(property.source, "collect", iteratorName, projectedPropertyAst);
+        return new BoundIterator(collectAst, source, body, inferIteratorType("collect", source.type(), body.type()));
+    }
+
+    private BoundExpression bindNodePropertyAccess(ASTProperty property, BoundExpression source) {
+        MAttribute attribute = metamodelIndex.resolveAttribute(source.type().typeName(), property.name);
+        if (attribute != null) {
+            if (attribute.type().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED,
+                        "Collection-valued attributes are not supported yet: " + property.name);
+            }
+            return new BoundProperty(property, source, OclTypeBinding.scalar(attribute.type().shortName()), attribute, null);
+        }
+
+        OclMetamodelIndex.NavigationInfo navigation = metamodelIndex.resolveNavigation(source.type().typeName(), property.name);
+        if (navigation != null) {
+            if (!navigation.supportsDirectCypherNavigation()) {
+                throw new OclCodedUnsupportedOperationException(navigation.unsupportedCode(), navigation.unsupportedReason());
+            }
+            return new BoundProperty(property, source, navigation.resultBinding(), null, navigation);
+        }
+
+        throw new OclCodedUnsupportedOperationException(
+                OclDiagnosticCode.UNKNOWN_PROPERTY,
+                "Unknown property or navigation: " + property.name);
     }
 
     private OclTypeBinding inferBinaryType(String operator, OclTypeBinding left, OclTypeBinding right) {
@@ -340,6 +398,31 @@ public class OclSemanticBinder {
         }
     }
 
+    private Map<String, OclTypeBinding> resolveOperationParameters(ASTOperationConstraint constraint) {
+        Map<String, OclTypeBinding> bindings = new LinkedHashMap<>();
+        MOperation operation = metamodelIndex.resolveOperation(constraint.className, constraint.operationName,
+                constraint.parameterNames.size());
+        for (int index = 0; index < constraint.parameterNames.size(); index++) {
+            String parameterName = constraint.parameterNames.get(index);
+            if (operation != null && operation.paramList().size() > index) {
+                Type parameterType = operation.paramList().varDecl(index).type();
+                bindings.put(parameterName, metamodelIndex.toBinding(parameterType, parameterType != null ? parameterType.shortName() : "OclAny"));
+            } else {
+                bindings.put(parameterName, OclTypeBinding.scalar("OclAny"));
+            }
+        }
+        return bindings;
+    }
+
+    private OclTypeBinding resolveOperationResultBinding(ASTOperationConstraint constraint) {
+        MOperation operation = metamodelIndex.resolveOperation(constraint.className, constraint.operationName,
+                constraint.parameterNames.size());
+        if (operation == null || operation.resultType() == null) {
+            return null;
+        }
+        return metamodelIndex.toBinding(operation.resultType(), operation.resultType().shortName());
+    }
+
     public record BoundContextInvariant(ASTContext ast, BoundExpression expression) {
     }
 
@@ -398,6 +481,15 @@ public class OclSemanticBinder {
 
         public Scope() {
             scopes.push(new LinkedHashMap<>());
+        }
+
+        public Scope(Scope other) {
+            this();
+            scopes.clear();
+            java.util.Iterator<Map<String, OclTypeBinding>> iterator = other.scopes.descendingIterator();
+            while (iterator.hasNext()) {
+                scopes.push(new LinkedHashMap<>(iterator.next()));
+            }
         }
 
         public void enter(String name, OclTypeBinding typeBinding) {

@@ -8,6 +8,7 @@ import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.OCLLexer;
 import org.uet.dse.neo4j.OCLParser;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
@@ -384,6 +385,33 @@ class OclSemanticBinderTest {
     }
 
     @Test
+    void normalizesCollectionPropertyProjectionIntoCollect() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """, "context Family inv ChildNamesPresent: self.children.name->includes('Bart')");
+
+        OclSemanticBinder.BoundCollectionOperation includes = as(bound.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundIterator collect = as(includes.source(), OclSemanticBinder.BoundIterator.class);
+        OclSemanticBinder.BoundProperty name = as(collect.body(), OclSemanticBinder.BoundProperty.class);
+        OclSemanticBinder.BoundVariable iteratorVar = as(name.source(), OclSemanticBinder.BoundVariable.class);
+
+        assertEquals("collect", collect.ast().operation);
+        assertEquals("String", name.type().typeName());
+        assertEquals("Person", iteratorVar.type().typeName());
+        assertEquals(OclTypeBinding.CollectionKind.BAG, collect.type().collectionKind());
+    }
+
+    @Test
     void keepsPositionalAccessPolicyExplicitForOrderedCollections() {
         OclSemanticBinder.BoundContextInvariant orderedFirst = bind("""
                 model Demo
@@ -462,9 +490,14 @@ class OclSemanticBinderTest {
 
         ASTNode ast = new ASTVisitor().visit(new OCLParser(
                 new CommonTokenStream(new OCLLexer(CharStreams.fromString(ocl)))).oclFile());
-        assertTrue(ast instanceof ASTContext);
+        return new OclSemanticBinder(new OclMetamodelIndex(model)).bindContext(firstContext(ast));
+    }
 
-        return new OclSemanticBinder(new OclMetamodelIndex(model)).bindContext((ASTContext) ast);
+    private ASTContext firstContext(ASTNode ast) {
+        assertTrue(ast instanceof ASTFile);
+        ASTFile file = (ASTFile) ast;
+        assertEquals(1, file.invariants().size());
+        return file.invariants().get(0);
     }
 
     @SuppressWarnings("unchecked")

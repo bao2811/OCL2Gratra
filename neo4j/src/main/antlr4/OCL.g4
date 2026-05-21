@@ -6,7 +6,30 @@ grammar OCL;
 
 oclFile : (declaration | expression)* EOF ;
 
-declaration : 'context' className=Identifier 'inv' invName=Identifier? ':' expression ;
+declaration
+    : 'context' className=Identifier 'inv' invName=Identifier? ':' expression
+    | 'context' className=Identifier '::' operationName=Identifier '(' paramList? ')' operationConstraintKind ruleName=Identifier? ':' expression
+    | 'context' className=Identifier '::' attributeName=Identifier attributeConstraintKind ruleName=Identifier? ':' expression
+    ;
+
+operationConstraintKind
+    : 'pre'
+    | 'post'
+    | 'body'
+    ;
+
+attributeConstraintKind
+    : 'init'
+    | 'derive'
+    ;
+
+paramList
+    : paramDecl (',' paramDecl)*
+    ;
+
+paramDecl
+    : Identifier (':' Identifier)?
+    ;
 
 expression
     : primary                                                       #PrimaryExp

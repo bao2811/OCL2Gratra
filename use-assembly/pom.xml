@@ -13,6 +13,7 @@
     <artifactId>use-assembly</artifactId>
 
     <build>
+        <finalName>use-${project.version}</finalName>
         <sourceDirectory>src</sourceDirectory>
 
         <plugins>
@@ -23,8 +24,8 @@
                     <descriptors>
                         <descriptor>src/assembly/assembly.xml</descriptor>
                     </descriptors>
-                    <finalName>use-${project.version}</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
+                    <tarLongFileMode>posix</tarLongFileMode>
                 </configuration>
                 <executions>
                     <execution>

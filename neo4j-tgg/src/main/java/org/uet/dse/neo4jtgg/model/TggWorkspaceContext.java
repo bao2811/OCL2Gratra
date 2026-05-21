@@ -17,6 +17,7 @@ public class TggWorkspaceContext {
     private final Map<WorkspaceSide, StringBuilder> logs = new EnumMap<>(WorkspaceSide.class);
     private final Map<WorkspaceSide, String> lastPreview = new EnumMap<>(WorkspaceSide.class);
     private final Map<WorkspaceSide, String> lastValidation = new EnumMap<>(WorkspaceSide.class);
+    private final Map<WorkspaceSide, OclFileValidationResult> lastValidationResult = new EnumMap<>(WorkspaceSide.class);
     private final Map<WorkspaceSide, String> metamodelStatus = new EnumMap<>(WorkspaceSide.class);
     private String remoteChangeSummary = "No remote delta detected.";
     private TggWorkspaceDefinition workspaceDefinition;
@@ -28,6 +29,7 @@ public class TggWorkspaceContext {
             logs.put(side, new StringBuilder());
             lastPreview.put(side, "");
             lastValidation.put(side, "");
+            lastValidationResult.put(side, null);
             metamodelStatus.put(side, "Not checked.");
         }
     }
@@ -94,6 +96,16 @@ public class TggWorkspaceContext {
 
     public void setLastValidation(WorkspaceSide side, String validation) {
         lastValidation.put(side, validation);
+        lastValidationResult.put(side, null);
+    }
+
+    public OclFileValidationResult getLastValidationResult(WorkspaceSide side) {
+        return lastValidationResult.get(side);
+    }
+
+    public void setLastValidationResult(WorkspaceSide side, OclFileValidationResult result) {
+        lastValidationResult.put(side, result);
+        lastValidation.put(side, result != null ? result.toDisplayText() : "");
     }
 
     public String getMetamodelStatus(WorkspaceSide side) {

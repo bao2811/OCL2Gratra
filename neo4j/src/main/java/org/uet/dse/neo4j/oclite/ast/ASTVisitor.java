@@ -12,14 +12,14 @@ public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitOclFile(OCLParser.OclFileContext ctx) {
-        if (!ctx.declaration().isEmpty()) {
-            return visit(ctx.declaration(0));
+        ASTFile file = new ASTFile();
+        for (OCLParser.DeclarationContext declaration : ctx.declaration()) {
+            file.addElement(visit(declaration));
         }
-
-        if (!ctx.expression().isEmpty()) {
-            return visit(ctx.expression(0));
+        for (OCLParser.ExpressionContext expression : ctx.expression()) {
+            file.addElement(visit(expression));
         }
-        return null;
+        return file;
     }
 
 
@@ -155,9 +155,55 @@ public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitDeclaration(OCLParser.DeclarationContext ctx) {
-        String className = ctx.className.getText();
-        String invName = ctx.invName != null ? ctx.invName.getText() : "UnnamedInv";
         ASTExpression expr = (ASTExpression) visit(ctx.expression());
-        return new ASTContext(className, invName, expr);
+        if (ctx.invName != null || ctx.operationName == null && ctx.attributeName == null) {
+            String className = ctx.className.getText();
+            String invName = ctx.invName != null ? ctx.invName.getText() : "UnnamedInv";
+            return new ASTContext(className, invName, expr);
+        }
+
+        if (ctx.operationName != null) {
+            List<String> parameterNames = new ArrayList<>();
+            List<String> parameterTypes = new ArrayList<>();
+            if (ctx.paramList() != null) {
+                for (OCLParser.ParamDeclContext paramDeclContext : ctx.paramList().paramDecl()) {
+                    parameterNames.add(paramDeclContext.Identifier(0).getText());
+                    parameterTypes.add(paramDeclContext.Identifier().size() > 1
+                            ? paramDeclContext.Identifier(1).getText()
+                            : null);
+                }
+            }
+            String ruleName = ctx.ruleName != null ? ctx.ruleName.getText() : defaultRuleName(ctx.operationConstraintKind().getText());
+            return new ASTOperationConstraint(
+                    ctx.className.getText(),
+                    ctx.operationName.getText(),
+                    parameterNames,
+                    parameterTypes,
+                    ctx.operationConstraintKind().getText(),
+                    ruleName,
+                    expr);
+        }
+
+        String ruleName = ctx.ruleName != null ? ctx.ruleName.getText() : defaultRuleName(ctx.attributeConstraintKind().getText());
+        return new ASTAttributeConstraint(
+                ctx.className.getText(),
+                ctx.attributeName.getText(),
+                ctx.attributeConstraintKind().getText(),
+                ruleName,
+                expr);
+    }
+
+    private String defaultRuleName(String constraintKind) {
+        if (constraintKind == null || constraintKind.isBlank()) {
+            return "UnnamedRule";
+        }
+        return switch (constraintKind) {
+            case "pre" -> "UnnamedPre";
+            case "post" -> "UnnamedPost";
+            case "body" -> "UnnamedBody";
+            case "init" -> "UnnamedInit";
+            case "derive" -> "UnnamedDerive";
+            default -> "UnnamedRule";
+        };
     }
 }

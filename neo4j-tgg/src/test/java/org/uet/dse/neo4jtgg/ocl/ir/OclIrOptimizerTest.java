@@ -6,6 +6,7 @@ import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.OCLLexer;
 import org.uet.dse.neo4j.OCLParser;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
@@ -78,10 +79,9 @@ class OclIrOptimizerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Person inv AdultByLet: let threshold = 18 in self.age >= threshold")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
@@ -110,10 +110,9 @@ class OclIrOptimizerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Person inv NestedLet: let threshold = 18 in let bonus = threshold + 1 in self.age >= bonus")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
@@ -141,10 +140,9 @@ class OclIrOptimizerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Person inv ReusedLet: let threshold = self.age + 1 in threshold >= 18 and threshold <= 65")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
@@ -171,10 +169,9 @@ class OclIrOptimizerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Person inv NestedLet: let threshold = 18 in let bonus = threshold + 1 in self.age >= bonus")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
@@ -208,10 +205,9 @@ class OclIrOptimizerTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Family inv Shadowed: let c = self in self.children->exists(c | c.isDefined())")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
@@ -223,5 +219,12 @@ class OclIrOptimizerTest {
         OclIr.MethodCall body = (OclIr.MethodCall) iterator.predicate();
         assertTrue(body.source() instanceof OclIr.Variable);
         assertEquals("c", ((OclIr.Variable) body.source()).name());
+    }
+
+    private ASTContext firstContext(ASTNode ast) {
+        assertTrue(ast instanceof ASTFile);
+        ASTFile file = (ASTFile) ast;
+        assertEquals(1, file.invariants().size());
+        return file.invariants().get(0);
     }
 }

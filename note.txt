@@ -635,3 +635,87 @@ Tách optimizer ra khỏi renderer.
 Thêm dual-check tests giữa Java fallback và Cypher.
 Sau đó mới mở rộng thêm operation OCL mới.
 Nếu muốn, tôi có thể bắt đầu ngay từ hạng mục số 1: refactor NavigationInfo để bind source end/target end đầy đủ và bỏ dần -[r]- trong renderer.
+
+
+Nói ngắn gọn:
+native mode: OCL -> Cypher -> chạy trên Neo4j
+fallback mode: OCL AST -> ExpressionBinder -> ExpressionNode.evaluate(...) trên từng object lấy từ Neo4jRepository
+Các lớp chính:
+DefaultOclValidationService (line 446)
+ExpressionBinder (line 11)
+ExecutionContext (line 10)
+Nếu bạn muốn, tôi có thể chỉ tiếp chính xác findAllInstancesOfClass(...) nằm ở đâu và fallback đang đọc attribute/link từ Neo4j bằng query nào.
+
+Có. native mode tối ưu hơn fallback mode chủ yếu ở 5 điểm:
+
+Chạy set-based thay vì object-by-object
+native: một câu Cypher kiểm tra trên cả tập object cùng lúc.
+fallback: lấy từng self, rồi evaluate từng object một.
+Tận dụng query planner của Neo4j
+native dùng optimizer, execution plan, index, pattern matching của Neo4j.
+fallback chạy logic ở Java nên không hưởng hết các tối ưu này.
+Giảm số lần round-trip / truy cập dữ liệu
+native: thường 1 query cho 1 invariant.
+fallback: dễ thành findAllInstancesOfClass(...) rồi lại đọc thêm attribute/link khi evaluate, tức nhiều lần truy cập hơn.
+Lọc vi phạm ngay trong DB
+native: Neo4j chỉ trả về các object vi phạm.
+fallback: app phải tự duyệt, tự tính, tự quyết định pass/fail.
+Scale tốt hơn khi dữ liệu lớn
+Với invariant có navigation, exists, forAll, join giữa nhiều node:
+native thường nhanh hơn nhiều
+fallback tăng chi phí gần theo số object và số navigation cần kiểm tra
+Hiểu ngắn gọn:
+
+native mạnh ở hiệu năng và khả năng scale
+fallback mạnh ở độ bao phủ biểu thức khi compiler chưa support
+Đổi lại, native chỉ tốt khi compiler dịch đúng và đủ. Nếu OCL quá phức tạp hoặc translator chưa support, fallback là đường lui để vẫn có kết quả.
+
+Ví dụ với Family ::HasFather:
+
+native: Neo4j tự kiểm tra toàn bộ Family nào có/không có link father
+fallback: Java lấy từng Family, rồi hỏi từng object xem có father không
+
+Nếu muốn tối ưu khi validate cả file, hướng đúng là:
+
+tăng số invariant compile được sang Cypher
+gom nhiều invariant cùng context thành batch query nếu có thể
+giảm số invariant rơi vào fallback
+
+
+Hiện tại pipeline đang là:
+
+Parse cả file OCL một lần.
+Tách thành từng rule / từng invariant.
+Với mỗi rule:
+thử compile sang Cypher
+nếu compile được thì chạy query Neo4j cho rule đó
+nếu không compile được thì chạy fallback cho rule đó
+Cuối cùng gom tất cả rule result lại thành document-level response.
+
+Đúng.
+
+Ở fallback mode, về bản chất là kiểm tra thủ công bằng Java, nhưng không phải viết tay từng invariant riêng lẻ. Thay vào đó:
+
+OCL được parse thành AST
+AST được bind thành expression node
+Java evaluator chung chạy expression đó trên từng object
+Nên chính xác hơn là:
+
+không phải thủ công theo kiểu hardcode từng rule
+mà là interpreter Java tổng quát tự kiểm tra rule OCL trên dữ liệu lấy từ Neo4j
+Hiểu ngắn gọn:
+
+native = để Neo4j kiểm tra
+fallback = để Java interpreter kiểm tra
+Ví dụ:
+
+self.name <> ''
+self.father->size() > 0
+thì fallback sẽ tự evaluate chúng bằng code Java trên từng self.
+
+Nếu muốn nói một câu thật ngắn trong update.md, bạn có thể ghi:
+
+Fallback mode = Java-based manual evaluation over Neo4j-loaded context objects, instead of Neo4j-native Cypher execution.
+Hoặc tiếng Việt:
+
+Fallback mode = đánh giá OCL bằng interpreter Java trên từng

@@ -7,6 +7,7 @@ import org.tzi.use.uml.mm.MClassifier;
 import org.tzi.use.uml.mm.MClass;
 import org.tzi.use.uml.mm.MClassImpl;
 import org.tzi.use.uml.mm.MModel;
+import org.tzi.use.uml.mm.MOperation;
 import org.tzi.use.uml.mm.MNavigableElement;
 import org.tzi.use.uml.ocl.type.BagType;
 import org.tzi.use.uml.ocl.type.CollectionType;
@@ -57,6 +58,21 @@ public class OclMetamodelIndex {
         return classInfo == null ? null : classInfo.navigations().get(roleName);
     }
 
+    public MOperation resolveOperation(String className, String operationName, int parameterCount) {
+        ClassInfo classInfo = classes.get(className);
+        if (classInfo == null) {
+            return null;
+        }
+        return classInfo.operations().getOrDefault(operationName, java.util.List.of()).stream()
+                .filter(operation -> operation.paramList().size() == parameterCount)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public OclTypeBinding toBinding(Type type, String fallbackTypeName) {
+        return toBindingInternal(type, fallbackTypeName);
+    }
+
     private Map<String, ClassInfo> buildClassIndex(MModel model) {
         Map<String, ClassInfo> result = new LinkedHashMap<>();
         for (MClass modelClass : model.classes()) {
@@ -72,7 +88,12 @@ public class OclMetamodelIndex {
                 }
             }
 
-            result.put(modelClass.name(), new ClassInfo(modelClass, attributes, navigations));
+            Map<String, java.util.List<MOperation>> operations = new LinkedHashMap<>();
+            for (MOperation operation : modelClass.operations()) {
+                operations.computeIfAbsent(operation.name(), ignored -> new java.util.ArrayList<>()).add(operation);
+            }
+
+            result.put(modelClass.name(), new ClassInfo(modelClass, attributes, navigations, operations));
         }
         return result;
     }
@@ -86,7 +107,7 @@ public class OclMetamodelIndex {
                 : navigableElement instanceof MAssociationEnd associationEnd
                 ? associationEnd.getType()
                 : navigableElement.cls();
-        OclTypeBinding binding = toBinding(type, navigableElement.cls().name());
+        OclTypeBinding binding = toBindingInternal(type, navigableElement.cls().name());
         return new NavigationInfo(
                 roleName,
                 association != null ? association.name() : null,
@@ -131,7 +152,7 @@ public class OclMetamodelIndex {
         return NavigationDirection.UNDIRECTED;
     }
 
-    private OclTypeBinding toBinding(Type type, String fallbackTypeName) {
+    private OclTypeBinding toBindingInternal(Type type, String fallbackTypeName) {
         if (type != null && type.isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID) && type instanceof CollectionType collectionType) {
             Type elementType = collectionType.elemType();
             OclTypeBinding.CollectionKind collectionKind = toCollectionKind(collectionType);
@@ -165,7 +186,10 @@ public class OclMetamodelIndex {
         return OclTypeBinding.CollectionKind.COLLECTION;
     }
 
-    public record ClassInfo(MClass modelClass, Map<String, MAttribute> attributes, Map<String, NavigationInfo> navigations) {
+    public record ClassInfo(MClass modelClass,
+                            Map<String, MAttribute> attributes,
+                            Map<String, NavigationInfo> navigations,
+                            Map<String, java.util.List<MOperation>> operations) {
     }
 
     public record NavigationInfo(

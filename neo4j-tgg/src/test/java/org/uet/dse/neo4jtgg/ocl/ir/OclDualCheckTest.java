@@ -8,6 +8,7 @@ import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.OCLLexer;
 import org.uet.dse.neo4j.OCLParser;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
@@ -137,6 +138,7 @@ class OclDualCheckTest {
                 class Person
                 attributes
                     age : Integer
+                    name : String
                 end
                 association FamilyChildren between
                     Family[1] role family
@@ -148,8 +150,8 @@ class OclDualCheckTest {
         MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
         assertNotNull(model, buffer.toString());
 
-        TestObject p1 = TestObject.object("p1", "Person").attribute("age", 20L);
-        TestObject p2 = TestObject.object("p2", "Person").attribute("age", 15L);
+        TestObject p1 = TestObject.object("p1", "Person").attribute("age", 20L).attribute("name", "Bart");
+        TestObject p2 = TestObject.object("p2", "Person").attribute("age", 15L).attribute("name", "Lisa");
         TestObject f1 = TestObject.object("f1", "Family").attribute("name", "Simpson,Flanders").link("children", p1, p2);
         p1.link("family", f1);
         p2.link("family", f1);
@@ -712,8 +714,10 @@ class OclDualCheckTest {
 
     private void assertDualCheck(MModel model, TestRuntime runtime, String ocl, String contextClass) {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new CommonTokenStream(new OCLLexer(CharStreams.fromString(ocl)))).oclFile());
-        assertTrue(ast instanceof ASTContext);
-        ASTContext context = (ASTContext) ast;
+        assertTrue(ast instanceof ASTFile);
+        ASTFile file = (ASTFile) ast;
+        assertEquals(1, file.invariants().size());
+        ASTContext context = file.invariants().get(0);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
         OclSemanticBinder.BoundContextInvariant boundInvariant = binder.bindContext(context);

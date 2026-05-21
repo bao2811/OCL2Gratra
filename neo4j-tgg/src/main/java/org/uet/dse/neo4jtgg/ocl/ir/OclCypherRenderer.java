@@ -24,7 +24,13 @@ public class OclCypherRenderer {
     private RenderedExpression renderExpression(OclCypherPlan.ExpressionPlan expression, RenderState state) {
         if (expression instanceof OclCypherPlan.VariablePlan variable) {
             String boundExpression = state.lookupExpression(variable.name());
-            return new RenderedExpression(boundExpression != null ? boundExpression : variable.name(), variable.type());
+            if (boundExpression != null) {
+                return new RenderedExpression(boundExpression, variable.type());
+            }
+            if (state.hasVariable(variable.name())) {
+                return new RenderedExpression(variable.name(), variable.type());
+            }
+            return new RenderedExpression("$" + variable.name(), variable.type());
         }
         if (expression instanceof OclCypherPlan.LiteralPlan literal) {
             if (literal.value() == null) {
@@ -468,6 +474,10 @@ public class OclCypherRenderer {
 
         private String lookupExpression(String name) {
             return expressionBindings.peek().get(name);
+        }
+
+        private boolean hasVariable(String name) {
+            return scopes.peek().containsKey(name);
         }
 
         private Map<String, Object> parameters() {

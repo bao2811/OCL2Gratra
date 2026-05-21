@@ -5,6 +5,9 @@ import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
+import org.uet.dse.neo4jtgg.model.OclFileCompilationResult;
+import org.uet.dse.neo4jtgg.model.OclRuleKind;
+import org.uet.dse.neo4jtgg.model.OclRuleOwnerKind;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
@@ -16,12 +19,187 @@ import org.uet.dse.neo4jtgg.ocl.ir.OclIrBuilder;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIrOptimizer;
 
 import java.io.PrintWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultOclToCypherCompilerTest {
+    @Test
+    void compilesMultipleInvariantsFromOneOclDocument() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    name : String
+                    age : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        OclFileCompilationResult result = compiler.compileFile("""
+                context Person inv Adult: self.age >= 18
+                context Person inv Named: self.name <> ''
+                """);
+
+        assertEquals(2, result.getRuleResults().size());
+        assertTrue(result.getRuleResults().get(0).isSupported(), result.getRuleResults().get(0).getReason());
+        assertTrue(result.getRuleResults().get(1).isSupported(), result.getRuleResults().get(1).getReason());
+        assertEquals(OclRuleOwnerKind.CLASS, result.getRuleResults().get(0).getOwnerKind());
+        assertEquals(OclRuleKind.INV, result.getRuleResults().get(0).getRuleKind());
+        assertEquals("Adult", result.getRuleResults().get(0).getInvariantName());
+        assertEquals("Named", result.getRuleResults().get(1).getInvariantName());
+    }
+
+    @Test
+    void reportsDocumentDiagnosticForFreeTopLevelExpressionInFileMode() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        OclFileCompilationResult result = compiler.compileFile("""
+                context Person inv Adult: self.age >= 18
+                1 = 1
+                """);
+
+        assertEquals(2, result.getRuleResults().size());
+        assertEquals(1, result.getFreeExpressionCount());
+        assertEquals(1, result.getDocumentDiagnostics().size());
+        assertEquals(OclDiagnosticCode.UNSUPPORTED_AST_NODE, result.getDocumentDiagnostics().get(0).code());
+        assertFalse(result.getRuleResults().get(1).isSupported());
+        assertNull(result.getRuleResults().get(1).getContextClassName());
+    }
+
+    @Test
+    void capturesCompileResponseTimingForDocumentMode() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        OclFileCompilationResult result = compiler.compileFile("""
+                context Person inv Adult: self.age >= 18
+                context Person inv Senior: self.age >= 65
+                """);
+
+        assertEquals("document", result.getRequestScope());
+        assertTrue(result.getResponseTimeMs() >= 0);
+        assertTrue(result.getParseTimeMs() >= 0);
+        assertTrue(result.getCompileTimeMs() >= 0);
+        assertEquals(2, result.getRuleResults().size());
+        assertTrue(result.getRuleResults().get(0).getCompilationTimeMs() >= 0);
+        assertNotNull(result.getRuleResults().get(0).getResultLocation());
+    }
+
+    @Test
+    void keepsParseDiagnosticLocationInCompileFileResponse() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        OclFileCompilationResult result = compiler.compileFile(
+                "context Person inv Broken: self.age >=");
+
+        assertFalse(result.getDocumentDiagnostics().isEmpty());
+        assertEquals(OclDiagnosticCode.PARSE_ERROR, result.getDocumentDiagnostics().get(0).code());
+        assertTrue(result.getParseTimeMs() >= 0);
+    }
+
+    @Test
+    void compilesOperationPreconditionAsParameterizedRuleResult() {
+        String spec = """
+                model Demo
+                class BankAccount
+                operations
+                    withdraw(amount : Real)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        OclFileCompilationResult result = compiler.compileFile("""
+                context BankAccount::withdraw(amount: Real)
+                pre:
+                    amount > 0
+                """);
+
+        assertEquals(1, result.getRuleResults().size());
+        assertEquals(OclRuleOwnerKind.OPERATION, result.getRuleResults().get(0).getOwnerKind());
+        assertEquals(OclRuleKind.PRE, result.getRuleResults().get(0).getRuleKind());
+        assertEquals("BankAccount", result.getRuleResults().get(0).getContextClassName());
+        assertEquals("withdraw", result.getRuleResults().get(0).getOperationName());
+        assertTrue(result.getRuleResults().get(0).isSupported(), result.getRuleResults().get(0).getReason());
+        assertTrue(result.getRuleResults().get(0).getCypher().contains("$amount"));
+        assertEquals(List.of("parameter:amount"), result.getRuleResults().get(0).getRequiredInputs());
+    }
+
+    @Test
+    void compilesSimplePostconditionAndExposesRequiredInputs() {
+        String spec = """
+                model Demo
+                class BankAccount
+                operations
+                    withdraw(amount : Real) : Real
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        OclFileCompilationResult result = compiler.compileFile("""
+                context BankAccount::withdraw(amount: Real)
+                post:
+                    result > 0 and amount > 0
+                """);
+
+        assertEquals(1, result.getRuleResults().size());
+        assertEquals(OclRuleKind.POST, result.getRuleResults().get(0).getRuleKind());
+        assertTrue(result.getRuleResults().get(0).isSupported(), result.getRuleResults().get(0).getReason());
+        assertEquals(List.of("parameter:amount", "resultValue"),
+                result.getRuleResults().get(0).getRequiredInputs());
+        assertTrue(result.getRuleResults().get(0).getCypher().contains("$result"));
+        assertTrue(result.getRuleResults().get(0).getCypher().contains("$amount"));
+    }
+
     @Test
     void compilesSimpleContextInvariant() {
         String spec = """
@@ -357,6 +535,35 @@ class DefaultOclToCypherCompilerTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"));
+    }
+
+    @Test
+    void compilesCollectionPropertyProjectionShorthand() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[1] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile("context Family inv HasBart: self.children.name->includes('Bart')");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains(" IN ["));
+        assertTrue(result.getCypher().contains("ObjectHasAttribute"));
+        assertTrue(result.getCypher().contains("WHERE "));
     }
 
     @Test
@@ -1462,6 +1669,35 @@ class DefaultOclToCypherCompilerTest {
         assertTrue(result.getDiagnostics().get(1).message().contains("Hint:"));
         assertTrue(result.getDiagnostic().endColumn() >= result.getDiagnostic().column());
         assertTrue(result.getReason().startsWith("PARSE:"));
+    }
+
+    @Test
+    void doesNotWriteMalformedInputDiagnosticsToSystemErr() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        PrintStream originalErr = System.err;
+        ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
+        try {
+            System.setErr(new PrintStream(errBuffer, true, StandardCharsets.UTF_8));
+            CypherCompilationResult result = compiler.compile("context Person inv Bad: self.age >");
+
+            assertFalse(result.isSupported());
+        } finally {
+            System.setErr(originalErr);
+        }
+
+        assertEquals("", errBuffer.toString(StandardCharsets.UTF_8));
     }
 
     @Test

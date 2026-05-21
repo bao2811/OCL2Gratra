@@ -3,6 +3,7 @@ package org.uet.dse.neo4jtgg.ocl.diagnostic;
 public enum OclDiagnosticCode {
     GENERIC_FAILURE,
     PARSE_ERROR,
+    UNSUPPORTED_RULE_KIND,
     UNKNOWN_CONTEXT_CLASS,
     UNKNOWN_PROPERTY,
     UNSUPPORTED_FREE_VARIABLE,
