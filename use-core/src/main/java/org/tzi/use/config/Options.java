@@ -40,6 +40,21 @@ import java.util.prefs.Preferences;
  * @author  Mark Richters
  */
 public class Options {
+	public static final class ExitApplication extends RuntimeException {
+		@Serial
+		private static final long serialVersionUID = 1L;
+
+		private final int statusCode;
+
+		public ExitApplication(int statusCode) {
+			super("USE requested process exit with status " + statusCode + '.');
+			this.statusCode = statusCode;
+		}
+
+		public int getStatusCode() {
+			return statusCode;
+		}
+	}
 
     // the release version
     public static final String RELEASE_VERSION = "7.1.1";
@@ -266,7 +281,7 @@ public class Options {
         System.out.println("  -debug        print lots of messages");
         System.out.println("  -p            print stack traces on errors");
         System.out.println("  -t            testing mode (less user-centric output)");
-        System.exit(1);
+        exitApplication(1);
     }
 
     /**
@@ -333,9 +348,17 @@ public class Options {
 		integrationTestMode = false;
 	}
 
+	public static void exitApplication(int statusCode) {
+		if (integrationTestMode) {
+			throw new ExitApplication(statusCode);
+		}
+
+		System.exit(statusCode);
+	}
+
     /**
      * <p>Parses command line arguments and sets options accordingly.</p>
-     * <p>Calls System.exit(1) in case of errors.</p>
+     * <p>Requests process termination in case of errors.</p>
      */
     public static void processArgs(String[] args) {
         // parse command options
@@ -359,7 +382,7 @@ public class Options {
                 		homeDir = Paths.get(arg.substring(2));
                 	} catch (InvalidPathException e) {
                 		System.err.println("Invalid path " + StringUtil.inQuotes(arg.substring(2)) + " for home directory specified.");
-                		System.exit(1);
+                		exitApplication(1);
                 	}
                 } else if (arg.equals("nr")) { 
                     suppressWarningsAboutMissingReadlineLibrary = true;
@@ -382,7 +405,7 @@ public class Options {
                     Log.setPrintTime(true);
                 } else if (arg.equals("V")) {
                     System.out.println("release " + RELEASE_VERSION);
-                    System.exit(0);
+                    exitApplication(0);
                 } else if (arg.equals("implicitTypes")) {
                     Options.explicitVariableDeclarations = false;
                 } else if (arg.equals("debug")) {
@@ -411,7 +434,7 @@ public class Options {
                 } else {
                 	System.out.println("invalid argument `" + arg
 							+ "', try `use -h' for help.");
-                    System.exit(1);
+                    exitApplication(1);
                 }
             } else if (specFilename == null ) {
                 specFilename = args[i];
@@ -419,7 +442,7 @@ public class Options {
                 cmdFilename = args[i];
             } else {
                 System.err.println("extra argument `" + args[i] + "'");
-                System.exit(1);
+                exitApplication(1);
             }
         }
 
@@ -442,7 +465,7 @@ public class Options {
         
         if (homeDir == null ) {
 			System.err.println("Missing path to USE installation, try `use -h' for help.");
-            System.exit(1);
+            exitApplication(1);
         }
         
         setLastDirectory(homeDir);
@@ -455,7 +478,7 @@ public class Options {
 			System.err
 					.println("Need specification file and command file with option -q,"
                                + LINE_SEPARATOR + "try `use -h' for help.");
-            System.exit(1);
+            exitApplication(1);
         }
         
         // load property files
@@ -500,7 +523,7 @@ public class Options {
 			System.err.println("property file `etc/use.properties"
 					+ "' not found. Use -H to set the "
 					+ "home of the use installation");
-            System.exit(1);
+            exitApplication(1);
         }
 
         loadProperties(propStream);
@@ -564,7 +587,7 @@ public class Options {
             props.load(propStream);
         } catch (IOException e) {
 			System.err.println("unable to load properties!");
-            System.exit(1);
+            exitApplication(1);
         }
     }
     

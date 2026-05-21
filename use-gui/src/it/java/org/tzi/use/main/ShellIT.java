@@ -5,6 +5,7 @@ import com.github.difflib.text.DiffRowGenerator;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.tzi.use.config.Options;
+import org.tzi.use.config.Options.ExitApplication;
 import org.tzi.use.util.USEWriter;
 
 import java.io.ByteArrayOutputStream;
@@ -289,7 +290,11 @@ public class ShellIT {
                 useFile.toString(),
                 cmdFile.toString()};
 
-        Main.main(args);
+        try {
+            Main.main(args);
+        } catch (ExitApplication exit) {
+            fail("USE terminated integration test JVM with exit code " + exit.getStatusCode() + '.', exit);
+        }
 
         try (ByteArrayOutputStream protocol = new ByteArrayOutputStream();) {
             USEWriter.getInstance().writeProtocolFile(protocol);
