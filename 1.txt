@@ -1,0 +1,2 @@
+OCL Sequence khó xử lý nhất (đặc biệt là indexOf và at)
+luồng chuyển tgg thành Cypher.

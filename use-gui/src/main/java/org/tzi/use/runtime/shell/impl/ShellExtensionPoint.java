@@ -53,6 +53,12 @@ public class ShellExtensionPoint implements IPluginShellExtensionPoint {
 		return this.registeredCmds;
 	}
 
+	public void reset() {
+		if (this.registeredCmds != null) {
+			this.registeredCmds.clear();
+		}
+	}
+
 	public void registerCmd(IPluginShellCmdDescriptor pluginCmdDescriptor) {
 		Log.debug("Registering cmd ["
 				+ pluginCmdDescriptor.getPluginCmdModel().getShellCmd() + "]");

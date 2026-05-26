@@ -398,6 +398,7 @@ public class Options {
 				} else if (arg.equals("it")) {
 					Options.testMode = true;
 					Options.integrationTestMode = true;
+					Options.doPLUGIN = false;
                 } else if (arg.equals("v")) {
                     Log.setVerbose(true);
                 } else if (arg.equals("vt")) {
