@@ -1,0 +1,9 @@
+<Company:Company xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:Company="platform:/resource/CompanyToIT/src/metamodels/Company.ecore"
+    name="ES">
+  <ceo xmi:id="ceo_andy" name="Andy" employee="emp_tony emp_marius"/>
+  <admin xmi:id="admin_ingo" name="Ingo" ceo="ceo_andy"/>
+  <employee xmi:id="emp_tony" name="Tony"/>
+  <employee xmi:id="emp_marius" name="Marius"/>
+</Company:Company>

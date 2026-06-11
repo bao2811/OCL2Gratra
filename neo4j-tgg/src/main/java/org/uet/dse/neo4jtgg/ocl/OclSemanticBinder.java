@@ -278,6 +278,29 @@ public class OclSemanticBinder {
         if ("isDefined".equalsIgnoreCase(methodName) || "isUndefined".equalsIgnoreCase(methodName)) {
             return OclTypeBinding.scalar("Boolean");
         }
+        // String operations
+        if ("concat".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("String");
+        }
+        if ("substring".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("String");
+        }
+        if ("toLower".equalsIgnoreCase(methodName) || "toUpper".equalsIgnoreCase(methodName)
+                || "trim".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("String");
+        }
+        if ("toInteger".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("Integer");
+        }
+        if ("toReal".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("Real");
+        }
+        if ("toString".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("String");
+        }
+        if ("oclIsTypeOf".equalsIgnoreCase(methodName) || "oclIsKindOf".equalsIgnoreCase(methodName)) {
+            return OclTypeBinding.scalar("Boolean");
+        }
         throw new OclCodedUnsupportedOperationException(
                 OclDiagnosticCode.UNSUPPORTED_METHOD_CALL,
                 "Unsupported method call: " + methodName);
@@ -301,7 +324,7 @@ public class OclSemanticBinder {
 
     private OclTypeBinding inferIteratorType(String operation, OclTypeBinding sourceType, OclTypeBinding bodyType) {
         return switch (operation.toLowerCase()) {
-            case "select" -> sourceType;
+            case "select", "reject" -> sourceType;
             case "exists", "forall", "one" -> OclTypeBinding.scalar("Boolean");
             case "any" -> sourceType.elementType();
             case "collect" -> inferCollectType(sourceType, bodyType);

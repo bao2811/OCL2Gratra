@@ -1,0 +1,10 @@
+<IT:IT xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:IT="platform:/resource/CompanyToIT/src/metamodels/IT.ecore"
+    name="ES">
+  <router xmi:id="router_ingo" name="Ingo" network="network_ingo"/>
+  <network xmi:id="network_ingo" name="Ingo">
+    <pc xmi:id="pc_tony" name="Tony-PC"/>
+    <laptop xmi:id="laptop_marius" name="Marius-Laptop"/>
+  </network>
+</IT:IT>

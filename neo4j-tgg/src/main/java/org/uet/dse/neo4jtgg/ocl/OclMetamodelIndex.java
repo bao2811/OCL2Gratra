@@ -126,7 +126,8 @@ public class OclMetamodelIndex {
         }
         if (association.associationEnds().size() == 2) {
             for (MAssociationEnd end : association.associationEnds()) {
-                if (!end.equals(targetEnd) && sourceClass.isSubClassifierOf(end.cls(), true)) {
+                if (!end.equals(targetEnd)
+                        && (sourceClass.equals(end.cls()) || sourceClass.allParents().contains(end.cls()))) {
                     return end;
                 }
             }

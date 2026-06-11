@@ -3,9 +3,12 @@ package org.uet.dse.neo4jtgg.service.impl;
 import org.tzi.use.api.UseApiException;
 import org.tzi.use.api.UseModelApi;
 import org.tzi.use.uml.mm.MAssociation;
+import org.tzi.use.uml.mm.MAttribute;
+import org.tzi.use.uml.mm.MClass;
 import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
+import org.uet.dse.neo4jtgg.engine.AttributeAssignment;
 import org.uet.dse.neo4jtgg.model.TggRuleInfo;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceDefinition;
@@ -189,9 +192,13 @@ public class Neo4jTggWorkspaceLoader {
         List<TggRuleInfo.CorrPattern> requiredCorr = parseCorrespondenceLinks(sectionBuffers.get(WorkspaceSide.CORRESPONDENCE).header().toString());
         List<TggRuleInfo.CorrPattern> outputCorr = parseCorrespondenceLinks(sectionBuffers.get(WorkspaceSide.CORRESPONDENCE).body().toString());
         List<TggRuleInfo.CorrInvariant> invariants = parseCorrInvariants(sectionBuffers.get(WorkspaceSide.CORRESPONDENCE).body().toString());
+        Map<String, String> corrAliases = buildCorrAliasMap(requiredCorr, outputCorr);
         rule.setRequiredCorrPatterns(requiredCorr);
         rule.setOutputCorrPatterns(outputCorr);
         rule.setCorrInvariants(invariants);
+        rule.setAttributeMappings(parseAttributeMappings(rule,
+                sectionBuffers.get(WorkspaceSide.CORRESPONDENCE).body().toString(),
+                corrAliases));
 
         return new ParsedRule(
                 rule,
@@ -282,6 +289,87 @@ public class Neo4jTggWorkspaceLoader {
         return invariants;
     }
 
+    private List<TggRuleInfo.AttributeMapping> parseAttributeMappings(TggRuleInfo rule,
+                                                                      String corrSectionText,
+                                                                      Map<String, String> corrAliases) {
+        List<TggRuleInfo.AttributeMapping> mappings = new ArrayList<>();
+        for (String line : corrSectionText.split("\\R")) {
+            AttributeAssignment assignment = AttributeAssignment.parse(line);
+            if (assignment == null) {
+                continue;
+            }
+            String normalizedTargetPath = normalizeCorrAliases(assignment.targetPath(), corrAliases);
+            String normalizedSourceExpression = normalizeCorrAliases(assignment.sourceExpression(), corrAliases);
+            ParsedTargetPath targetPath = parseTargetPath(rule, normalizedTargetPath);
+            if (targetPath == null) {
+                continue;
+            }
+            mappings.add(new TggRuleInfo.AttributeMapping(
+                    targetPath.side(),
+                    targetPath.variableName(),
+                    targetPath.attributeName(),
+                    normalizedSourceExpression));
+        }
+        return mappings;
+    }
+
+    private Map<String, String> buildCorrAliasMap(List<TggRuleInfo.CorrPattern> requiredCorr,
+                                                  List<TggRuleInfo.CorrPattern> outputCorr) {
+        Map<String, String> aliases = new LinkedHashMap<>();
+        for (TggRuleInfo.CorrPattern pattern : requiredCorr) {
+            registerCorrAliases(aliases, pattern);
+        }
+        for (TggRuleInfo.CorrPattern pattern : outputCorr) {
+            registerCorrAliases(aliases, pattern);
+        }
+        return aliases;
+    }
+
+    private void registerCorrAliases(Map<String, String> aliases, TggRuleInfo.CorrPattern pattern) {
+        if (pattern == null) {
+            return;
+        }
+        aliases.put(pattern.sourceAlias(), pattern.sourceVarName());
+        aliases.put(pattern.targetAlias(), pattern.targetVarName());
+    }
+
+    private String normalizeCorrAliases(String expression, Map<String, String> corrAliases) {
+        if (expression == null || expression.isBlank() || corrAliases == null || corrAliases.isEmpty()) {
+            return expression;
+        }
+        String normalized = expression;
+        for (Map.Entry<String, String> entry : corrAliases.entrySet()) {
+            String alias = entry.getKey();
+            String actual = entry.getValue();
+            if (alias == null || alias.isBlank() || actual == null || actual.isBlank() || alias.equals(actual)) {
+                continue;
+            }
+            normalized = normalized.replace("self." + alias + ".", "self." + actual + ".");
+            normalized = normalized.replace(alias + ".", actual + ".");
+        }
+        return normalized;
+    }
+
+    private ParsedTargetPath parseTargetPath(TggRuleInfo rule, String targetPath) {
+        if (targetPath == null || targetPath.isBlank()) {
+            return null;
+        }
+        String normalized = targetPath.startsWith("self.") ? targetPath.substring(5) : targetPath;
+        String[] parts = normalized.split("\\.");
+        if (parts.length < 2) {
+            return null;
+        }
+        String variableName = parts[0].trim();
+        String attributeName = parts[parts.length - 1].trim();
+        if (rule.getTypedVariables(WorkspaceSide.SOURCE).containsKey(variableName)) {
+            return new ParsedTargetPath(WorkspaceSide.SOURCE, variableName, attributeName);
+        }
+        if (rule.getTypedVariables(WorkspaceSide.TARGET).containsKey(variableName)) {
+            return new ParsedTargetPath(WorkspaceSide.TARGET, variableName, attributeName);
+        }
+        return null;
+    }
+
     private String normalizeVariableName(String rawName) {
         return rawName.replace("*", "").trim();
     }
@@ -294,27 +382,122 @@ public class Neo4jTggWorkspaceLoader {
         UseModelApi api = new UseModelApi(transformationName + "_Correspondence");
 
         try {
+            // 1. Create correspondence classes
             for (String corrClass : corrClasses) {
                 if (api.getClass(corrClass) == null) {
                     api.createClass(corrClass, false);
                 }
             }
 
+            // 2. Collect all source/target classes referenced by corr patterns
+            //    and create them in the correspondence model so associations can reference them
+            Set<String> referencedSourceClasses = new LinkedHashSet<>();
+            Set<String> referencedTargetClasses = new LinkedHashSet<>();
             Set<String> createdAssociations = new LinkedHashSet<>();
-            for (ParsedRule rule : parsedRules) {
-                for (TggRuleInfo.CorrPattern link : rule.corrLinks) {
-                    if (api.getClass(link.corrClassName()) == null) {
-                        api.createClass(link.corrClassName(), false);
+
+            for (ParsedRule parsedRule : parsedRules) {
+                Map<String, String> sourceVars = parsedRule.sourceVariables();
+                Map<String, String> targetVars = parsedRule.targetVariables();
+
+                for (TggRuleInfo.CorrPattern corrPattern : parsedRule.corrLinks()) {
+                    String sourceClassName = sourceVars.get(corrPattern.sourceVarName());
+                    String targetClassName = targetVars.get(corrPattern.targetVarName());
+
+                    if (sourceClassName != null) {
+                        referencedSourceClasses.add(sourceClassName);
+                    }
+                    if (targetClassName != null) {
+                        referencedTargetClasses.add(targetClassName);
+                    }
+                }
+            }
+
+            // Create referenced source classes (with their attributes) in the corr model
+            for (String className : referencedSourceClasses) {
+                if (api.getClass(className) == null) {
+                    MClass srcCls = sourceModel.getClass(className);
+                    if (srcCls != null) {
+                        api.createClass(className, srcCls.isAbstract());
+                        for (MAttribute attr : srcCls.attributes()) {
+                            api.createAttribute(className, attr.name(), attr.type().toString());
+                        }
+                    }
+                }
+            }
+            // Also copy inheritance among referenced source classes
+            for (String className : referencedSourceClasses) {
+                MClass srcCls = sourceModel.getClass(className);
+                if (srcCls != null) {
+                    for (MClass parent : srcCls.parents()) {
+                        if (api.getClass(parent.name()) != null
+                                && !api.getClass(className).parents().contains(api.getClass(parent.name()))) {
+                            api.createGeneralization(className, parent.name());
+                        }
+                    }
+                }
+            }
+
+            // Create referenced target classes (with their attributes) in the corr model
+            for (String className : referencedTargetClasses) {
+                if (api.getClass(className) == null) {
+                    MClass tgtCls = targetModel.getClass(className);
+                    if (tgtCls != null) {
+                        api.createClass(className, tgtCls.isAbstract());
+                        for (MAttribute attr : tgtCls.attributes()) {
+                            api.createAttribute(className, attr.name(), attr.type().toString());
+                        }
+                    }
+                }
+            }
+            // Also copy inheritance among referenced target classes
+            for (String className : referencedTargetClasses) {
+                MClass tgtCls = targetModel.getClass(className);
+                if (tgtCls != null) {
+                    for (MClass parent : tgtCls.parents()) {
+                        if (api.getClass(parent.name()) != null
+                                && !api.getClass(className).parents().contains(api.getClass(parent.name()))) {
+                            api.createGeneralization(className, parent.name());
+                        }
+                    }
+                }
+            }
+
+            // 3. Create associations from corr classes to source/target classes
+            for (ParsedRule parsedRule : parsedRules) {
+                Map<String, String> sourceVars = parsedRule.sourceVariables();
+                Map<String, String> targetVars = parsedRule.targetVariables();
+
+                for (TggRuleInfo.CorrPattern corrPattern : parsedRule.corrLinks()) {
+                    String corrClassName = corrPattern.corrClassName();
+                    String sourceClassName = sourceVars.get(corrPattern.sourceVarName());
+                    String targetClassName = targetVars.get(corrPattern.targetVarName());
+
+                    // Create corr → source association
+                    if (sourceClassName != null && api.getClass(corrClassName) != null && api.getClass(sourceClassName) != null) {
+                        String assocName = corrClassName + "_source_" + sourceClassName;
+                        if (createdAssociations.add(assocName) && api.getModel().getAssociation(assocName) == null) {
+                            api.createAssociation(assocName,
+                                    new String[]{corrClassName, sourceClassName},
+                                    new String[]{"corr_" + lowerFirst(corrClassName), "source_" + lowerFirst(sourceClassName)},
+                                    new String[]{"*", "0..1"},
+                                    new int[]{0, 0},
+                                    new boolean[]{false, false},
+                                    new String[0][][]);
+                        }
                     }
 
-                    String srcClass = rule.sourceVariables.get(link.sourceVarName());
-                    if (srcClass != null && sourceModel.getClass(srcClass) != null) {
-                        createCorrAssociation(api, createdAssociations, link.corrClassName(), srcClass);
-                    }
-
-                    String targetClass = rule.targetVariables.get(link.targetVarName());
-                    if (targetClass != null && targetModel.getClass(targetClass) != null) {
-                        createCorrAssociation(api, createdAssociations, link.corrClassName(), targetClass);
+                    // Create corr → target association
+                    if (targetClassName != null && api.getClass(corrClassName) != null && api.getClass(targetClassName) != null) {
+                        String assocName = corrClassName + "_target_" + targetClassName;
+                        if (createdAssociations.add(assocName) && api.getModel().getAssociation(assocName) == null) {
+                            api.createAssociation(assocName,
+                                    new String[]{corrClassName, targetClassName},
+                                    new String[]{"corr_" + lowerFirst(corrClassName), "target_" + lowerFirst(targetClassName)},
+                                    new String[]{"*", "0..1"},
+                                    new int[]{0, 0},
+                                    new boolean[]{false, false},
+                                    new String[0][][]);
+                        }
                     }
                 }
             }
@@ -323,35 +506,6 @@ public class Neo4jTggWorkspaceLoader {
         }
 
         return api.getModel();
-    }
-
-    private void createCorrAssociation(UseModelApi api,
-                                       Set<String> createdAssociations,
-                                       String corrClassName,
-                                       String domainClassName) throws UseApiException {
-        String associationName = corrClassName + "_" + domainClassName;
-        if (!createdAssociations.add(associationName)) {
-            return;
-        }
-
-        MAssociation existing = api.getAssociation(associationName);
-        if (existing != null) {
-            return;
-        }
-
-        if (api.getClass(domainClassName) == null) {
-            api.createClass(domainClassName, false);
-        }
-
-        api.createAssociation(
-                associationName,
-                new String[]{corrClassName, domainClassName},
-                new String[]{lowerFirst(corrClassName), lowerFirst(domainClassName)},
-                new String[]{"0..*", "0..*"},
-                new int[]{0, 0},
-                new boolean[]{false, false},
-                new String[0][][]
-        );
     }
 
     private String lowerFirst(String value) {
@@ -365,6 +519,9 @@ public class Neo4jTggWorkspaceLoader {
                               Map<String, String> sourceVariables,
                               Map<String, String> targetVariables,
                               List<TggRuleInfo.CorrPattern> corrLinks) {
+    }
+
+    private record ParsedTargetPath(WorkspaceSide side, String variableName, String attributeName) {
     }
 
     private String normalizeTggContent(String tggContent) {

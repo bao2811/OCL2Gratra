@@ -90,6 +90,9 @@
             <includes>
                 <include>neo4j*.jar</include>
             </includes>
+            <excludes>
+                <exclude>neo4j-7.1.0-shaded.jar</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/../neo4j-tgg/target</directory>

@@ -60,9 +60,9 @@ public class TggWorkspaceDialog extends JDialog {
         txtInfo.setWrapStyleWord(true);
         txtInfo.setText("""
                 Demo default:
-                - rtl/examples/Families2Persons/Families.use
-                - rtl/examples/Families2Persons/Persons.use
-                - rtl/examples/Families2Persons/F2PForward.tgg
+                - examples/families2person/metamodels/Families.use
+                - examples/families2person/metamodels/Persons.use
+                - examples/families2person/metamodels/F2PForward.tgg
                 - Source XMI import default: examples/families2person/src/models/Families.xmi
                 - Target XMI import default: examples/families2person/src/models/Persons.xmi
 

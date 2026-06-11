@@ -115,6 +115,76 @@ class OclCypherRendererTest {
         assertTrue(rendered.parameters().containsValue(18L));
     }
 
+    @Test
+    void rendersNestedNavigationAttributeAccessWithoutInliningNodeExpressionIntoPattern() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                class Person
+                attributes
+                    name : String
+                end
+                association FamilyFather between
+                    Family[*] role family
+                    Person[0..1] role father
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
+                new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
+                        "context Family inv NamedFather: self.father.name <> ''")))).oclFile());
+
+        OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
+        OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
+        OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(invariantQuery);
+
+        OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
+        assertFalse(rendered.cypher().contains("head([(head(["));
+        assertTrue(rendered.cypher().contains("CASE WHEN head(["));
+    }
+
+    @Test
+    void rendersNavigationSizeComparisonFromNestedCollectionAsListSize() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role sons
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
+                new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
+                        "context Family inv HasTwoSons: self.name = 'Flanders' implies self.sons->size() = 2")))).oclFile());
+
+        OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
+        OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
+        OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(invariantQuery);
+
+        OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
+        assertTrue(rendered.cypher().contains("size("));
+        assertFalse(rendered.cypher().contains("head([(head(["));
+    }
+
     private ASTContext firstContext(ASTNode ast) {
         assertTrue(ast instanceof ASTFile);
         ASTFile file = (ASTFile) ast;

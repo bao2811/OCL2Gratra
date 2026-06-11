@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?use version="3.0.0"?>
 <plugin id="org.uet.dse.neo4jtgg" name="Neo4jTggPlugin" version="0.1"
-        publisher="OpenAI Codex" class="org.uet.dse.neo4jtgg.Main">
+        publisher="Hoang Quoc Bao" class="org.uet.dse.neo4jtgg.Main">
     <actions>
         <action label="Open Workspace"
+                icon="images/rtl.png"
                 class="org.uet.dse.neo4jtgg.action.ActionOpenTggWorkspace"
                 tooltip="Open the Neo4j TGG workspace"
                 menu="Neo4j TGG Plugin"

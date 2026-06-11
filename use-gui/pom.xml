@@ -66,6 +66,14 @@
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
         <testSourceDirectory>src/main/test</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>../use-core/src/main/resources</directory>
+            </resource>
+        </resources>
 
         <plugins>
             <plugin>

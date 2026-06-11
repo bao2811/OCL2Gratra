@@ -3,6 +3,8 @@ package org.uet.dse.neo4jtgg.ui;
 import org.tzi.use.gui.views.View;
 import org.uet.dse.neo4jtgg.model.GuardReport;
 import org.uet.dse.neo4jtgg.model.ImportBatch;
+import org.uet.dse.neo4jtgg.model.IncrementalApplyResult;
+import org.uet.dse.neo4jtgg.model.IncrementalSyncProposal;
 import org.uet.dse.neo4jtgg.model.OclFileValidationResult;
 import org.uet.dse.neo4jtgg.model.OclRuleValidationResult;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
@@ -161,7 +163,10 @@ public class WorkspaceGraphView extends JPanel implements View {
         JButton btnPushModel = new JButton("Push Model");
         JButton btnPushObjects = new JButton("Push Objects (disabled)");
         JButton btnPullObjects = new JButton("Refresh USE Mirror");
+        JButton btnPreviewRemote = new JButton("Preview Remote Delta");
         JButton btnApplyRemote = new JButton("Apply Remote Delta");
+        JButton btnDiscardRemote = new JButton("Discard Proposal");
+        JButton btnRefreshBaseline = new JButton("Refresh Baseline");
         JButton btnPreviewForward = new JButton("Preview Forward");
         JButton btnTransformForward = new JButton("Transform Forward");
         JButton btnPreviewBackward = new JButton("Preview Backward");
@@ -171,13 +176,16 @@ public class WorkspaceGraphView extends JPanel implements View {
         btnPushModel.addActionListener(e -> workspaceService.pushModelToNeo4j());
         btnPushObjects.addActionListener(e -> workspaceService.pushObjectsToNeo4j(true));
         btnPullObjects.addActionListener(e -> workspaceService.pullObjectsFromNeo4j(true));
-        btnApplyRemote.addActionListener(e -> workspaceService.applyRemoteChanges());
+        btnPreviewRemote.addActionListener(e -> previewRemoteDelta());
+        btnApplyRemote.addActionListener(e -> applyRemoteDelta());
+        btnDiscardRemote.addActionListener(e -> discardRemoteProposal());
+        btnRefreshBaseline.addActionListener(e -> refreshIncrementalBaseline());
         btnPreviewForward.addActionListener(e -> previewForwardTransformation());
         btnTransformForward.addActionListener(e -> runForwardTransformation());
         btnPreviewBackward.addActionListener(e -> previewBackwardTransformation());
         btnTransformBackward.addActionListener(e -> runBackwardTransformation());
 
-        JPanel workspaceActions = buttonRow("Workspace", btnRefresh, btnPullObjects, btnApplyRemote);
+        JPanel workspaceActions = buttonRow("Workspace", btnRefresh, btnPullObjects, btnPreviewRemote, btnApplyRemote, btnDiscardRemote, btnRefreshBaseline);
         JPanel transformActions = buttonRow("Transform", btnPreviewForward, btnTransformForward, btnPreviewBackward, btnTransformBackward);
         JPanel legacyActions = buttonRow("Legacy Disabled", btnPushModel, btnPushObjects);
 
@@ -308,6 +316,14 @@ public class WorkspaceGraphView extends JPanel implements View {
 
     private String buildConsoleText(TggWorkspaceContext context) {
         StringBuilder sb = new StringBuilder();
+        IncrementalSyncProposal proposal = context.getCurrentProposal();
+        if (proposal != null) {
+            appendConsoleSection(sb, "Incremental Proposal", proposal.toDisplayText());
+        }
+        IncrementalApplyResult applyResult = context.getLastApplyResult();
+        if (applyResult != null) {
+            appendConsoleSection(sb, "Incremental Status", applyResult.status().getLabel() + " | " + applyResult.message());
+        }
         appendConsoleSection(sb, "Validation Result", context.getLastValidation(side));
         appendConsoleSection(sb, "Preview", context.getLastPreview(side));
         appendConsoleSection(sb, "Runtime Log", context.getLog(side));
@@ -317,10 +333,12 @@ public class WorkspaceGraphView extends JPanel implements View {
     private String buildHeaderSummary(TggWorkspaceContext context) {
         String remote = context.getRemoteChangeSummary().replace('\n', ' ').trim();
         OclFileValidationResult validationResult = context.getLastValidationResult(side);
+        IncrementalSyncProposal proposal = context.getCurrentProposal();
+        String proposalSummary = proposal == null ? context.getLastApplyResult().status().getLabel() : proposal.summary();
         if (validationResult == null) {
-            return remote;
+            return remote + " | Incremental: " + proposalSummary;
         }
-        return remote + " | Validation: rules=" + validationResult.getRuleCount()
+        return remote + " | Incremental: " + proposalSummary + " | Validation: rules=" + validationResult.getRuleCount()
                 + ", pass=" + validationResult.getPassCount()
                 + ", fail=" + validationResult.getFailCount()
                 + ", skipped=" + validationResult.getSkippedCount()
@@ -764,6 +782,54 @@ public class WorkspaceGraphView extends JPanel implements View {
             }
         } catch (Exception ex) {
             showScrollableMessage(ex.getMessage(), "Backward Transformation Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void previewRemoteDelta() {
+        try {
+            IncrementalSyncProposal proposal = workspaceService.previewIncrementalRemoteChanges(workspaceService.getOrCreateContext());
+            refreshContent();
+            if (proposal == null) {
+                showScrollableMessage(workspaceService.getOrCreateContext().getLastApplyResult().message(),
+                        "Preview Remote Delta", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            showScrollableMessage(proposal.toDisplayText(), "Preview Remote Delta", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            showScrollableMessage(ex.getMessage(), "Preview Remote Delta Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void applyRemoteDelta() {
+        try {
+            IncrementalApplyResult result = workspaceService.applyPendingIncrementalProposal(workspaceService.getOrCreateContext());
+            refreshContent();
+            showScrollableMessage(result.message(), "Apply Remote Delta",
+                    result.status() == org.uet.dse.neo4jtgg.model.IncrementalSyncStatus.APPLIED
+                            ? JOptionPane.INFORMATION_MESSAGE
+                            : JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            showScrollableMessage(ex.getMessage(), "Apply Remote Delta Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void discardRemoteProposal() {
+        try {
+            IncrementalApplyResult result = workspaceService.discardPendingIncrementalProposal(workspaceService.getOrCreateContext());
+            refreshContent();
+            showScrollableMessage(result.message(), "Discard Proposal", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            showScrollableMessage(ex.getMessage(), "Discard Proposal Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refreshIncrementalBaseline() {
+        try {
+            IncrementalApplyResult result = workspaceService.refreshIncrementalBaseline(workspaceService.getOrCreateContext());
+            refreshContent();
+            showScrollableMessage(result.message(), "Refresh Baseline", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            showScrollableMessage(ex.getMessage(), "Refresh Baseline Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

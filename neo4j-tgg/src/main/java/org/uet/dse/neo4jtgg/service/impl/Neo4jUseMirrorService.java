@@ -47,9 +47,34 @@ public class Neo4jUseMirrorService {
         snapshots.put(WorkspaceSide.CORRESPONDENCE, runtimeService.loadSnapshot(context, WorkspaceSide.CORRESPONDENCE));
         snapshots.put(WorkspaceSide.TARGET, runtimeService.loadSnapshot(context, WorkspaceSide.TARGET));
 
+        // Diagnostic: log snapshot sizes per side
+        for (Map.Entry<WorkspaceSide, FullObjectSnapshot> entry : snapshots.entrySet()) {
+            FullObjectSnapshot snap = entry.getValue();
+            context.appendLog(entry.getKey(),
+                    "Mirror snapshot [" + entry.getKey().getDisplayName() + "]: "
+                    + snap.objects.size() + " objects, " + snap.links.size() + " links.");
+            if (!snap.objects.isEmpty()) {
+                snap.objects.values().stream().limit(5).forEach(obj ->
+                        context.appendLog(entry.getKey(),
+                                "  -> " + obj.name + " : " + obj.className));
+            }
+        }
+
+        // Diagnostic: log mirror model classes and associations
+        context.appendLog(WorkspaceSide.SOURCE,
+                "Mirror model classes: " + mirrorModel.classes().stream()
+                        .map(c -> c.name()).collect(java.util.stream.Collectors.joining(", ")));
+        context.appendLog(WorkspaceSide.SOURCE,
+                "Mirror model associations: " + mirrorModel.associations().stream()
+                        .map(a -> a.name()).collect(java.util.stream.Collectors.joining(", ")));
+
         createMirrorObjects(api, mirrorModel, snapshots.values());
         createMirrorLinks(api, mirrorModel, snapshots.values());
         setMirrorAttributes(api, mirrorModel, snapshots.values());
+
+        // Diagnostic: log how many objects exist in the final mirror system
+        context.appendLog(WorkspaceSide.SOURCE,
+                "Mirror system objects after refresh: " + mirrorSystem.state().allObjects().size());
 
         Session session = context.getSession();
         session.setSystem(mirrorSystem);

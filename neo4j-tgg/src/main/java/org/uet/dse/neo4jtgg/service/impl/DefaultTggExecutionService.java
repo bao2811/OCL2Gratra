@@ -3,6 +3,10 @@ package org.uet.dse.neo4jtgg.service.impl;
 import org.uet.dse.neo4j.model.FullObjectSnapshot;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
+import org.uet.dse.neo4jtgg.engine.BackwardRuleApplicationEngine;
+import org.uet.dse.neo4jtgg.engine.CorrRuntimeTraceHelper;
+import org.uet.dse.neo4jtgg.engine.ForwardTransformationResult;
+import org.uet.dse.neo4jtgg.engine.ForwardRuleApplicationEngine;
 import org.uet.dse.neo4jtgg.engine.TransformationDirection;
 import org.uet.dse.neo4jtgg.engine.TransformationMode;
 import org.uet.dse.neo4jtgg.engine.TransformationOptions;
@@ -18,14 +22,17 @@ import org.uet.dse.neo4jtgg.service.TggExecutionService;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class DefaultTggExecutionService implements TggExecutionService {
     private final Neo4jWorkspaceRuntimeService runtimeService = Neo4jWorkspaceRuntimeService.getInstance();
-    private final Families2PersonsCorrMaterializer corrMaterializer = new Families2PersonsCorrMaterializer();
+    private final RuleDrivenCorrMaterializer corrMaterializer = new RuleDrivenCorrMaterializer();
+    private boolean useRuleDrivenEngine = true;
 
     @Override
     public TransformationReport preview(TggWorkspaceContext context, TransformationOptions options) {
@@ -66,11 +73,64 @@ public class DefaultTggExecutionService implements TggExecutionService {
             report.addMatchedRule(rule.getName());
         }
 
+        // Try rule-driven engine first
+        if (useRuleDrivenEngine && !definition.getRules().isEmpty()) {
+            return executeRuleDriven(context, options, driverSnapshot, receiverSnapshot, corrSnapshot, report);
+        }
+
+        // Fallback to hardcoded path
         if ("Families2Persons".equals(definition.getTransformationName())) {
             return executeFamilies2Persons(context, options, driverSnapshot, receiverSnapshot, corrSnapshot, report);
         }
 
         report.addWarning("No transformation engine is implemented yet for `" + definition.getTransformationName() + "`.");
+        return report;
+    }
+
+    private TransformationReport executeRuleDriven(TggWorkspaceContext context,
+                                                    TransformationOptions options,
+                                                    FullObjectSnapshot sourceSnapshot,
+                                                    FullObjectSnapshot targetSnapshot,
+                                                    FullObjectSnapshot corrSnapshot,
+                                                    TransformationReport report) {
+        long startMs = System.currentTimeMillis();
+        ImportBatch batch;
+        ForwardTransformationResult forwardResult = null;
+
+        if (options.direction() == TransformationDirection.FORWARD) {
+            ForwardRuleApplicationEngine engine = new ForwardRuleApplicationEngine(report);
+            forwardResult = engine.executeForward(context, sourceSnapshot, targetSnapshot, corrSnapshot);
+            batch = forwardResult.targetBatch();
+            report.addInfo("Rule-driven forward engine completed in "
+                    + (System.currentTimeMillis() - startMs) + "ms.");
+        } else {
+            BackwardRuleApplicationEngine engine = new BackwardRuleApplicationEngine(report);
+            batch = engine.applyBackward(context, sourceSnapshot, targetSnapshot, corrSnapshot);
+            report.addInfo("Rule-driven backward engine completed in "
+                    + (System.currentTimeMillis() - startMs) + "ms.");
+        }
+
+        if (batch.getObjects().isEmpty()) {
+            report.addWarning("Rule-driven engine produced no objects.");
+            return report;
+        }
+
+        if (options.mode() == TransformationMode.APPLY) {
+            if (options.direction() == TransformationDirection.FORWARD && forwardResult != null) {
+                runtimeService.applyForwardTransformationResult(context, forwardResult);
+                verifyForwardArtifacts(context, forwardResult);
+            } else {
+                runtimeService.applyImport(context, batch);
+            }
+            int corrCreated = options.direction() == TransformationDirection.FORWARD && forwardResult != null
+                    ? forwardResult.corrCreations().size()
+                    : corrMaterializer.materialize(context);
+            report.addInfo("Applied rule-driven " + options.direction() + " transformation.");
+            report.addInfo("Materialized correspondence objects: " + corrCreated + ".");
+        } else {
+            report.addInfo("Preview only. No writes executed.");
+        }
+
         return report;
     }
 
@@ -239,5 +299,58 @@ public class DefaultTggExecutionService implements TggExecutionService {
 
     private String sanitizeId(String value) {
         return Objects.requireNonNullElse(value, "undefined").replaceAll("[^A-Za-z0-9_]", "_");
+    }
+
+    private void verifyForwardArtifacts(TggWorkspaceContext context, ForwardTransformationResult result) {
+        FullObjectSnapshot targetSnapshot = runtimeService.loadSnapshot(context, WorkspaceSide.TARGET);
+        FullObjectSnapshot corrSnapshot = runtimeService.loadSnapshot(context, WorkspaceSide.CORRESPONDENCE);
+
+        Set<String> missingTargetObjects = new LinkedHashSet<>();
+        for (ImportObjectSpec spec : result.targetBatch().getObjects()) {
+            if (!targetSnapshot.objects.containsKey(spec.getObjectName())) {
+                missingTargetObjects.add(spec.getObjectName());
+            }
+        }
+
+        Set<String> missingTargetLinks = new LinkedHashSet<>();
+        for (ImportLinkSpec link : result.targetBatch().getLinks()) {
+            String identity = link.getAssociationName() + link.getEndpointNames().stream()
+                    .map(endpoint -> "_" + endpoint)
+                    .reduce("", String::concat);
+            if (!targetSnapshot.links.containsKey(identity)) {
+                missingTargetLinks.add(identity);
+            }
+        }
+
+        Set<String> missingCorrObjects = new LinkedHashSet<>();
+        Set<String> missingTraceLinks = new LinkedHashSet<>();
+        for (ForwardTransformationResult.CorrCreation creation : result.corrCreations()) {
+            if (!corrSnapshot.objects.containsKey(creation.record().objectId())) {
+                missingCorrObjects.add(creation.record().objectId());
+            }
+            for (Map.Entry<String, String> binding : creation.sourceBindings().entrySet()) {
+                String assocName = CorrRuntimeTraceHelper.bindingAssociationName(
+                        creation.record().appliedRuleName(), WorkspaceSide.SOURCE, binding.getKey());
+                String identity = assocName + "_" + creation.record().objectId() + "_" + binding.getValue();
+                if (!corrSnapshot.links.containsKey(identity)) {
+                    missingTraceLinks.add(identity);
+                }
+            }
+            for (Map.Entry<String, String> binding : creation.targetBindings().entrySet()) {
+                String assocName = CorrRuntimeTraceHelper.bindingAssociationName(
+                        creation.record().appliedRuleName(), WorkspaceSide.TARGET, binding.getKey());
+                String identity = assocName + "_" + creation.record().objectId() + "_" + binding.getValue();
+                if (!corrSnapshot.links.containsKey(identity)) {
+                    missingTraceLinks.add(identity);
+                }
+            }
+        }
+
+        if (!missingTargetObjects.isEmpty() || !missingTargetLinks.isEmpty()
+                || !missingCorrObjects.isEmpty() || !missingTraceLinks.isEmpty()) {
+            throw new IllegalStateException("Forward transformation persistence verification failed. Missing target objects="
+                    + missingTargetObjects + ", target links=" + missingTargetLinks
+                    + ", corr objects=" + missingCorrObjects + ", trace links=" + missingTraceLinks + ".");
+        }
     }
 }
