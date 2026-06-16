@@ -817,9 +817,7 @@ public class DefaultTggWorkspaceService implements TggWorkspaceService {
     }
 
     private String buildLinkIdentity(ImportLinkSpec link) {
-        return link.getAssociationName() + link.getEndpointNames().stream()
-                .map(endpoint -> "_" + endpoint)
-                .collect(Collectors.joining());
+        return link.getIdentity();
     }
 
     private String describeNeo4jConnection() {

@@ -12,6 +12,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
+import org.uet.dse.neo4j.sync.helper.OclSerializer;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
 
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -125,6 +127,9 @@ class OclDualCheckTest {
         assertDualCheck(model, runtime,
                 "context Person inv NoEmployer: self.employer->isEmpty()",
                 "Person");
+        assertDualCheck(model, runtime,
+                "context Company inv SeniorNonJackExists: self.employee->select(a | a.age > 35)->reject(b | b.firstName = 'Jack')->exists(c | c.firstName = 'Tom')",
+                "Company");
     }
 
     @Test
@@ -173,6 +178,417 @@ class OclDualCheckTest {
         assertDualCheck(model, runtime,
                 "context Family inv NameExcludesSemicolonSplit: self.name.split(',')->excludesAll(self.name.split(';'))",
                 "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv AddedBartPresent: self.name.split(',')->including('Bart')->includes('Bart')",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv RemovedSimpsonGone: self.name.split(',')->excluding('Simpson')->excludes('Simpson')",
+                "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForAppendAndPrepend() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject f1 = TestObject.object("f1", "Family").attribute("name", "Simpson,Flanders");
+        TestRuntime runtime = new TestRuntime(List.of(f1));
+
+        assertDualCheck(model, runtime,
+                "context Family inv AppendedBartPresent: self.name.split(',')->append('Bart')->includes('Bart')",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv PrependedBartFirst: self.name.split(',')->prepend('Bart')->first() = 'Bart'",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv OrderedUniquePrependedBartFirst: self.name.split(',')->asOrderedSet()->prepend('Bart')->first() = 'Bart'",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv OrderedUniqueAppendedBartLast: self.name.split(',')->asOrderedSet()->append('Bart')->last().isDefined()",
+                "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForSubSequence() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject f1 = TestObject.object("f1", "Family").attribute("name", "Simpson,Flanders,Bart");
+        TestRuntime runtime = new TestRuntime(List.of(f1));
+
+        assertDualCheck(model, runtime,
+                "context Family inv FirstTwoContainFlanders: self.name.split(',')->subSequence(1, 2)->includes('Flanders')",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv LastTwoStartAtFlanders: self.name.split(',')->subSequence(2, 3)->first() = 'Flanders'",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv OrderedUniqueSubSequenceStartsAtSimpson: self.name.split(',')->asOrderedSet()->subSequence(1, 2)->first() = 'Simpson'",
+                "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForSortedBy() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject f1 = TestObject.object("f1", "Family").attribute("name", "Simpson,Flanders,Bart");
+        TestRuntime runtime = new TestRuntime(List.of(f1));
+
+        assertDualCheck(model, runtime,
+                "context Family inv SortedNamesStartWithBart: self.name.split(',')->sortedBy(token | token)->first() = 'Bart'",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv SortedNamesEndWithSimpson: self.name.split(',')->sortedBy(token | token)->last() = 'Simpson'",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv SortedUniqueNamesStartWithBart: self.name.split(',')->asSet()->sortedBy(token | token)->first() = 'Bart'",
+                "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForOclAsType() {
+        String spec = """
+                model Demo
+                class Person
+                end
+                class Employee < Person
+                attributes
+                    salary : Integer
+                end
+                class Manager < Person
+                attributes
+                    level : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject employee = TestObject.object("e1", "Employee").attribute("salary", 100L);
+        TestRuntime runtime = new TestRuntime(List.of(employee));
+
+        assertDualCheck(model, runtime,
+                "context Employee inv SalaryVisibleAfterCast: self.oclAsType(Employee).salary = 100",
+                "Employee");
+        assertDualCheck(model, runtime,
+                "context Employee inv WrongCastBecomesUndefined: self.oclAsType(Manager).isUndefined()",
+                "Employee");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForQualifiedAssociationNavigationWithoutQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject b1 = TestObject.object("b1", "Book");
+        TestObject b2 = TestObject.object("b2", "Book");
+        TestObject library = TestObject.object("l1", "Library").link("book", b1, b2);
+        b1.link("library", library);
+        b2.link("library", library);
+        TestRuntime runtime = new TestRuntime(List.of(library, b1, b2));
+
+        assertDualCheck(model, runtime,
+                "context Library inv HasBooks: self.book->notEmpty()",
+                "Library");
+        assertDualCheck(model, runtime,
+                "context Book inv HasLibrary: self.library->notEmpty()",
+                "Book");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForQualifiedAssociationNavigationWithLiteralQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject b1 = TestObject.object("b1", "Book");
+        TestObject b2 = TestObject.object("b2", "Book");
+        TestObject library = TestObject.object("l1", "Library")
+                .qualifiedLink("book", List.of("A1"), b1)
+                .qualifiedLink("book", List.of("B2"), b2);
+        b1.link("library", library);
+        b2.link("library", library);
+        TestRuntime runtime = new TestRuntime(List.of(library, b1, b2));
+
+        assertDualCheck(model, runtime,
+                "context Library inv ShelfA1Exists: self.book['A1']->notEmpty()",
+                "Library");
+        assertDualCheck(model, runtime,
+                "context Library inv ShelfC3Missing: self.book['C3']->isEmpty()",
+                "Library");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForQualifiedAssociationNavigationWithVariableQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                attributes
+                    defaultShelf : String
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject b1 = TestObject.object("b1", "Book");
+        TestObject b2 = TestObject.object("b2", "Book");
+        TestObject library = TestObject.object("l1", "Library")
+                .attribute("defaultShelf", "A1")
+                .qualifiedLink("book", List.of("A1"), b1)
+                .qualifiedLink("book", List.of("B2"), b2);
+        b1.link("library", library);
+        b2.link("library", library);
+        TestRuntime runtime = new TestRuntime(List.of(library, b1, b2));
+
+        assertDualCheck(model, runtime,
+                "context Library inv ShelfViaVariable: let shelf = self.defaultShelf in self.book[shelf]->notEmpty()",
+                "Library");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForQualifiedAssociationNavigationWithComputedQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                attributes
+                    defaultShelf : String
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject b1 = TestObject.object("b1", "Book");
+        TestObject b2 = TestObject.object("b2", "Book");
+        TestObject library = TestObject.object("l1", "Library")
+                .attribute("defaultShelf", "A1")
+                .qualifiedLink("book", List.of("A1"), b1)
+                .qualifiedLink("book", List.of("B2"), b2);
+        b1.link("library", library);
+        b2.link("library", library);
+        TestRuntime runtime = new TestRuntime(List.of(library, b1, b2));
+
+        assertDualCheck(model, runtime,
+                "context Library inv ShelfViaExpression: self.book[self.defaultShelf.concat('')]->notEmpty()",
+                "Library");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForQualifiedAssociationNavigationWithEnumLiteralQualifierFilter() {
+        String spec = """
+                model Demo
+                enum Shelf { A1, B2 }
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : Shelf)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject b1 = TestObject.object("b1", "Book");
+        TestObject b2 = TestObject.object("b2", "Book");
+        TestObject library = TestObject.object("l1", "Library")
+                .qualifiedLink("book", List.of("#A1"), b1)
+                .qualifiedLink("book", List.of("#B2"), b2);
+        b1.link("library", library);
+        b2.link("library", library);
+        TestRuntime runtime = new TestRuntime(List.of(library, b1, b2));
+
+        assertDualCheck(model, runtime,
+                "context Library inv ShelfViaEnum: self.book[Shelf::A1]->notEmpty()",
+                "Library");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForQualifiedAssociationNavigationWithEnumAttributeQualifierFilter() {
+        String spec = """
+                model Demo
+                enum Shelf { A1, B2 }
+                class Library
+                attributes
+                    defaultShelf : Shelf
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : Shelf)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject b1 = TestObject.object("b1", "Book");
+        TestObject b2 = TestObject.object("b2", "Book");
+        TestObject library = TestObject.object("l1", "Library")
+                .attr("defaultShelf", "#A1")
+                .qualifiedLink("book", List.of("#A1"), b1)
+                .qualifiedLink("book", List.of("#B2"), b2);
+        b1.link("library", library);
+        b2.link("library", library);
+        TestRuntime runtime = new TestRuntime(List.of(library, b1, b2));
+
+        assertDualCheck(model, runtime,
+                "context Library inv ShelfViaDefaultShelf: self.book[self.defaultShelf]->notEmpty()",
+                "Library");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForNonBinaryAssociationNavigation() {
+        String spec = """
+                model Demo
+                class Person
+                end
+                class Company
+                end
+                class Animal
+                end
+                association Buy between
+                    Person[0..1] role buyer
+                    Company[0..1] role seller
+                    Animal[*] role pet
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject company = TestObject.object("c1", "Company");
+        TestObject animal1 = TestObject.object("a1", "Animal");
+        TestObject animal2 = TestObject.object("a2", "Animal");
+        TestObject person = TestObject.object("p1", "Person").link("pet", animal1, animal2).link("seller", company);
+        company.link("buyer", person).link("pet", animal1, animal2);
+        animal1.link("buyer", person).link("seller", company);
+        animal2.link("buyer", person).link("seller", company);
+        TestRuntime runtime = new TestRuntime(List.of(person, company, animal1, animal2));
+
+        assertDualCheck(model, runtime,
+                "context Person inv HasPets: self.pet->notEmpty()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv HasSeller: self.seller->notEmpty()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Animal inv HasBuyer: self.buyer->notEmpty()",
+                "Animal");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForRedefiningAssociationNavigation() {
+        String spec = """
+                model Demo
+                class Person
+                end
+                class Employee < Person
+                end
+                class Company
+                end
+                class Startup < Company
+                end
+                association WorksFor between
+                    Person[*] role employee
+                    Company[0..1] role employer
+                end
+                association StartupWorksFor between
+                    Employee[*] role startupEmployee redefines employee
+                    Startup[0..1] role startupEmployer redefines employer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject startup = TestObject.object("s1", "Startup");
+        TestObject employee = TestObject.object("e1", "Employee").link("startupEmployer", startup);
+        startup.link("startupEmployee", employee);
+        TestRuntime runtime = new TestRuntime(List.of(employee, startup));
+
+        assertDualCheck(model, runtime,
+                "context Employee inv HasStartupEmployer: self.startupEmployer->notEmpty()",
+                "Employee");
+        assertDualCheck(model, runtime,
+                "context Startup inv HasStartupEmployees: self.startupEmployee->notEmpty()",
+                "Startup");
     }
 
     @Test
@@ -406,6 +822,361 @@ class OclDualCheckTest {
         assertDualCheck(model, runtime,
                 "context Family inv ChildCountOfAnyAdult: self.children->count(self.children->any(c | c.age >= 0)) >= 1",
                 "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForAggregates() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    score : Real
+                end
+                association FamilyChildren between
+                    Family[1] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person").attribute("age", 20L).attribute("score", 2.5D);
+        TestObject p2 = TestObject.object("p2", "Person").attribute("age", 15L).attribute("score", 3.75D);
+        TestObject f1 = TestObject.object("f1", "Family").link("children", p1, p2);
+        TestObject f2 = TestObject.object("f2", "Family");
+        p1.link("family", f1);
+        p2.link("family", f1);
+
+        TestRuntime runtime = new TestRuntime(List.of(f1, f2, p1, p2));
+
+        assertDualCheck(model, runtime,
+                "context Family inv TotalAgeExact: self.children->collect(c | c.age)->sum() = 35",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv MaxScoreAtLeast: if self.children->isEmpty() then self.children->collect(c | c.score)->max().isUndefined() else self.children->collect(c | c.score)->max() >= 3.75 endif",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv MinAgeUndefinedWhenEmpty: if self.children->isEmpty() then self.children->collect(c | c.age)->min().isUndefined() else self.children->collect(c | c.age)->min() >= 0 endif",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv EmptyTotalAgeIsZero: self.children->collect(c | c.age)->sum() >= 0",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv AdultScoresStayPositive: self.children->select(c | c.age >= 18)->collect(c | c.score)->sum() >= 2.5",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv AdultScoresStayPositiveRenamed: self.children->select(a | a.age >= 18)->collect(b | b.score)->sum() >= 2.5",
+                "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForIsUnique() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                    age : Integer
+                end
+                association FamilyChildren between
+                    Family[1] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person").attribute("name", "Bart").attribute("age", 20L);
+        TestObject p2 = TestObject.object("p2", "Person").attribute("name", "Lisa").attribute("age", 15L);
+        TestObject p3 = TestObject.object("p3", "Person").attribute("name", "Bart").attribute("age", 22L);
+        TestObject f1 = TestObject.object("f1", "Family").link("children", p1, p2);
+        TestObject f2 = TestObject.object("f2", "Family").link("children", p1, p3);
+        TestObject f3 = TestObject.object("f3", "Family");
+        p1.link("family", f1, f2);
+        p2.link("family", f1);
+        p3.link("family", f2);
+
+        TestRuntime runtime = new TestRuntime(List.of(f1, f2, f3, p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Family inv UniqueChildNames: self.children->isUnique(c | c.name)",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv UniqueChildAges: self.children->isUnique(c | c.age)",
+                "Family");
+        assertDualCheck(model, runtime,
+                "context Family inv UniqueAdultNamesFiltered: self.children->select(c | c.age >= 18)->isUnique(c | c.name)",
+                "Family");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForCollectionValuedPrimitiveAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases : Sequence(String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person").attribute("aliases", List.of("Bart", "B"));
+        TestObject p2 = TestObject.object("p2", "Person").attribute("aliases", List.of());
+        TestObject p3 = TestObject.object("p3", "Person").attribute("aliases", List.of("Lisa"));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv AliasCountNonNegative: self.aliases->count('Bart') >= 0",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv FirstAliasMaybeDefined: self.aliases->first().isDefined() or self.aliases->isEmpty()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv AliasIncludesBartOrEmpty: self.aliases->includes('Bart') or self.aliases->isEmpty() or self.aliases->includes('Lisa')",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForCollectionValuedObjectReferenceAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    friends : Sequence(Person)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person");
+        TestObject p2 = TestObject.object("p2", "Person");
+        TestObject p3 = TestObject.object("p3", "Person");
+        p1.attribute("friends", List.of(p1, p2));
+        p2.attribute("friends", List.of());
+        p3.attribute("friends", List.of(p2));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv HasSelfOrEmpty: self.friends->includes(self) or self.friends->isEmpty()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv FriendCountNonNegative: self.friends->count(self) >= 0",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForNestedCollectionValuedAttributes() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                    friendGroups : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person");
+        TestObject p2 = TestObject.object("p2", "Person");
+        TestObject p3 = TestObject.object("p3", "Person");
+        p1.attribute("aliases2d", List.of(List.of("Bart", "B"), List.of("Lisa")));
+        p2.attribute("aliases2d", List.of());
+        p3.attribute("aliases2d", List.of(List.of("Tom")));
+        p1.attribute("friendGroups", List.of(List.of(p1, p2), List.of(p3)));
+        p2.attribute("friendGroups", List.of());
+        p3.attribute("friendGroups", List.of(List.of(p2)));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv HasBartSomewhere: self.aliases2d->flatten()->count('Bart') >= 0",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv HasSelfSomewhereOrEmpty: self.friendGroups->flatten()->includes(self) or self.friendGroups->flatten()->isEmpty()",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForDeepNestedCollectionValuedAttributes() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases3d : Sequence(Sequence(Sequence(String)))
+                    friendGroups3d : Sequence(Sequence(Sequence(Person)))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person");
+        TestObject p2 = TestObject.object("p2", "Person");
+        TestObject p3 = TestObject.object("p3", "Person");
+        p1.attribute("aliases3d", List.of(List.of(List.of("Bart"), List.of("B")), List.of(List.of("Lisa"))));
+        p2.attribute("aliases3d", List.of());
+        p3.attribute("aliases3d", List.of(List.of(List.of("Tom"))));
+        p1.attribute("friendGroups3d", List.of(List.of(List.of(p1), List.of(p2)), List.of(List.of(p3))));
+        p2.attribute("friendGroups3d", List.of());
+        p3.attribute("friendGroups3d", List.of(List.of(List.of(p2))));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv HasBartSomewhere: self.aliases3d->flatten()->flatten()->count('Bart') >= 0",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv HasSelfSomewhereOrEmpty: self.friendGroups3d->flatten()->flatten()->includes(self) or self.friendGroups3d->flatten()->flatten()->isEmpty()",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForOrderedAndUniqueNestedCollections() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person");
+        TestObject p2 = TestObject.object("p2", "Person");
+        TestObject p3 = TestObject.object("p3", "Person");
+        p1.attribute("aliases2d", List.of(List.of("Bart"), List.of("Bart"), List.of("Lisa")));
+        p2.attribute("aliases2d", List.of());
+        p3.attribute("aliases2d", List.of(List.of("Tom")));
+        p1.attribute("friendGroups2d", List.of(List.of(p1, p2), List.of(p1, p2), List.of(p3)));
+        p2.attribute("friendGroups2d", List.of());
+        p3.attribute("friendGroups2d", List.of(List.of(p2)));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv OrderedAliases: self.aliases2d->asOrderedSet()->flatten()->first().isDefined()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv UniqueAliases: self.aliases2d->asSet()->flatten()->count('Bart') >= 0",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv UniqueFriends: self.friendGroups2d->asSet()->flatten()->count(self) >= 0",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForNestedCollectionSetOperations() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person").attribute("aliases2d", List.of(List.of("Bart"), List.of("Bart"), List.of("Lisa")));
+        TestObject p2 = TestObject.object("p2", "Person").attribute("aliases2d", List.of());
+        TestObject p3 = TestObject.object("p3", "Person").attribute("aliases2d", List.of(List.of("Tom")));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv UniqueNestedAliases: self.aliases2d->flatten()->asSet()->union(self.aliases2d->flatten()->asSet())->count('Bart') >= 0",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv OrderedNestedAliases: self.aliases2d->flatten()->asOrderedSet()->intersection(self.aliases2d->flatten()->asOrderedSet())->first().isDefined() or self.aliases2d->flatten()->isEmpty()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv NestedAliasesIncludeSelf: self.aliases2d->flatten()->includesAll(self.aliases2d->flatten())",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv NestedAliasesExcludeIntersection: self.aliases2d->flatten()->excludesAll(self.aliases2d->flatten()->intersection(self.aliases2d->flatten())) or self.aliases2d->flatten()->includesAll(self.aliases2d->flatten())",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForNestedObjectReferenceSetOperations() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person");
+        TestObject p2 = TestObject.object("p2", "Person");
+        TestObject p3 = TestObject.object("p3", "Person");
+        p1.attribute("friendGroups2d", List.of(List.of(p1, p2), List.of(p1, p2), List.of(p3)));
+        p2.attribute("friendGroups2d", List.of());
+        p3.attribute("friendGroups2d", List.of(List.of(p2)));
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv UniqueNestedFriends: self.friendGroups2d->flatten()->asSet()->union(self.friendGroups2d->flatten()->asSet())->count(self) >= 0",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv OrderedNestedFriends: self.friendGroups2d->flatten()->asOrderedSet()->intersection(self.friendGroups2d->flatten()->asOrderedSet())->first().isDefined() or self.friendGroups2d->flatten()->isEmpty()",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv NestedFriendsIncludeSelf: self.friendGroups2d->flatten()->includesAll(self.friendGroups2d->flatten())",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv NestedFriendsExcludeIntersection: self.friendGroups2d->flatten()->excludesAll(self.friendGroups2d->flatten()->intersection(self.friendGroups2d->flatten())) or self.friendGroups2d->flatten()->includesAll(self.friendGroups2d->flatten())",
+                "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForNestedBagOperations() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person").attribute("aliases2d", List.of(List.of("Bart"), List.of("Bart"), List.of("Lisa")));
+        TestObject p2 = TestObject.object("p2", "Person").attribute("aliases2d", List.of(List.of("Bart", "Bart")));
+        TestObject p3 = TestObject.object("p3", "Person").attribute("aliases2d", List.of());
+        TestRuntime runtime = new TestRuntime(List.of(p1, p2, p3));
+
+        assertDualCheck(model, runtime,
+                "context Person inv BagNestedAliases: self.aliases2d->flatten()->asBag()->union(self.aliases2d->flatten()->asBag())->count('Bart') >= 2",
+                "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv SharedNestedAliases: self.aliases2d->flatten()->asBag()->intersection(self.aliases2d->flatten()->asBag())->count('Bart') >= 2",
+                "Person");
     }
 
     @Test
@@ -778,7 +1549,8 @@ class OclDualCheckTest {
                 Object source = evaluate(property.source(), scope);
                 return property.isAttribute()
                         ? runtime.resolveAttribute(source, property.ast().name)
-                        : runtime.resolveNavigation(source, property.navigation().roleName());
+                        : runtime.resolveNavigation(source, property.navigation().roleName(),
+                        evaluateQualifiers(property.qualifiers(), scope));
             }
             if (expression instanceof OclSemanticBinder.BoundMethodCall methodCall) {
                 Object source = evaluate(methodCall.source(), scope);
@@ -786,12 +1558,26 @@ class OclDualCheckTest {
             }
             if (expression instanceof OclSemanticBinder.BoundCollectionOperation collectionOperation) {
                 Object source = evaluate(collectionOperation.source(), scope);
-                return evaluateCollectionOperation(collectionOperation.ast().opName, source, collectionOperation.arguments(), scope);
+                return evaluateCollectionOperation(
+                        collectionOperation.ast().opName,
+                        source,
+                        collectionOperation.arguments(),
+                        scope,
+                        collectionOperation.type().isUniqueCollection());
             }
             if (expression instanceof OclSemanticBinder.BoundIterator iterator) {
                 return evaluateIterator(iterator.ast().operation, evaluate(iterator.source(), scope), iterator.ast().iteratorName, iterator.body(), scope);
             }
             throw new IllegalStateException(expression.getClass().getName());
+        }
+
+        private List<Object> evaluateQualifiers(List<OclSemanticBinder.BoundExpression> qualifiers,
+                                                Map<String, Object> scope) {
+            List<Object> values = new ArrayList<>(qualifiers.size());
+            for (OclSemanticBinder.BoundExpression qualifier : qualifiers) {
+                values.add(evaluate(qualifier, scope));
+            }
+            return values;
         }
 
         private Object evaluateMethod(String name, Object source, List<OclSemanticBinder.BoundExpression> arguments, Map<String, Object> scope) {
@@ -801,14 +1587,25 @@ class OclDualCheckTest {
             if ("isUndefined".equalsIgnoreCase(name)) {
                 return source == null;
             }
+            if ("concat".equalsIgnoreCase(name)) {
+                return String.valueOf(source) + String.valueOf(evaluate(arguments.get(0), scope));
+            }
             if ("split".equalsIgnoreCase(name)) {
                 String delimiter = String.valueOf(evaluate(arguments.get(0), scope));
                 return source == null ? List.of() : List.of(String.valueOf(source).split(java.util.regex.Pattern.quote(delimiter)));
             }
+            if ("oclAsType".equalsIgnoreCase(name)) {
+                String targetType = arguments.get(0).type().typeName();
+                return runtime.castAsType(source, targetType);
+            }
             throw new IllegalStateException(name);
         }
 
-        private Object evaluateCollectionOperation(String name, Object source, List<OclSemanticBinder.BoundExpression> arguments, Map<String, Object> scope) {
+        private Object evaluateCollectionOperation(String name,
+                                                  Object source,
+                                                  List<OclSemanticBinder.BoundExpression> arguments,
+                                                  Map<String, Object> scope,
+                                                  boolean uniqueCollection) {
             List<?> values = runtime.toList(source);
             return switch (name) {
                 case "size" -> (long) values.size();
@@ -816,6 +1613,9 @@ class OclDualCheckTest {
                         Objects.equals(normalizeNumber(value), normalizeNumber(evaluate(arguments.get(0), scope)))).count();
                 case "isEmpty" -> values.isEmpty();
                 case "notEmpty" -> !values.isEmpty();
+                case "sum" -> sum(values);
+                case "min" -> extremum(values, true);
+                case "max" -> extremum(values, false);
                 case "includes" -> values.stream().anyMatch(value ->
                         Objects.equals(normalizeNumber(value), normalizeNumber(evaluate(arguments.get(0), scope))));
                 case "excludes" -> values.stream().noneMatch(value ->
@@ -824,17 +1624,67 @@ class OclDualCheckTest {
                         values.stream().anyMatch(value -> Objects.equals(normalizeNumber(value), normalizeNumber(candidate))));
                 case "excludesAll" -> runtime.toList(evaluate(arguments.get(0), scope)).stream().noneMatch(candidate ->
                         values.stream().anyMatch(value -> Objects.equals(normalizeNumber(value), normalizeNumber(candidate))));
-                case "union" -> {
-                    List<Object> result = new ArrayList<>(values);
-                    for (Object candidate : runtime.toList(evaluate(arguments.get(0), scope))) {
+                case "including" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    if (uniqueCollection) {
+                        List<Object> result = new ArrayList<>(values);
                         boolean present = result.stream().anyMatch(value ->
                                 Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
                         if (!present) {
                             result.add(candidate);
                         }
+                        yield result;
+                    }
+                    List<Object> result = new ArrayList<>(values);
+                    result.add(candidate);
+                    yield result;
+                }
+                case "excluding" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    List<Object> result = new ArrayList<>();
+                    for (Object value : values) {
+                        if (!Objects.equals(normalizeNumber(value), normalizeNumber(candidate))) {
+                            result.add(value);
+                        }
                     }
                     yield result;
                 }
+                case "append" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    List<Object> result = new ArrayList<>(values);
+                    result.add(candidate);
+                    yield uniqueCollection ? uniquePreservingOrder(result) : result;
+                }
+                case "prepend" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    List<Object> result = new ArrayList<>();
+                    result.add(candidate);
+                    result.addAll(values);
+                    yield uniqueCollection ? uniquePreservingOrder(result) : result;
+                }
+                case "subSequence" -> {
+                    int start = ((Number) evaluate(arguments.get(0), scope)).intValue();
+                    int end = ((Number) evaluate(arguments.get(1), scope)).intValue();
+                    yield subSequence(values, start, end);
+                }
+                case "union" -> {
+                    List<Object> candidates = new ArrayList<>(runtime.toList(evaluate(arguments.get(0), scope)));
+                    if (uniqueCollection) {
+                        List<Object> result = new ArrayList<>(values);
+                        for (Object candidate : candidates) {
+                            boolean present = result.stream().anyMatch(value ->
+                                    Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
+                            if (!present) {
+                                result.add(candidate);
+                            }
+                        }
+                        yield result;
+                    }
+                    List<Object> result = new ArrayList<>(values);
+                    result.addAll(candidates);
+                    yield result;
+                }
+                case "asBag" -> new ArrayList<>(values);
                 case "asSet" -> {
                     List<Object> result = new ArrayList<>();
                     for (Object value : values) {
@@ -860,19 +1710,33 @@ class OclDualCheckTest {
                 case "flatten" -> flatten(values);
                 case "intersection" -> {
                     List<?> candidates = runtime.toList(evaluate(arguments.get(0), scope));
-                    List<Object> result = new ArrayList<>();
-                    for (Object value : values) {
-                        boolean present = candidates.stream().anyMatch(candidate ->
-                                Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
-                        if (present) {
-                            result.add(value);
+                    if (uniqueCollection) {
+                        List<Object> result = new ArrayList<>();
+                        for (Object value : values) {
+                            boolean present = candidates.stream().anyMatch(candidate ->
+                                    Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
+                            if (present) {
+                                result.add(value);
+                            }
                         }
+                        yield result;
                     }
-                    yield result;
+                    yield intersectWithMultiplicity(values, candidates);
                 }
                 case "first" -> values.isEmpty() ? null : values.get(0);
                 case "last" -> values.isEmpty() ? null : values.get(values.size() - 1);
                 case "at" -> values.get(((Number) evaluate(arguments.get(0), scope)).intValue() - 1);
+                case "isunique" -> {
+                    List<Object> unique = new ArrayList<>();
+                    for (Object candidate : values) {
+                        boolean present = unique.stream().anyMatch(existing ->
+                                Objects.equals(normalizeNumber(existing), normalizeNumber(candidate)));
+                        if (!present) {
+                            unique.add(candidate);
+                        }
+                    }
+                    yield values.size() == unique.size();
+                }
                 default -> throw new IllegalStateException(name);
             };
         }
@@ -887,6 +1751,17 @@ class OclDualCheckTest {
                         Map<String, Object> nested = new LinkedHashMap<>(scope);
                         nested.put(iteratorName, value);
                         if (toBooleanValue(evaluate(body, nested))) {
+                            result.add(value);
+                        }
+                    }
+                    yield result;
+                }
+                case "reject" -> {
+                    List<Object> result = new ArrayList<>();
+                    for (Object value : values) {
+                        Map<String, Object> nested = new LinkedHashMap<>(scope);
+                        nested.put(iteratorName, value);
+                        if (!toBooleanValue(evaluate(body, nested))) {
                             result.add(value);
                         }
                     }
@@ -948,6 +1823,28 @@ class OclDualCheckTest {
                     }
                     yield result;
                 }
+                case "sortedby" -> sortedBy(values, value -> {
+                    Map<String, Object> nested = new LinkedHashMap<>(scope);
+                    nested.put(iteratorName, value);
+                    return evaluate(body, nested);
+                });
+                case "isunique" -> {
+                    List<Object> projected = new ArrayList<>();
+                    for (Object value : values) {
+                        Map<String, Object> nested = new LinkedHashMap<>(scope);
+                        nested.put(iteratorName, value);
+                        projected.add(evaluate(body, nested));
+                    }
+                    List<Object> unique = new ArrayList<>();
+                    for (Object candidate : projected) {
+                        boolean present = unique.stream().anyMatch(existing ->
+                                Objects.equals(normalizeNumber(existing), normalizeNumber(candidate)));
+                        if (!present) {
+                            unique.add(candidate);
+                        }
+                    }
+                    yield projected.size() == unique.size();
+                }
                 default -> throw new IllegalStateException(operation);
             };
         }
@@ -987,14 +1884,21 @@ class OclDualCheckTest {
                 return runtime.resolveAttribute(evaluate(attributeAccess.source(), scope), attributeAccess.attributeName());
             }
             if (expression instanceof OclIr.NavigationAccess navigationAccess) {
-                return runtime.resolveNavigation(evaluate(navigationAccess.source(), scope), navigationAccess.navigation().roleName());
+                return runtime.resolveNavigation(
+                        evaluate(navigationAccess.source(), scope),
+                        navigationAccess.navigation().roleName(),
+                        evaluateQualifiers(navigationAccess.qualifiers(), scope));
             }
             if (expression instanceof OclIr.MethodCall methodCall) {
                 return evaluateMethod(methodCall.methodName(), evaluate(methodCall.source(), scope), methodCall.arguments(), scope);
             }
             if (expression instanceof OclIr.CollectionOperation collectionOperation) {
-                return evaluateCollectionOperation(collectionOperation.operationName(),
-                        evaluate(collectionOperation.source(), scope), collectionOperation.arguments(), scope);
+                return evaluateCollectionOperation(
+                        collectionOperation.operationName(),
+                        evaluate(collectionOperation.source(), scope),
+                        collectionOperation.arguments(),
+                        scope,
+                        collectionOperation.type().isUniqueCollection());
             }
             if (expression instanceof OclIr.IteratorOperation iteratorOperation) {
                 return evaluateIterator(iteratorOperation.operationName(), evaluate(iteratorOperation.source(), scope),
@@ -1002,7 +1906,9 @@ class OclDualCheckTest {
             }
             if (expression instanceof OclIr.NavigationPredicateCheck predicateCheck) {
                 List<?> values = runtime.toList(runtime.resolveNavigation(
-                        evaluate(predicateCheck.navigation().source(), scope), predicateCheck.navigation().navigation().roleName()));
+                        evaluate(predicateCheck.navigation().source(), scope),
+                        predicateCheck.navigation().navigation().roleName(),
+                        evaluateQualifiers(predicateCheck.navigation().qualifiers(), scope)));
                 return switch (predicateCheck.kind()) {
                     case EXISTS -> values.stream().anyMatch(value -> predicateCheck.predicate() == null
                             || toBooleanValue(evaluate(predicateCheck.predicate(), runtime.childScope(scope, predicateCheck.iteratorName(), value))));
@@ -1014,12 +1920,58 @@ class OclDualCheckTest {
             }
             if (expression instanceof OclIr.NavigationCountComparison countComparison) {
                 List<?> values = runtime.toList(runtime.resolveNavigation(
-                        evaluate(countComparison.navigation().source(), scope), countComparison.navigation().navigation().roleName()));
+                        evaluate(countComparison.navigation().source(), scope),
+                        countComparison.navigation().navigation().roleName(),
+                        evaluateQualifiers(countComparison.navigation().qualifiers(), scope)));
                 long count = values.stream().filter(value -> countComparison.predicate() == null
                         || toBooleanValue(evaluate(countComparison.predicate(), runtime.childScope(scope, countComparison.iteratorName(), value)))).count();
                 return evaluateBinary(countComparison.operator(), count, countComparison.literal());
             }
+            if (expression instanceof OclIr.NavigationAggregation aggregation) {
+                List<?> values = runtime.toList(runtime.resolveNavigation(
+                        evaluate(aggregation.navigation().source(), scope),
+                        aggregation.navigation().navigation().roleName(),
+                        evaluateQualifiers(aggregation.navigation().qualifiers(), scope)));
+                List<Object> projected = new ArrayList<>();
+                for (Object value : values) {
+                    Map<String, Object> childScope = runtime.childScope(scope, aggregation.iteratorName(), value);
+                    if (aggregation.predicate() != null && !toBooleanValue(evaluate(aggregation.predicate(), childScope))) {
+                        continue;
+                    }
+                    projected.add(evaluate(aggregation.projection(), childScope));
+                }
+                return evaluateCollectionOperation(
+                        aggregation.operationName(),
+                        projected,
+                        List.of(),
+                        scope,
+                        aggregation.type().isUniqueCollection());
+            }
+            if (expression instanceof OclIr.NavigationUniquenessCheck uniquenessCheck) {
+                List<?> values = runtime.toList(runtime.resolveNavigation(
+                        evaluate(uniquenessCheck.navigation().source(), scope),
+                        uniquenessCheck.navigation().navigation().roleName(),
+                        evaluateQualifiers(uniquenessCheck.navigation().qualifiers(), scope)));
+                List<Object> projected = new ArrayList<>();
+                for (Object value : values) {
+                    Map<String, Object> childScope = runtime.childScope(scope, uniquenessCheck.iteratorName(), value);
+                    if (uniquenessCheck.predicate() != null && !toBooleanValue(evaluate(uniquenessCheck.predicate(), childScope))) {
+                        continue;
+                    }
+                    projected.add(evaluate(uniquenessCheck.projection(), childScope));
+                }
+                return evaluateCollectionOperation("isunique", projected, List.of(), scope, false);
+            }
             throw new IllegalStateException(expression.getClass().getName());
+        }
+
+        private List<Object> evaluateQualifiers(List<OclIr.Expression> qualifiers,
+                                                Map<String, Object> scope) {
+            List<Object> values = new ArrayList<>(qualifiers.size());
+            for (OclIr.Expression qualifier : qualifiers) {
+                values.add(evaluate(qualifier, scope));
+            }
+            return values;
         }
 
         private Object evaluateMethod(String name, Object source, List<OclIr.Expression> arguments, Map<String, Object> scope) {
@@ -1029,14 +1981,24 @@ class OclDualCheckTest {
             if ("isUndefined".equalsIgnoreCase(name)) {
                 return source == null;
             }
+            if ("concat".equalsIgnoreCase(name)) {
+                return String.valueOf(source) + String.valueOf(evaluate(arguments.get(0), scope));
+            }
             if ("split".equalsIgnoreCase(name)) {
                 String delimiter = String.valueOf(evaluate(arguments.get(0), scope));
                 return source == null ? List.of() : List.of(String.valueOf(source).split(java.util.regex.Pattern.quote(delimiter)));
             }
+            if ("oclAsType".equalsIgnoreCase(name) && !arguments.isEmpty() && arguments.get(0).type().isClassReference()) {
+                return runtime.castAsType(source, arguments.get(0).type().typeName());
+            }
             throw new IllegalStateException(name);
         }
 
-        private Object evaluateCollectionOperation(String name, Object source, List<OclIr.Expression> arguments, Map<String, Object> scope) {
+        private Object evaluateCollectionOperation(String name,
+                                                  Object source,
+                                                  List<OclIr.Expression> arguments,
+                                                  Map<String, Object> scope,
+                                                  boolean uniqueCollection) {
             List<?> values = runtime.toList(source);
             return switch (name) {
                 case "size" -> (long) values.size();
@@ -1044,6 +2006,9 @@ class OclDualCheckTest {
                         Objects.equals(normalizeNumber(value), normalizeNumber(evaluate(arguments.get(0), scope)))).count();
                 case "isEmpty" -> values.isEmpty();
                 case "notEmpty" -> !values.isEmpty();
+                case "sum" -> sum(values);
+                case "min" -> extremum(values, true);
+                case "max" -> extremum(values, false);
                 case "includes" -> values.stream().anyMatch(value ->
                         Objects.equals(normalizeNumber(value), normalizeNumber(evaluate(arguments.get(0), scope))));
                 case "excludes" -> values.stream().noneMatch(value ->
@@ -1052,17 +2017,67 @@ class OclDualCheckTest {
                         values.stream().anyMatch(value -> Objects.equals(normalizeNumber(value), normalizeNumber(candidate))));
                 case "excludesAll" -> runtime.toList(evaluate(arguments.get(0), scope)).stream().noneMatch(candidate ->
                         values.stream().anyMatch(value -> Objects.equals(normalizeNumber(value), normalizeNumber(candidate))));
-                case "union" -> {
-                    List<Object> result = new ArrayList<>(values);
-                    for (Object candidate : runtime.toList(evaluate(arguments.get(0), scope))) {
+                case "including" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    if (uniqueCollection) {
+                        List<Object> result = new ArrayList<>(values);
                         boolean present = result.stream().anyMatch(value ->
                                 Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
                         if (!present) {
                             result.add(candidate);
                         }
+                        yield result;
+                    }
+                    List<Object> result = new ArrayList<>(values);
+                    result.add(candidate);
+                    yield result;
+                }
+                case "excluding" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    List<Object> result = new ArrayList<>();
+                    for (Object value : values) {
+                        if (!Objects.equals(normalizeNumber(value), normalizeNumber(candidate))) {
+                            result.add(value);
+                        }
                     }
                     yield result;
                 }
+                case "append" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    List<Object> result = new ArrayList<>(values);
+                    result.add(candidate);
+                    yield uniqueCollection ? uniquePreservingOrder(result) : result;
+                }
+                case "prepend" -> {
+                    Object candidate = evaluate(arguments.get(0), scope);
+                    List<Object> result = new ArrayList<>();
+                    result.add(candidate);
+                    result.addAll(values);
+                    yield uniqueCollection ? uniquePreservingOrder(result) : result;
+                }
+                case "subSequence" -> {
+                    int start = ((Number) evaluate(arguments.get(0), scope)).intValue();
+                    int end = ((Number) evaluate(arguments.get(1), scope)).intValue();
+                    yield subSequence(values, start, end);
+                }
+                case "union" -> {
+                    List<Object> candidates = new ArrayList<>(runtime.toList(evaluate(arguments.get(0), scope)));
+                    if (uniqueCollection) {
+                        List<Object> result = new ArrayList<>(values);
+                        for (Object candidate : candidates) {
+                            boolean present = result.stream().anyMatch(value ->
+                                    Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
+                            if (!present) {
+                                result.add(candidate);
+                            }
+                        }
+                        yield result;
+                    }
+                    List<Object> result = new ArrayList<>(values);
+                    result.addAll(candidates);
+                    yield result;
+                }
+                case "asBag" -> new ArrayList<>(values);
                 case "asSet" -> {
                     List<Object> result = new ArrayList<>();
                     for (Object value : values) {
@@ -1088,19 +2103,33 @@ class OclDualCheckTest {
                 case "flatten" -> flatten(values);
                 case "intersection" -> {
                     List<?> candidates = runtime.toList(evaluate(arguments.get(0), scope));
-                    List<Object> result = new ArrayList<>();
-                    for (Object value : values) {
-                        boolean present = candidates.stream().anyMatch(candidate ->
-                                Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
-                        if (present) {
-                            result.add(value);
+                    if (uniqueCollection) {
+                        List<Object> result = new ArrayList<>();
+                        for (Object value : values) {
+                            boolean present = candidates.stream().anyMatch(candidate ->
+                                    Objects.equals(normalizeNumber(value), normalizeNumber(candidate)));
+                            if (present) {
+                                result.add(value);
+                            }
                         }
+                        yield result;
                     }
-                    yield result;
+                    yield intersectWithMultiplicity(values, candidates);
                 }
                 case "first" -> values.isEmpty() ? null : values.get(0);
                 case "last" -> values.isEmpty() ? null : values.get(values.size() - 1);
                 case "at" -> values.get(((Number) evaluate(arguments.get(0), scope)).intValue() - 1);
+                case "isunique" -> {
+                    List<Object> unique = new ArrayList<>();
+                    for (Object candidate : values) {
+                        boolean present = unique.stream().anyMatch(existing ->
+                                Objects.equals(normalizeNumber(existing), normalizeNumber(candidate)));
+                        if (!present) {
+                            unique.add(candidate);
+                        }
+                    }
+                    yield values.size() == unique.size();
+                }
                 default -> throw new IllegalStateException(name);
             };
         }
@@ -1132,6 +2161,23 @@ class OclDualCheckTest {
                         result.add(evaluate(body, runtime.childScope(scope, iteratorName, value)));
                     }
                     yield result;
+                }
+                case "sortedby" -> sortedBy(values, value ->
+                        evaluate(body, runtime.childScope(scope, iteratorName, value)));
+                case "isunique" -> {
+                    List<Object> projected = new ArrayList<>();
+                    for (Object value : values) {
+                        projected.add(evaluate(body, runtime.childScope(scope, iteratorName, value)));
+                    }
+                    List<Object> unique = new ArrayList<>();
+                    for (Object candidate : projected) {
+                        boolean present = unique.stream().anyMatch(existing ->
+                                Objects.equals(normalizeNumber(existing), normalizeNumber(candidate)));
+                        if (!present) {
+                            unique.add(candidate);
+                        }
+                    }
+                    yield projected.size() == unique.size();
                 }
                 default -> throw new IllegalStateException(operation);
             };
@@ -1187,6 +2233,37 @@ class OclDualCheckTest {
         return value instanceof Number number ? number.doubleValue() : value;
     }
 
+    private static Object sum(List<?> values) {
+        if (values.stream().anyMatch(value -> value instanceof Double || value instanceof Float)) {
+            double total = 0D;
+            for (Object value : values) {
+                total += ((Number) value).doubleValue();
+            }
+            return total;
+        }
+        long total = 0L;
+        for (Object value : values) {
+            total += ((Number) value).longValue();
+        }
+        return total;
+    }
+
+    private static Object extremum(List<?> values, boolean min) {
+        if (values.isEmpty()) {
+            return null;
+        }
+        Object best = values.get(0);
+        for (int index = 1; index < values.size(); index++) {
+            Object candidate = values.get(index);
+            double bestValue = ((Number) best).doubleValue();
+            double candidateValue = ((Number) candidate).doubleValue();
+            if ((min && candidateValue < bestValue) || (!min && candidateValue > bestValue)) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
     private static List<Object> flatten(Collection<?> collection) {
         List<Object> result = new ArrayList<>();
         for (Object item : collection) {
@@ -1197,6 +2274,95 @@ class OclDualCheckTest {
             }
         }
         return result;
+    }
+
+    private static List<Object> uniquePreservingOrder(List<?> values) {
+        List<Object> result = new ArrayList<>();
+        for (Object value : values) {
+            boolean present = result.stream().anyMatch(existing ->
+                    Objects.equals(normalizeNumber(existing), normalizeNumber(value)));
+            if (!present) {
+                result.add(value);
+            }
+        }
+        return result;
+    }
+
+    private static List<Object> subSequence(List<?> values, int start, int end) {
+        if (values.isEmpty()) {
+            return List.of();
+        }
+        int fromIndex = Math.max(0, start - 1);
+        int toIndexExclusive = Math.min(values.size(), end);
+        if (fromIndex >= toIndexExclusive) {
+            return List.of();
+        }
+        return new ArrayList<>(values.subList(fromIndex, toIndexExclusive));
+    }
+
+    private static List<Object> sortedBy(List<?> values, Function<Object, Object> keyExtractor) {
+        record SortEntry(int index, Object value, Object key) {
+        }
+        List<SortEntry> entries = new ArrayList<>();
+        for (int index = 0; index < values.size(); index++) {
+            Object value = values.get(index);
+            entries.add(new SortEntry(index, value, normalizeNumber(keyExtractor.apply(value))));
+        }
+        entries.sort((left, right) -> {
+            int byKey = compareSortKeys(left.key(), right.key());
+            return byKey != 0 ? byKey : Integer.compare(left.index(), right.index());
+        });
+        List<Object> result = new ArrayList<>();
+        for (SortEntry entry : entries) {
+            result.add(entry.value());
+        }
+        return result;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static int compareSortKeys(Object left, Object right) {
+        if (left == right) {
+            return 0;
+        }
+        if (left == null) {
+            return -1;
+        }
+        if (right == null) {
+            return 1;
+        }
+        if (left instanceof Comparable leftComparable
+                && right instanceof Comparable
+                && left.getClass().isAssignableFrom(right.getClass())) {
+            return leftComparable.compareTo(right);
+        }
+        if (right instanceof Comparable rightComparable
+                && left instanceof Comparable
+                && right.getClass().isAssignableFrom(left.getClass())) {
+            return -rightComparable.compareTo(left);
+        }
+        return String.valueOf(left).compareTo(String.valueOf(right));
+    }
+
+    private static List<Object> intersectWithMultiplicity(List<?> values, List<?> candidates) {
+        List<Object> remaining = new ArrayList<>(candidates);
+        List<Object> result = new ArrayList<>();
+        for (Object value : values) {
+            int index = indexOfNormalized(remaining, value);
+            if (index >= 0) {
+                result.add(value);
+                remaining.remove(index);
+            }
+        }
+        return result;
+    }
+
+    private static int indexOfNormalized(List<?> values, Object candidate) {
+        for (int index = 0; index < values.size(); index++) {
+            if (Objects.equals(normalizeNumber(values.get(index)), normalizeNumber(candidate))) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private static final class TestRuntime {
@@ -1227,17 +2393,45 @@ class OclDualCheckTest {
         }
 
         private List<Object> resolveNavigation(Object source, String roleName) {
+            return resolveNavigation(source, roleName, List.of());
+        }
+
+        private List<Object> resolveNavigation(Object source, String roleName, List<Object> qualifiers) {
             if (source instanceof Collection<?> collection) {
                 List<Object> result = new ArrayList<>();
                 for (Object item : collection) {
-                    result.addAll(resolveNavigation(item, roleName));
+                    result.addAll(resolveNavigation(item, roleName, qualifiers));
                 }
                 return result;
             }
             if (source instanceof TestObject object) {
-                return new ArrayList<>(object.links.getOrDefault(roleName, List.of()));
+                List<Object> result = new ArrayList<>(object.links.getOrDefault(roleName, List.of()));
+                if (!qualifiers.isEmpty()) {
+                    for (QualifiedTargets entry : object.qualifiedLinks.getOrDefault(roleName, List.of())) {
+                        if (qualifiersMatch(entry.qualifiers(), qualifiers)) {
+                            result.addAll(entry.targets());
+                        }
+                    }
+                } else {
+                    for (QualifiedTargets entry : object.qualifiedLinks.getOrDefault(roleName, List.of())) {
+                        result.addAll(entry.targets());
+                    }
+                }
+                return result;
             }
             return List.of();
+        }
+
+        private boolean qualifiersMatch(List<String> storedQualifiers, List<Object> requestedQualifiers) {
+            if (storedQualifiers.size() != requestedQualifiers.size()) {
+                return false;
+            }
+            for (int i = 0; i < storedQualifiers.size(); i++) {
+                if (!Objects.equals(storedQualifiers.get(i), OclSerializer.serialize(requestedQualifiers.get(i)))) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private List<?> toList(Object source) {
@@ -1251,6 +2445,10 @@ class OclDualCheckTest {
                 return new ArrayList<>(collection);
             }
             return List.of(source);
+        }
+
+        private Object castAsType(Object source, String targetType) {
+            return source instanceof TestObject object && targetType.equals(object.className) ? object : null;
         }
 
         private Map<String, Object> scopeOf(String name, Object value) {
@@ -1271,6 +2469,7 @@ class OclDualCheckTest {
         private final String className;
         private final Map<String, Object> attributes = new LinkedHashMap<>();
         private final Map<String, List<TestObject>> links = new LinkedHashMap<>();
+        private final Map<String, List<QualifiedTargets>> qualifiedLinks = new LinkedHashMap<>();
 
         private TestObject(String id, String className) {
             this.id = id;
@@ -1290,5 +2489,22 @@ class OclDualCheckTest {
             links.put(roleName, new ArrayList<>(List.of(targets)));
             return this;
         }
+
+        private TestObject qualifiedLink(String roleName, List<Object> qualifiers, TestObject... targets) {
+            qualifiedLinks.computeIfAbsent(roleName, ignored -> new ArrayList<>())
+                    .add(new QualifiedTargets(serializeQualifiers(qualifiers), new ArrayList<>(List.of(targets))));
+            return this;
+        }
+
+        private List<String> serializeQualifiers(List<Object> qualifiers) {
+            List<String> values = new ArrayList<>(qualifiers.size());
+            for (Object qualifier : qualifiers) {
+                values.add(OclSerializer.serialize(qualifier));
+            }
+            return values;
+        }
+    }
+
+    private record QualifiedTargets(List<String> qualifiers, List<TestObject> targets) {
     }
 }

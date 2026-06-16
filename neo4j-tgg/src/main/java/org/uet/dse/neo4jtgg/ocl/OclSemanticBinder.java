@@ -2,11 +2,18 @@ package org.uet.dse.neo4jtgg.ocl;
 
 import org.tzi.use.uml.mm.MAttribute;
 import org.tzi.use.uml.mm.MOperation;
+import org.tzi.use.uml.ocl.expr.VarDecl;
+import org.tzi.use.uml.ocl.type.BagType;
+import org.tzi.use.uml.ocl.type.CollectionType;
+import org.tzi.use.uml.ocl.type.OrderedSetType;
+import org.tzi.use.uml.ocl.type.SequenceType;
+import org.tzi.use.uml.ocl.type.SetType;
 import org.tzi.use.uml.ocl.type.Type;
 import org.uet.dse.neo4j.oclite.ast.ASTBinary;
 import org.uet.dse.neo4j.oclite.ast.ASTBooleanLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTCollectionOp;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
+import org.uet.dse.neo4j.oclite.ast.ASTEnumLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTExpression;
 import org.uet.dse.neo4j.oclite.ast.ASTIf;
 import org.uet.dse.neo4j.oclite.ast.ASTIntegerLiteral;
@@ -99,6 +106,15 @@ public class OclSemanticBinder {
         if (expression instanceof ASTNullLiteral) {
             return new BoundLiteral(expression, OclTypeBinding.scalar("Void"), null);
         }
+        if (expression instanceof ASTEnumLiteral literal) {
+            var enumType = metamodelIndex.getModel().enumType(literal.enumTypeName);
+            if (enumType == null || !enumType.contains(literal.literalName)) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.GENERIC_FAILURE,
+                        "Unknown enumeration literal: " + literal.enumTypeName + "::" + literal.literalName);
+            }
+            return new BoundLiteral(literal, OclTypeBinding.scalar(literal.enumTypeName), "#" + literal.literalName);
+        }
 
         if (expression instanceof ASTNot not) {
             return new BoundNot(not, bind(not.expression, scope));
@@ -136,13 +152,13 @@ public class OclSemanticBinder {
                         OclDiagnosticCode.INVALID_PROPERTY_SOURCE,
                         "Property access requires node source: " + property.name);
             }
-            return bindNodePropertyAccess(property, source);
+            return bindNodePropertyAccess(property, source, scope);
         }
 
         if (expression instanceof ASTMethodCall methodCall) {
             BoundExpression source = bind(methodCall.source, scope);
             List<BoundExpression> arguments = bindArguments(methodCall.args, scope);
-            return new BoundMethodCall(methodCall, source, arguments, inferMethodType(methodCall.methodName, source.type()));
+            return new BoundMethodCall(methodCall, source, arguments, inferMethodType(methodCall.methodName, source.type(), arguments));
         }
 
         if (expression instanceof ASTCollectionOp collectionOp) {
@@ -190,42 +206,135 @@ public class OclSemanticBinder {
         String iteratorName = "__proj_" + property.name;
         Scope projectionScope = new Scope(scope);
         projectionScope.enter(iteratorName, elementType);
-        ASTProperty projectedPropertyAst = new ASTProperty(new ASTVar(iteratorName), property.name);
+        ASTProperty projectedPropertyAst = new ASTProperty(new ASTVar(iteratorName), property.name, property.qualifiers);
         BoundExpression body = bind(projectedPropertyAst, projectionScope);
         projectionScope.exit();
 
-        if (body.type().isCollection()) {
-            throw new OclCodedUnsupportedOperationException(
-                    OclDiagnosticCode.INVALID_PROPERTY_SOURCE,
-                    "Property projection over collection-valued results is not supported yet: " + property.name);
+        ASTIterator collectAst = new ASTIterator(property.source, "collect", iteratorName, projectedPropertyAst);
+        BoundIterator collectBound = new BoundIterator(collectAst, source, body, inferIteratorType("collect", source.type(), body.type()));
+        if (!body.type().isCollection()) {
+            return collectBound;
         }
 
-        ASTIterator collectAst = new ASTIterator(property.source, "collect", iteratorName, projectedPropertyAst);
-        return new BoundIterator(collectAst, source, body, inferIteratorType("collect", source.type(), body.type()));
+        ASTCollectionOp flattenAst = new ASTCollectionOp(collectAst, "flatten", List.of());
+        return new BoundCollectionOperation(flattenAst, collectBound, List.of(), inferFlattenType(collectBound.type()));
     }
 
-    private BoundExpression bindNodePropertyAccess(ASTProperty property, BoundExpression source) {
+    private BoundExpression bindNodePropertyAccess(ASTProperty property, BoundExpression source, Scope scope) {
         MAttribute attribute = metamodelIndex.resolveAttribute(source.type().typeName(), property.name);
         if (attribute != null) {
-            if (attribute.type().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
+            if (property.hasQualifiers()) {
                 throw new OclCodedUnsupportedOperationException(
-                        OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED,
-                        "Collection-valued attributes are not supported yet: " + property.name);
+                        OclDiagnosticCode.QUALIFIED_ASSOCIATION_UNSUPPORTED,
+                        "Qualifier-based navigation/filtering only applies to association ends, not attributes: " + property.name);
             }
-            return new BoundProperty(property, source, OclTypeBinding.scalar(attribute.type().shortName()), attribute, null);
+            if (attribute.type().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
+                return bindCollectionValuedAttribute(property, source, attribute);
+            }
+            return new BoundProperty(property, source, toAttributeBinding(attribute.type()), attribute, null, List.of());
         }
 
         OclMetamodelIndex.NavigationInfo navigation = metamodelIndex.resolveNavigation(source.type().typeName(), property.name);
         if (navigation != null) {
+            List<BoundExpression> qualifierExpressions = List.of();
+            if (property.hasQualifiers()) {
+                validateQualifiedNavigation(property, navigation, source.type().typeName());
+                qualifierExpressions = bindQualifiedNavigationArguments(property, source.type().typeName(), navigation, scope);
+            }
             if (!navigation.supportsDirectCypherNavigation()) {
                 throw new OclCodedUnsupportedOperationException(navigation.unsupportedCode(), navigation.unsupportedReason());
             }
-            return new BoundProperty(property, source, navigation.resultBinding(), null, navigation);
+            return new BoundProperty(property, source, navigation.resultBinding(), null, navigation, qualifierExpressions);
         }
 
         throw new OclCodedUnsupportedOperationException(
                 OclDiagnosticCode.UNKNOWN_PROPERTY,
                 "Unknown property or navigation: " + property.name);
+    }
+
+    private BoundExpression bindCollectionValuedAttribute(ASTProperty property, BoundExpression source, MAttribute attribute) {
+        OclTypeBinding attributeType = toAttributeBinding(attribute.type());
+        return new BoundProperty(property, source, attributeType, attribute, null, List.of());
+    }
+
+    private void validateQualifiedNavigation(ASTProperty property,
+                                             OclMetamodelIndex.NavigationInfo navigation,
+                                             String sourceClassName) {
+        if (!navigation.targetHasQualifiers()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.QUALIFIED_ASSOCIATION_UNSUPPORTED,
+                    "Qualifier arguments can only be used when navigating to a qualified association end: " + property.name);
+        }
+
+        List<VarDecl> qualifiers = navigation.targetQualifiers();
+        if (qualifiers.size() != property.qualifiers.size()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                    "Qualified navigation `" + sourceClassName + "." + property.name + "` requires "
+                            + qualifiers.size() + " qualifier argument(s), but got " + property.qualifiers.size() + ".");
+        }
+    }
+
+    private List<BoundExpression> bindQualifiedNavigationArguments(ASTProperty property,
+                                                                   String sourceClassName,
+                                                                   OclMetamodelIndex.NavigationInfo navigation,
+                                                                   Scope scope) {
+        List<BoundExpression> qualifiers = new ArrayList<>(property.qualifiers.size());
+        List<VarDecl> qualifierDefinitions = navigation.targetQualifiers();
+        for (int i = 0; i < property.qualifiers.size(); i++) {
+            BoundExpression qualifier = bind(property.qualifiers.get(i), scope);
+            VarDecl definition = qualifierDefinitions.get(i);
+            OclTypeBinding expectedType = metamodelIndex.toBinding(definition.type(), definition.type().shortName());
+            if (!isQualifierCompatible(qualifier.type(), expectedType)) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                        "Qualified navigation `" + sourceClassName + "." + property.name + "` expects qualifier `"
+                                + definition.name() + "` of type `" + expectedType.typeName() + "`.");
+            }
+            if (qualifier.type().isCollection() || qualifier.type().isNode() || qualifier.type().isClassReference()) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.QUALIFIED_ASSOCIATION_UNSUPPORTED,
+                        "Qualified navigation currently supports only scalar qualifier expressions: " + property.name);
+            }
+            qualifiers.add(qualifier);
+        }
+        return List.copyOf(qualifiers);
+    }
+
+    private boolean isQualifierCompatible(OclTypeBinding actual, OclTypeBinding expected) {
+        if (actual == null || expected == null) {
+            return false;
+        }
+        if ("Void".equals(actual.typeName())) {
+            return false;
+        }
+        return actual.typeName().equals(expected.typeName());
+    }
+
+    private OclTypeBinding toAttributeBinding(Type type) {
+        if (type.isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID) && type instanceof CollectionType collectionType) {
+            return OclTypeBinding.collectionOf(toAttributeBinding(collectionType.elemType()), toCollectionKind(collectionType));
+        }
+        if (type.isKindOfClass(Type.VoidHandling.EXCLUDE_VOID)) {
+            return OclTypeBinding.node(type.shortName());
+        }
+        return OclTypeBinding.scalar(type.shortName());
+    }
+
+    private OclTypeBinding.CollectionKind toCollectionKind(CollectionType collectionType) {
+        if (collectionType instanceof SetType) {
+            return OclTypeBinding.CollectionKind.SET;
+        }
+        if (collectionType instanceof BagType) {
+            return OclTypeBinding.CollectionKind.BAG;
+        }
+        if (collectionType instanceof SequenceType) {
+            return OclTypeBinding.CollectionKind.SEQUENCE;
+        }
+        if (collectionType instanceof OrderedSetType) {
+            return OclTypeBinding.CollectionKind.ORDERED_SET;
+        }
+        return OclTypeBinding.CollectionKind.COLLECTION;
     }
 
     private OclTypeBinding inferBinaryType(String operator, OclTypeBinding left, OclTypeBinding right) {
@@ -263,12 +372,12 @@ public class OclSemanticBinder {
                 "if branches must have compatible types: " + thenType.typeName() + " vs " + elseType.typeName());
     }
 
-    private OclTypeBinding inferMethodType(String methodName, OclTypeBinding sourceType) {
+    private OclTypeBinding inferMethodType(String methodName, OclTypeBinding sourceType, List<BoundExpression> arguments) {
         if ("allInstances".equalsIgnoreCase(methodName)) {
             if (!sourceType.isClassReference()) {
                 throw new OclCodedUnsupportedOperationException(
-                        OclDiagnosticCode.INVALID_METHOD_RECEIVER,
-                        "allInstances() must be called on a class name.");
+                    OclDiagnosticCode.INVALID_METHOD_RECEIVER,
+                    "allInstances() must be called on a class name.");
             }
             return OclTypeBinding.nodeCollection(sourceType.typeName(), OclTypeBinding.CollectionKind.SET);
         }
@@ -301,6 +410,19 @@ public class OclSemanticBinder {
         if ("oclIsTypeOf".equalsIgnoreCase(methodName) || "oclIsKindOf".equalsIgnoreCase(methodName)) {
             return OclTypeBinding.scalar("Boolean");
         }
+        if ("oclAsType".equalsIgnoreCase(methodName)) {
+            if (!sourceType.isNode()) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_METHOD_RECEIVER,
+                        "oclAsType() requires an object source.");
+            }
+            if (arguments.size() != 1 || !arguments.get(0).type().isClassReference()) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_METHOD_ARGUMENT,
+                        "oclAsType() requires a single type argument.");
+            }
+            return OclTypeBinding.node(arguments.get(0).type().typeName());
+        }
         throw new OclCodedUnsupportedOperationException(
                 OclDiagnosticCode.UNSUPPORTED_METHOD_CALL,
                 "Unsupported method call: " + methodName);
@@ -310,9 +432,17 @@ public class OclSemanticBinder {
         return switch (opName) {
             case "size", "count" -> OclTypeBinding.scalar("Integer");
             case "isEmpty", "notEmpty", "includes", "excludes", "includesAll", "excludesAll" -> OclTypeBinding.scalar("Boolean");
+            case "including" -> inferIncludingType(sourceType, arguments);
+            case "excluding" -> inferExcludingType(sourceType, arguments);
+            case "append" -> inferOrderedElementMutationType("append", sourceType, arguments);
+            case "prepend" -> inferOrderedElementMutationType("prepend", sourceType, arguments);
+            case "subSequence" -> inferSubSequenceType(sourceType, arguments);
+            case "sum" -> inferSumType(sourceType, arguments);
+            case "min", "max" -> inferMinMaxType(opName, sourceType, arguments);
             case "union" -> inferUnionType(sourceType, arguments);
             case "intersection" -> inferIntersectionType(sourceType, arguments);
             case "flatten" -> inferFlattenType(sourceType);
+            case "asBag" -> sourceType.withCollectionKind(OclTypeBinding.CollectionKind.BAG);
             case "asSet" -> sourceType.withCollectionKind(OclTypeBinding.CollectionKind.SET);
             case "asOrderedSet" -> sourceType.withCollectionKind(OclTypeBinding.CollectionKind.ORDERED_SET);
             case "at", "first", "last" -> inferPositionalAccessType(sourceType, opName);
@@ -325,9 +455,10 @@ public class OclSemanticBinder {
     private OclTypeBinding inferIteratorType(String operation, OclTypeBinding sourceType, OclTypeBinding bodyType) {
         return switch (operation.toLowerCase()) {
             case "select", "reject" -> sourceType;
-            case "exists", "forall", "one" -> OclTypeBinding.scalar("Boolean");
+            case "exists", "forall", "one", "isunique" -> OclTypeBinding.scalar("Boolean");
             case "any" -> sourceType.elementType();
             case "collect" -> inferCollectType(sourceType, bodyType);
+            case "sortedby" -> inferSortedByType(sourceType, bodyType);
             default -> throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.UNSUPPORTED_ITERATOR,
                     "Unsupported iterator: " + operation);
@@ -338,9 +469,37 @@ public class OclSemanticBinder {
         OclTypeBinding.CollectionKind targetKind = sourceType.isOrderedCollection()
                 ? OclTypeBinding.CollectionKind.SEQUENCE
                 : OclTypeBinding.CollectionKind.BAG;
-        return bodyType.isNode()
-                ? OclTypeBinding.nodeCollection(bodyType.typeName(), targetKind)
-                : OclTypeBinding.scalarCollection(bodyType.typeName(), targetKind);
+        return OclTypeBinding.collectionOf(bodyType, targetKind);
+    }
+
+    private OclTypeBinding inferSortedByType(OclTypeBinding sourceType, OclTypeBinding bodyType) {
+        if (!sourceType.isCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_SOURCE,
+                    "sortedBy() requires a collection source.");
+        }
+        if (bodyType.isCollection() || bodyType.isNode() || bodyType.isClassReference()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNSUPPORTED_ITERATOR,
+                    "sortedBy() currently requires a scalar sort key.");
+        }
+        OclTypeBinding.CollectionKind targetKind = sourceType.isUniqueCollection()
+                ? OclTypeBinding.CollectionKind.ORDERED_SET
+                : OclTypeBinding.CollectionKind.SEQUENCE;
+        return sourceType.withCollectionKind(targetKind);
+    }
+
+    private OclTypeBinding inferSumType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
+        requireNoCollectionArguments("sum", arguments);
+        OclTypeBinding elementType = requireNumericCollectionElement("sum", sourceType);
+        return "Real".equals(elementType.typeName())
+                ? OclTypeBinding.scalar("Real")
+                : OclTypeBinding.scalar("Integer");
+    }
+
+    private OclTypeBinding inferMinMaxType(String operationName, OclTypeBinding sourceType, List<BoundExpression> arguments) {
+        requireNoCollectionArguments(operationName, arguments);
+        return requireNumericCollectionElement(operationName, sourceType);
     }
 
     private OclTypeBinding inferUnionType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
@@ -385,12 +544,99 @@ public class OclSemanticBinder {
     }
 
     private OclTypeBinding inferFlattenType(OclTypeBinding sourceType) {
-        return switch (sourceType.collectionKind()) {
-            case SET, BAG, SEQUENCE, ORDERED_SET, COLLECTION -> sourceType;
-            case NONE -> throw new OclCodedUnsupportedOperationException(
+        if (!sourceType.isCollection()) {
+            throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.INVALID_COLLECTION_SOURCE,
                     "flatten() requires a collection source.");
-        };
+        }
+        OclTypeBinding elementType = sourceType.elementType();
+        if (!elementType.isCollection()) {
+            return sourceType;
+        }
+        return elementType.withCollectionKind(sourceType.collectionKind());
+    }
+
+    private OclTypeBinding inferIncludingType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
+        requireSingleElementArgument("including", sourceType, arguments);
+        return sourceType;
+    }
+
+    private OclTypeBinding inferExcludingType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
+        requireSingleElementArgument("excluding", sourceType, arguments);
+        return sourceType;
+    }
+
+    private OclTypeBinding inferOrderedElementMutationType(String operationName,
+                                                           OclTypeBinding sourceType,
+                                                           List<BoundExpression> arguments) {
+        requireSingleElementArgument(operationName, sourceType, arguments);
+        if (!sourceType.isOrderedCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNORDERED_POSITIONAL_ACCESS,
+                    operationName + "() is only supported on ordered collections (Sequence/OrderedSet).");
+        }
+        return sourceType;
+    }
+
+    private OclTypeBinding inferSubSequenceType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
+        if (!sourceType.isCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_SOURCE,
+                    "subSequence() requires a collection source.");
+        }
+        if (!sourceType.isOrderedCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNORDERED_POSITIONAL_ACCESS,
+                    "subSequence() is only supported on ordered collections (Sequence/OrderedSet).");
+        }
+        if (arguments.size() != 2) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                    "subSequence() requires start and end index arguments.");
+        }
+        return sourceType;
+    }
+
+    private void requireNoCollectionArguments(String operationName, List<BoundExpression> arguments) {
+        if (!arguments.isEmpty()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                    operationName + "() does not accept arguments.");
+        }
+    }
+
+    private void requireSingleElementArgument(String operationName,
+                                              OclTypeBinding sourceType,
+                                              List<BoundExpression> arguments) {
+        if (!sourceType.isCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_SOURCE,
+                    operationName + "() requires a collection source.");
+        }
+        if (arguments.size() != 1) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                    operationName + "() requires a single argument.");
+        }
+    }
+
+    private OclTypeBinding requireNumericCollectionElement(String operationName, OclTypeBinding sourceType) {
+        if (!sourceType.isCollection()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_SOURCE,
+                    operationName + "() requires a collection source.");
+        }
+        OclTypeBinding elementType = sourceType.elementType();
+        if (elementType.isCollection() || !isNumericScalarType(elementType)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_SOURCE,
+                    operationName + "() requires a collection of Integer or Real values.");
+        }
+        return elementType;
+    }
+
+    private boolean isNumericScalarType(OclTypeBinding type) {
+        return "Integer".equals(type.typeName()) || "Real".equals(type.typeName());
     }
 
     private OclTypeBinding inferPositionalAccessType(OclTypeBinding sourceType, String operationName) {
@@ -481,7 +727,8 @@ public class OclSemanticBinder {
     }
 
     public record BoundProperty(ASTProperty ast, BoundExpression source, OclTypeBinding type,
-                                MAttribute attribute, OclMetamodelIndex.NavigationInfo navigation) implements BoundExpression {
+                                MAttribute attribute, OclMetamodelIndex.NavigationInfo navigation,
+                                List<BoundExpression> qualifiers) implements BoundExpression {
         public boolean isAttribute() {
             return attribute != null;
         }

@@ -56,6 +56,7 @@ public class OclCypherPlanner {
             return new OclCypherPlan.NavigationAccessPlan(
                     planExpression(navigationAccess.source()),
                     navigationAccess.navigation(),
+                    navigationAccess.qualifiers().stream().map(this::planExpression).toList(),
                     navigationAccess.type());
         }
         if (expression instanceof OclIr.MethodCall methodCall) {
@@ -101,10 +102,33 @@ public class OclCypherPlanner {
                     OclCypherPlan.PredicateMode.NORMAL);
             return planCountComparison(matchPlan, countComparison.operator(), countComparison.literal(), countComparison.type());
         }
+        if (expression instanceof OclIr.NavigationAggregation aggregation) {
+            OclCypherPlan.NavigationMatchPlan matchPlan = createNavigationMatchPlan(
+                    requireNavigationPlan(planExpression(aggregation.navigation())),
+                    aggregation.iteratorName(),
+                    aggregation.predicate() != null ? planExpression(aggregation.predicate()) : null,
+                    OclCypherPlan.PredicateMode.NORMAL);
+            return new OclCypherPlan.NavigationAggregationPlan(
+                    matchPlan,
+                    planExpression(aggregation.projection()),
+                    aggregation.operationName(),
+                    aggregation.type());
+        }
+        if (expression instanceof OclIr.NavigationUniquenessCheck uniquenessCheck) {
+            OclCypherPlan.NavigationMatchPlan matchPlan = createNavigationMatchPlan(
+                    requireNavigationPlan(planExpression(uniquenessCheck.navigation())),
+                    uniquenessCheck.iteratorName(),
+                    uniquenessCheck.predicate() != null ? planExpression(uniquenessCheck.predicate()) : null,
+                    OclCypherPlan.PredicateMode.NORMAL);
+            return new OclCypherPlan.NavigationUniquenessPlan(
+                    matchPlan,
+                    planExpression(uniquenessCheck.projection()),
+                    uniquenessCheck.type());
+        }
         throw new OclCodedUnsupportedOperationException(
                 OclDiagnosticCode.UNSUPPORTED_PLAN_SOURCE,
                 "Unsupported plan source: " + expression.getClass().getSimpleName());
-    }
+        }
 
     private OclCypherPlan.NavigationAccessPlan requireNavigationPlan(OclCypherPlan.ExpressionPlan expressionPlan) {
         if (expressionPlan instanceof OclCypherPlan.NavigationAccessPlan navigationAccessPlan) {

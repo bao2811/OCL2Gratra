@@ -1,0 +1,6 @@
+model NestedCollections
+
+class Person
+attributes
+    aliases2d : Sequence(Sequence(String))
+end

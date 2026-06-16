@@ -219,7 +219,7 @@ class OclMetamodelIndexTest {
     }
 
     @Test
-    void marksNAryNavigationAsNotDirectlySupportedForCypher() {
+    void supportsDirectNavigationForNAryAssociationRoles() {
         String spec = """
                 model Demo
                 class Person
@@ -245,11 +245,11 @@ class OclMetamodelIndexTest {
         assertEquals("Buy", pet.associationName());
         assertEquals(OclMetamodelIndex.NavigationDirection.UNDIRECTED, pet.direction());
         assertTrue(!pet.isBinaryAssociation());
-        assertTrue(!pet.supportsDirectCypherNavigation());
+        assertTrue(pet.supportsDirectCypherNavigation());
     }
 
     @Test
-    void marksQualifiedNavigationAsNotDirectlySupportedForCypher() {
+    void supportsUnqualifiedDirectNavigationForQualifiedAssociations() {
         String spec = """
                 model Demo
                 class Library
@@ -271,11 +271,11 @@ class OclMetamodelIndexTest {
         assertNotNull(book);
         assertEquals("Catalog", book.associationName());
         assertTrue(book.hasQualifiers());
-        assertTrue(!book.supportsDirectCypherNavigation());
+        assertTrue(book.supportsDirectCypherNavigation());
     }
 
     @Test
-    void marksRedefiningNavigationAsNotDirectlySupportedForCypher() {
+    void supportsDirectNavigationForRedefiningAssociations() {
         String spec = """
                 model Demo
                 class Person
@@ -305,6 +305,6 @@ class OclMetamodelIndexTest {
         assertNotNull(employer);
         assertEquals("StartupWorksFor", employer.associationName());
         assertTrue(employer.isRedefiningAssociation());
-        assertTrue(!employer.supportsDirectCypherNavigation());
+        assertTrue(employer.supportsDirectCypherNavigation());
     }
 }

@@ -103,6 +103,10 @@ public class ExpressionBinder {
             ASTProperty prop = (ASTProperty) node;
             ExpressionNode sourceNode = bind(prop.source);
 
+            if (prop.hasQualifiers()) {
+                throw new RuntimeException("Qualified navigation is not supported in the lightweight OCL binder yet: " + prop.name);
+            }
+
             if (neo4jRepository.isRelationship(sourceNode, prop.name)) {
                 return new NavigationExpression(sourceNode, prop.name);
             } else {

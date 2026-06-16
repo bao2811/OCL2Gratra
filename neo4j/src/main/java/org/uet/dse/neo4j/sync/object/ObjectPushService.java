@@ -9,6 +9,7 @@ import org.uet.dse.neo4j.helper.ValueMapper;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.manager.WorkLogManager;
 import org.uet.dse.neo4j.repo.Neo4jObjectRepository;
+import org.uet.dse.neo4j.sync.helper.QualifierValueCodec;
 import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
 
 import java.util.*;
@@ -104,8 +105,16 @@ public class ObjectPushService {
         if (endT.aggregationKind() == 2 || endS.aggregationKind() == 2) label = "LinkComposeOf";
         else if (endT.aggregationKind() == 1 || endS.aggregationKind() == 1) label = "LinkAggregates";
 
+        List<List<String>> qualifierValues = new ArrayList<>();
+        for (List<Value> endQualifiers : link.getQualifier()) {
+            qualifierValues.add(QualifierValueCodec.encodeQualifierValues(endQualifiers));
+        }
+        while (qualifierValues.size() < 2) {
+            qualifierValues.add(List.of());
+        }
+
         objectRepository.upsertBinaryLink(tx, s.name(), t.name(), link.association().name(),
-                label, endS.name(), endT.name());
+                label, endS.name(), endT.name(), qualifierValues.get(0), qualifierValues.get(1));
     }
 
     private void processPushTernaryLink(TransactionContext tx, MLink link) {

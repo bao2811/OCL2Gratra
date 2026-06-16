@@ -59,7 +59,8 @@ public class Neo4jObjectQuery {
         return String.format(
                 "MATCH (a {use_id: $id1}), (b {use_id: $id2}) " +
                         "MERGE (a)-[r:%s {name: $name}]->(b) " +
-                        "SET r.sourceRole = $sRole, r.targetRole = $tRole, r.isTernary = false",
+                        "SET r.sourceRole = $sRole, r.targetRole = $tRole, r.isTernary = false, " +
+                        "    r.sourceQualifiers = $sQualifiers, r.targetQualifiers = $tQualifiers",
                 label
         );
     }
@@ -104,7 +105,9 @@ public class Neo4jObjectQuery {
                     "WHERE type(r) STARTS WITH 'Link' " +
                     "  AND NOT coalesce(r.isTernary,        false) " +
                     "  AND NOT coalesce(r.isLinkObjectPart, false) " +
-                    "RETURN r.name AS assocName, a.use_id AS src, b.use_id AS tgt";
+                    "RETURN r.name AS assocName, a.use_id AS src, b.use_id AS tgt, " +
+                    "       coalesce(r.sourceQualifiers, []) AS sourceQualifiers, " +
+                    "       coalesce(r.targetQualifiers, []) AS targetQualifiers";
 
     public static final String PULL_TERNARY_LINKS =
             "MATCH (p)-[r]->(hub:LinkHub) WHERE r.isTernary = true " +

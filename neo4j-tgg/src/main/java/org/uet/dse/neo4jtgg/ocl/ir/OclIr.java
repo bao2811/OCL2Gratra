@@ -16,7 +16,7 @@ public final class OclIr {
 
     public sealed interface Expression permits Variable, Literal, Not, Binary, AttributeAccess,
             NavigationAccess, MethodCall, CollectionOperation, IteratorOperation, If, Let,
-            NavigationPredicateCheck, NavigationCountComparison {
+            NavigationPredicateCheck, NavigationCountComparison, NavigationAggregation, NavigationUniquenessCheck {
         OclTypeBinding type();
     }
 
@@ -45,6 +45,7 @@ public final class OclIr {
     }
 
     public record NavigationAccess(Expression source, OclMetamodelIndex.NavigationInfo navigation,
+                                   List<Expression> qualifiers,
                                    OclTypeBinding type) implements Expression {
     }
 
@@ -66,6 +67,15 @@ public final class OclIr {
 
     public record NavigationCountComparison(NavigationAccess navigation, String iteratorName, Expression predicate,
                                             String operator, long literal, OclTypeBinding type) implements Expression {
+    }
+
+    public record NavigationAggregation(NavigationAccess navigation, String iteratorName, Expression predicate,
+                                        Expression projection, String operationName,
+                                        OclTypeBinding type) implements Expression {
+    }
+
+    public record NavigationUniquenessCheck(NavigationAccess navigation, String iteratorName, Expression predicate,
+                                            Expression projection, OclTypeBinding type) implements Expression {
     }
 
     public enum NavigationPredicateKind {

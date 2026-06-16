@@ -151,7 +151,9 @@ public class Neo4jSnapshotQuery {
             "  AND NOT coalesce(r.isTernary,        false) " +
             "  AND NOT coalesce(r.isLinkObjectPart, false) " +
             "RETURN r.name AS assocName, type(r) AS label, " +
-            "       o.use_id AS src, b.use_id AS tgt";
+            "       o.use_id AS src, b.use_id AS tgt, " +
+            "       coalesce(r.sourceQualifiers, []) AS sourceQualifiers, " +
+            "       coalesce(r.targetQualifiers, []) AS targetQualifiers";
 
     public  static final String LINK_OBJECTS =
         "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode {name: 'NodeAssociationClass'}) " +

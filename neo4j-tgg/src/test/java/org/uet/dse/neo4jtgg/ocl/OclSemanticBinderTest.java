@@ -75,6 +75,415 @@ class OclSemanticBinderTest {
     }
 
     @Test
+    void infersAggregateCollectionOperationTypes() {
+        OclSemanticBinder.BoundContextInvariant integerBound = bind("""
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """, "context Family inv TotalAgePositive: self.children->collect(c | c.age)->sum() >= 0");
+        OclSemanticBinder.BoundContextInvariant realBound = bind("""
+                model Demo
+                class Invoice
+                end
+                class LineItem
+                attributes
+                    amount : Real
+                end
+                association InvoiceLineItems between
+                    Invoice[1] role invoice
+                    LineItem[*] role lineItem ordered
+                end
+                """, "context Invoice inv MaxAmountDefined: self.lineItem->collect(li | li.amount)->max().isDefined()");
+
+        OclSemanticBinder.BoundBinary integerComparison = as(integerBound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation sum = as(integerComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundMethodCall maxIsDefined = as(realBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation max = as(maxIsDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals("Integer", sum.type().typeName());
+        assertEquals("Real", max.type().typeName());
+    }
+
+    @Test
+    void rejectsAggregateCollectionOperationsOnNonNumericElements() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv BadSum: self.name.split(',')->sum() >= 0"));
+
+        assertTrue(failure.getMessage().contains("Integer or Real"));
+    }
+
+    @Test
+    void infersIsUniqueIteratorAsBoolean() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """, "context Family inv UniqueChildNames: self.children->isUnique(c | c.name)");
+
+        OclSemanticBinder.BoundIterator isUnique = as(bound.expression(), OclSemanticBinder.BoundIterator.class);
+        OclSemanticBinder.BoundProperty name = as(isUnique.body(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals("isUnique", isUnique.ast().operation);
+        assertEquals("Boolean", isUnique.type().typeName());
+        assertEquals("name", name.ast().name);
+    }
+
+    @Test
+    void infersCollectionValuedPrimitiveAttributeAsCollectionBinding() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases : Sequence(String)
+                end
+                """, "context Person inv HasAliases: self.aliases->first().isDefined()");
+
+        OclSemanticBinder.BoundMethodCall isDefined = as(bound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation first = as(isDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty aliases = as(first.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, aliases.type().collectionKind());
+        assertEquals("String", aliases.type().elementType().typeName());
+        assertEquals("String", first.type().typeName());
+    }
+
+    @Test
+    void infersCollectionValuedObjectReferenceAttributeAsNodeCollectionBinding() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                attributes
+                    friends : Sequence(Person)
+                end
+                """, "context Person inv HasSelfOrEmpty: self.friends->includes(self) or self.friends->isEmpty()");
+
+        OclSemanticBinder.BoundBinary or = as(bound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation includes = as(or.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty friends = as(includes.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, friends.type().collectionKind());
+        assertTrue(friends.type().elementType().isNode());
+        assertEquals("Person", friends.type().elementType().typeName());
+    }
+
+    @Test
+    void infersNestedCollectionValuedPrimitiveAttributeAsNestedCollectionBinding() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv HasBartSomewhere: self.aliases2d->flatten()->count('Bart') >= 0");
+
+        OclSemanticBinder.BoundBinary comparison = as(bound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation count = as(comparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation flatten = as(count.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty aliases2d = as(flatten.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, aliases2d.type().collectionKind());
+        assertTrue(aliases2d.type().elementType().isCollection());
+        assertEquals("String", aliases2d.type().elementType().elementType().typeName());
+        assertEquals("String", flatten.type().elementType().typeName());
+    }
+
+    @Test
+    void infersDeepNestedCollectionValuedPrimitiveAttributeAcrossMultipleFlattenLevels() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases3d : Sequence(Sequence(Sequence(String)))
+                end
+                """, "context Person inv HasBartSomewhere: self.aliases3d->flatten()->flatten()->count('Bart') >= 0");
+
+        OclSemanticBinder.BoundBinary comparison = as(bound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation count = as(comparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation flatten2 = as(count.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation flatten1 = as(flatten2.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty aliases3d = as(flatten1.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertTrue(aliases3d.type().elementType().isCollection());
+        assertTrue(aliases3d.type().elementType().elementType().isCollection());
+        assertEquals("String", flatten2.type().elementType().typeName());
+    }
+
+    @Test
+    void preservesOrderedAndUniqueKindsAcrossNestedFlatten() {
+        OclSemanticBinder.BoundContextInvariant orderedBound = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv OrderedAliases: self.aliases2d->asOrderedSet()->flatten()->first().isDefined()");
+        OclSemanticBinder.BoundContextInvariant uniqueBound = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv UniqueAliases: self.aliases2d->asSet()->flatten()->count('Bart') >= 0");
+
+        OclSemanticBinder.BoundMethodCall orderedDefined = as(orderedBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation orderedFirst = as(orderedDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation orderedFlatten = as(orderedFirst.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundBinary uniqueComparison = as(uniqueBound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation uniqueCount = as(uniqueComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation uniqueFlatten = as(uniqueCount.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.ORDERED_SET, orderedFlatten.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.SET, uniqueFlatten.type().collectionKind());
+    }
+
+    @Test
+    void infersNestedUnionAndIntersectionKinds() {
+        OclSemanticBinder.BoundContextInvariant uniqueUnion = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv UniqueNestedAliases: self.aliases2d->flatten()->asSet()->union(self.aliases2d->flatten()->asSet())->count('Bart') >= 0");
+        OclSemanticBinder.BoundContextInvariant orderedIntersection = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv OrderedNestedAliases: self.aliases2d->flatten()->asOrderedSet()->intersection(self.aliases2d->flatten()->asOrderedSet())->first().isDefined()");
+
+        OclSemanticBinder.BoundBinary uniqueComparison = as(uniqueUnion.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation uniqueCount = as(uniqueComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation uniqueUnionOp = as(uniqueCount.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundMethodCall orderedDefined = as(orderedIntersection.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation orderedFirst = as(orderedDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation orderedIntersectionOp = as(orderedFirst.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SET, uniqueUnionOp.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.ORDERED_SET, orderedIntersectionOp.type().collectionKind());
+    }
+
+    @Test
+    void infersNestedObjectReferenceUnionAndIntersectionKinds() {
+        OclSemanticBinder.BoundContextInvariant uniqueUnion = bind("""
+                model Demo
+                class Person
+                attributes
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """, "context Person inv UniqueNestedFriends: self.friendGroups2d->flatten()->asSet()->union(self.friendGroups2d->flatten()->asSet())->count(self) >= 0");
+        OclSemanticBinder.BoundContextInvariant orderedIntersection = bind("""
+                model Demo
+                class Person
+                attributes
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """, "context Person inv OrderedNestedFriends: self.friendGroups2d->flatten()->asOrderedSet()->intersection(self.friendGroups2d->flatten()->asOrderedSet())->first().isDefined() or self.friendGroups2d->flatten()->isEmpty()");
+
+        OclSemanticBinder.BoundBinary uniqueComparison = as(uniqueUnion.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation uniqueCount = as(uniqueComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation uniqueUnionOp = as(uniqueCount.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundBinary orderedOr = as(orderedIntersection.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundMethodCall orderedDefined = as(orderedOr.left(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation orderedFirst = as(orderedDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation orderedIntersectionOp = as(orderedFirst.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SET, uniqueUnionOp.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.ORDERED_SET, orderedIntersectionOp.type().collectionKind());
+    }
+
+    @Test
+    void infersNestedBagUnionAndIntersectionKinds() {
+        OclSemanticBinder.BoundContextInvariant bagUnion = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv BagNestedAliases: self.aliases2d->flatten()->asBag()->union(self.aliases2d->flatten()->asBag())->count('Bart') >= 2");
+        OclSemanticBinder.BoundContextInvariant bagIntersection = bind("""
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """, "context Person inv SharedNestedAliases: self.aliases2d->flatten()->asBag()->intersection(self.aliases2d->flatten()->asBag())->count('Bart') >= 1");
+
+        OclSemanticBinder.BoundBinary unionComparison = as(bagUnion.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation unionCount = as(unionComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation unionOp = as(unionCount.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundBinary intersectionComparison = as(bagIntersection.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation intersectionCount = as(intersectionComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation intersectionOp = as(intersectionCount.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.BAG, unionOp.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.BAG, intersectionOp.type().collectionKind());
+    }
+
+    @Test
+    void infersIncludingAndExcludingCollectionKinds() {
+        OclSemanticBinder.BoundContextInvariant includingBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv AddedBartStillOrdered: self.name.split(',')->including('Bart')->last().isDefined()");
+        OclSemanticBinder.BoundContextInvariant excludingBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv RemovedBartCount: self.name.split(',')->asSet()->excluding('Bart')->count('Bart') = 0");
+
+        OclSemanticBinder.BoundMethodCall includingDefined = as(includingBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation includingLast = as(includingDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation including = as(includingLast.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundBinary excludingComparison = as(excludingBound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundCollectionOperation excludingCount = as(excludingComparison.left(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation excluding = as(excludingCount.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, including.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.SET, excluding.type().collectionKind());
+    }
+
+    @Test
+    void infersAppendAndPrependCollectionKinds() {
+        OclSemanticBinder.BoundContextInvariant appendBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv AppendedBartStillOrdered: self.name.split(',')->append('Bart')->last().isDefined()");
+        OclSemanticBinder.BoundContextInvariant prependBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv PrependedBartMovesToFront: self.name.split(',')->asOrderedSet()->prepend('Bart')->first().isDefined()");
+
+        OclSemanticBinder.BoundMethodCall appendDefined = as(appendBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation appendLast = as(appendDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation append = as(appendLast.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundMethodCall prependDefined = as(prependBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation prependFirst = as(prependDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation prepend = as(prependFirst.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, append.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.ORDERED_SET, prepend.type().collectionKind());
+    }
+
+    @Test
+    void infersSubSequenceCollectionKinds() {
+        OclSemanticBinder.BoundContextInvariant sequenceBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv MiddleNamesStayOrdered: self.name.split(',')->subSequence(1, 2)->last().isDefined()");
+        OclSemanticBinder.BoundContextInvariant orderedSetBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv MiddleUniqueNamesStayOrdered: self.name.split(',')->asOrderedSet()->subSequence(1, 2)->first().isDefined()");
+
+        OclSemanticBinder.BoundMethodCall sequenceDefined = as(sequenceBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation sequenceLast = as(sequenceDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation sequenceSubSequence = as(sequenceLast.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        OclSemanticBinder.BoundMethodCall orderedSetDefined = as(orderedSetBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation orderedSetFirst = as(orderedSetDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation orderedSetSubSequence = as(orderedSetFirst.source(), OclSemanticBinder.BoundCollectionOperation.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, sequenceSubSequence.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.ORDERED_SET, orderedSetSubSequence.type().collectionKind());
+    }
+
+    @Test
+    void infersSortedByCollectionKinds() {
+        OclSemanticBinder.BoundContextInvariant sequenceBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv SortedNamesStayOrdered: self.name.split(',')->sortedBy(token | token)->first().isDefined()");
+        OclSemanticBinder.BoundContextInvariant orderedSetBound = bind("""
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """, "context Family inv SortedUniqueNamesStayUnique: self.name.split(',')->asSet()->sortedBy(token | token)->first().isDefined()");
+
+        OclSemanticBinder.BoundMethodCall sequenceDefined = as(sequenceBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation sequenceFirst = as(sequenceDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundIterator sequenceSortedBy = as(sequenceFirst.source(), OclSemanticBinder.BoundIterator.class);
+
+        OclSemanticBinder.BoundMethodCall orderedSetDefined = as(orderedSetBound.expression(), OclSemanticBinder.BoundMethodCall.class);
+        OclSemanticBinder.BoundCollectionOperation orderedSetFirst = as(orderedSetDefined.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundIterator orderedSetSortedBy = as(orderedSetFirst.source(), OclSemanticBinder.BoundIterator.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, sequenceSortedBy.type().collectionKind());
+        assertEquals(OclTypeBinding.CollectionKind.ORDERED_SET, orderedSetSortedBy.type().collectionKind());
+    }
+
+    @Test
+    void infersOclAsTypeTargetNodeType() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                end
+                class Employee < Person
+                attributes
+                    salary : Integer
+                end
+                """, "context Employee inv CastKeepsEmployeeType: self.oclAsType(Employee).salary >= 0");
+
+        OclSemanticBinder.BoundBinary comparison = as(bound.expression(), OclSemanticBinder.BoundBinary.class);
+        OclSemanticBinder.BoundProperty salary = as(comparison.left(), OclSemanticBinder.BoundProperty.class);
+        OclSemanticBinder.BoundMethodCall cast = as(salary.source(), OclSemanticBinder.BoundMethodCall.class);
+
+        assertEquals("Employee", cast.type().typeName());
+        assertTrue(cast.type().isNode());
+        assertEquals("salary", salary.ast().name);
+    }
+
+    @Test
     void infersIfExpressionBranchType() {
         OclSemanticBinder.BoundContextInvariant bound = bind("""
                 model Demo
@@ -358,12 +767,23 @@ class OclSemanticBinderTest {
                 end
                 """, "context Family inv FlatFamilies: self.children->collect(c | c.family)->flatten()->notEmpty()");
 
-        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE,
-                as(as(sequenceFlatten.expression(), OclSemanticBinder.BoundCollectionOperation.class).source(),
-                        OclSemanticBinder.BoundCollectionOperation.class).type().collectionKind());
-        assertEquals(OclTypeBinding.CollectionKind.BAG,
-                as(as(bagFlatten.expression(), OclSemanticBinder.BoundCollectionOperation.class).source(),
-                        OclSemanticBinder.BoundCollectionOperation.class).type().collectionKind());
+        OclSemanticBinder.BoundCollectionOperation sequenceNotEmpty =
+                as(sequenceFlatten.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation sequenceFlattenOp =
+                as(sequenceNotEmpty.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundIterator sequenceCollect =
+                as(sequenceFlattenOp.source(), OclSemanticBinder.BoundIterator.class);
+        OclSemanticBinder.BoundCollectionOperation bagNotEmpty =
+                as(bagFlatten.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation bagFlattenOp =
+                as(bagNotEmpty.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundIterator bagCollect =
+                as(bagFlattenOp.source(), OclSemanticBinder.BoundIterator.class);
+
+        assertEquals(OclTypeBinding.CollectionKind.SEQUENCE, sequenceCollect.type().collectionKind());
+        assertTrue(sequenceCollect.type().elementType().isCollection());
+        assertEquals(OclTypeBinding.CollectionKind.BAG, bagCollect.type().collectionKind());
+        assertTrue(bagCollect.type().elementType().isCollection());
     }
 
     @Test
@@ -409,6 +829,33 @@ class OclSemanticBinderTest {
         assertEquals("String", name.type().typeName());
         assertEquals("Person", iteratorVar.type().typeName());
         assertEquals(OclTypeBinding.CollectionKind.BAG, collect.type().collectionKind());
+    }
+
+    @Test
+    void normalizesCollectionValuedPropertyProjectionIntoCollectThenFlatten() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """, "context Family inv ChildFamiliesIncludeSelf: self.children.family->includes(self)");
+
+        OclSemanticBinder.BoundCollectionOperation includes = as(bound.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundCollectionOperation flatten = as(includes.source(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundIterator collect = as(flatten.source(), OclSemanticBinder.BoundIterator.class);
+        OclSemanticBinder.BoundProperty family = as(collect.body(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals("flatten", flatten.ast().opName);
+        assertEquals("collect", collect.ast().operation);
+        assertTrue(collect.type().elementType().isCollection());
+        assertEquals(OclTypeBinding.CollectionKind.BAG, flatten.type().collectionKind());
+        assertEquals("Family", flatten.type().elementType().typeName());
+        assertEquals("family", family.ast().name);
     }
 
     @Test
@@ -481,6 +928,122 @@ class OclSemanticBinderTest {
 
         assertTrue(atFailure.getMessage().contains("ordered collections"));
         assertTrue(lastFailure.getMessage().contains("ordered collections"));
+    }
+
+    @Test
+    void bindsLiteralQualifiedNavigation() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """, "context Library inv ShelfLookup: self.book['A1']->notEmpty()");
+
+        OclSemanticBinder.BoundCollectionOperation notEmpty = as(bound.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty book = as(notEmpty.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(1, book.qualifiers().size());
+        assertEquals("String", book.qualifiers().get(0).type().typeName());
+    }
+
+    @Test
+    void bindsVariableQualifiedNavigation() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Library
+                attributes
+                    defaultShelf : String
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """, "context Library inv ShelfLookup: let shelf = self.defaultShelf in self.book[shelf]->notEmpty()");
+
+        OclSemanticBinder.BoundLet letExpression = as(bound.expression(), OclSemanticBinder.BoundLet.class);
+        OclSemanticBinder.BoundCollectionOperation notEmpty = as(letExpression.body(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty book = as(notEmpty.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(1, book.qualifiers().size());
+        assertEquals("String", book.qualifiers().get(0).type().typeName());
+    }
+
+    @Test
+    void bindsComputedQualifiedNavigation() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Library
+                attributes
+                    defaultShelf : String
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """, "context Library inv ShelfLookup: self.book[self.defaultShelf.concat('')]->notEmpty()");
+
+        OclSemanticBinder.BoundCollectionOperation notEmpty = as(bound.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty book = as(notEmpty.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(1, book.qualifiers().size());
+        assertEquals("String", book.qualifiers().get(0).type().typeName());
+        assertTrue(book.qualifiers().get(0) instanceof OclSemanticBinder.BoundMethodCall);
+    }
+
+    @Test
+    void bindsEnumLiteralQualifiedNavigation() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                enum Shelf { A1, B2 }
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : Shelf)
+                end
+                """, "context Library inv ShelfLookup: self.book[Shelf::A1]->notEmpty()");
+
+        OclSemanticBinder.BoundCollectionOperation notEmpty = as(bound.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty book = as(notEmpty.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(1, book.qualifiers().size());
+        assertEquals("Shelf", book.qualifiers().get(0).type().typeName());
+    }
+
+    @Test
+    void bindsEnumAttributeQualifiedNavigation() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                enum Shelf { A1, B2 }
+                class Library
+                attributes
+                    defaultShelf : Shelf
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : Shelf)
+                end
+                """, "context Library inv ShelfLookup: self.book[self.defaultShelf]->notEmpty()");
+
+        OclSemanticBinder.BoundCollectionOperation notEmpty = as(bound.expression(), OclSemanticBinder.BoundCollectionOperation.class);
+        OclSemanticBinder.BoundProperty book = as(notEmpty.source(), OclSemanticBinder.BoundProperty.class);
+
+        assertEquals(1, book.qualifiers().size());
+        assertEquals("Shelf", book.qualifiers().get(0).type().typeName());
+        assertTrue(book.qualifiers().get(0) instanceof OclSemanticBinder.BoundProperty);
     }
 
     private OclSemanticBinder.BoundContextInvariant bind(String spec, String ocl) {

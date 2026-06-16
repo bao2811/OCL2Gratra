@@ -314,9 +314,7 @@ public class DefaultTggExecutionService implements TggExecutionService {
 
         Set<String> missingTargetLinks = new LinkedHashSet<>();
         for (ImportLinkSpec link : result.targetBatch().getLinks()) {
-            String identity = link.getAssociationName() + link.getEndpointNames().stream()
-                    .map(endpoint -> "_" + endpoint)
-                    .reduce("", String::concat);
+            String identity = link.getIdentity();
             if (!targetSnapshot.links.containsKey(identity)) {
                 missingTargetLinks.add(identity);
             }

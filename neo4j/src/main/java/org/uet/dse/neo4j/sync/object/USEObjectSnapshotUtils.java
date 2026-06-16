@@ -9,6 +9,7 @@ import org.uet.dse.neo4j.helper.ValueMapper;
 import org.uet.dse.neo4j.model.FullObjectSnapshot;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
+import org.uet.dse.neo4j.sync.helper.QualifierValueCodec;
 import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
 
 import java.util.Collections;
@@ -87,6 +88,9 @@ public class USEObjectSnapshotUtils {
         LinkState ls = new LinkState();
         ls.assocName = link.association().name();
         link.linkedObjects().forEach(o -> ls.participants.add(o.name()));
+        for (List<Value> endQualifiers : link.getQualifier()) {
+            ls.qualifierValues.add(QualifierValueCodec.encodeQualifierValues(endQualifiers));
+        }
 
         ls.edgeLabel = resolveLinkEdgeLabel(link);
         if (link instanceof MLinkObject) {

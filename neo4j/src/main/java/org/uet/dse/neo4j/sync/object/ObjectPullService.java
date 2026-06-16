@@ -46,7 +46,7 @@ public class ObjectPullService {
         continue;
 
       try {
-        systemApi.deleteLink(ls.assocName, ls.participants.toArray(new String[0]));
+        systemApi.deleteLink(ls.assocName, ls.participants.toArray(new String[0]), qualifierExpressions(ls.qualifierValues));
         WorkLogManager.getInstance().log("LINK_PULL_DELETE", "Removed link: " + ls.getIdentity());
       } catch (Exception e) {
         WorkLogManager.getInstance().log("LINK_DELETE_ERROR", "Failed to remove link " + linkId + ": " + e.getMessage());
@@ -170,7 +170,11 @@ public class ObjectPullService {
     session.run(Neo4jObjectQuery.PULL_BINARY_LINKS).forEachRemaining(rec -> {
       String assocName = rec.get("assocName").asString();
       String[] ends = { rec.get("src").asString(), rec.get("tgt").asString() };
-      createLinkSafely(api, assocName, ends);
+      String[][] qualifiers = qualifierExpressions(List.of(
+          rec.get("sourceQualifiers").asList(v -> v.isNull() ? null : v.asString()),
+          rec.get("targetQualifiers").asList(v -> v.isNull() ? null : v.asString())
+      ));
+      createLinkSafely(api, assocName, ends, qualifiers);
     });
   }
 
@@ -202,8 +206,12 @@ public class ObjectPullService {
    * swallow duplicatelink exceptions, which are expected when pulling into a state that already partially exists. All other failures are logged.
    */
   private void createLinkSafely(UseSystemApi api, String assocName, String[] participants) {
+    createLinkSafely(api, assocName, participants, new String[0][]);
+  }
+
+  private void createLinkSafely(UseSystemApi api, String assocName, String[] participants, String[][] qualifierExpressions) {
     try {
-      api.createLink(assocName, participants);
+      api.createLink(assocName, participants, qualifierExpressions);
     } catch (Exception e) {
       WorkLogManager.getInstance().log("LINK_PULL_ERROR", "Failed to create link [" + assocName + "]: " + e.getMessage());
     }
@@ -215,6 +223,18 @@ public class ObjectPullService {
     } catch (Exception e) {
       WorkLogManager.getInstance().log("LINK_OBJECT_PULL_ERROR", "Failed to create link object [" + loName + "] of [" + acName + "]: " + e.getMessage());
     }
+  }
+
+  private String[][] qualifierExpressions(List<List<String>> qualifierValues) {
+    if (qualifierValues == null || qualifierValues.isEmpty()) {
+      return new String[0][];
+    }
+    String[][] expressions = new String[qualifierValues.size()][];
+    for (int i = 0; i < qualifierValues.size(); i++) {
+      List<String> endValues = qualifierValues.get(i);
+      expressions[i] = endValues == null ? new String[0] : endValues.toArray(new String[0]);
+    }
+    return expressions;
   }
 
   private void syncAttribute(MObject useObj, MAttribute attrDef, ObjectState dbState) throws Exception {

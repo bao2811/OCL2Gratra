@@ -1,0 +1,17 @@
+model QualifiedLibrary
+
+class Library
+attributes
+    defaultShelf : String
+end
+
+class Book
+attributes
+    title : String
+    pages : Integer
+end
+
+association Catalog between
+    Library[1] role library
+    Book[*] role book qualifier (shelf : String)
+end

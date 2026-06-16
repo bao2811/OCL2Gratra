@@ -9,6 +9,7 @@ import org.tzi.use.uml.mm.MClassImpl;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.MOperation;
 import org.tzi.use.uml.mm.MNavigableElement;
+import org.tzi.use.uml.ocl.expr.VarDecl;
 import org.tzi.use.uml.ocl.type.BagType;
 import org.tzi.use.uml.ocl.type.CollectionType;
 import org.tzi.use.uml.ocl.type.OrderedSetType;
@@ -19,6 +20,7 @@ import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class OclMetamodelIndex {
@@ -217,33 +219,23 @@ public class OclMetamodelIndex {
             return targetEnd != null && targetEnd.association() != null && targetEnd.association().isRedefining();
         }
 
+        public boolean targetHasQualifiers() {
+            return navigableElement != null && navigableElement.hasQualifiers();
+        }
+
+        public List<VarDecl> targetQualifiers() {
+            return navigableElement != null ? List.copyOf(navigableElement.getQualifiers()) : List.of();
+        }
+
         public boolean supportsDirectCypherNavigation() {
-            return isBinaryAssociation() && !hasQualifiers() && !isRedefiningAssociation();
+            return true;
         }
 
         public String unsupportedReason() {
-            if (!isBinaryAssociation()) {
-                return "Navigation over non-binary associations is not supported yet: " + associationName();
-            }
-            if (hasQualifiers()) {
-                return "Navigation over qualified associations is not supported yet: " + associationName();
-            }
-            if (isRedefiningAssociation()) {
-                return "Navigation over redefining associations is not supported yet: " + associationName();
-            }
             return null;
         }
 
         public OclDiagnosticCode unsupportedCode() {
-            if (!isBinaryAssociation()) {
-                return OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED;
-            }
-            if (hasQualifiers()) {
-                return OclDiagnosticCode.QUALIFIED_ASSOCIATION_UNSUPPORTED;
-            }
-            if (isRedefiningAssociation()) {
-                return OclDiagnosticCode.REDEFINING_ASSOCIATION_UNSUPPORTED;
-            }
             return OclDiagnosticCode.GENERIC_FAILURE;
         }
 

@@ -116,6 +116,9 @@ fabric.properties
 .project
 
 target/
+*.log
 
 *.md
 DAKH/
+md/
+*.html

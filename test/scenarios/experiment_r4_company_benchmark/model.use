@@ -1,0 +1,23 @@
+model CompanyBenchmark
+
+class Company
+attributes
+    name : String
+end
+
+class Person
+attributes
+    age : Integer
+    firstName : String
+    salary : Integer
+end
+
+association CompanyEmployee between
+    Company[*] role employer
+    Person[*] role employee
+end
+
+association CompanyManager between
+    Company[*] role managedCompany
+    Person[1] role manager
+end

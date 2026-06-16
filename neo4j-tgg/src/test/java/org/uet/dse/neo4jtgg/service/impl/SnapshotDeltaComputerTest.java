@@ -134,6 +134,28 @@ class SnapshotDeltaComputerTest {
     }
 
     @Test
+    void testLinksWithDifferentQualifiersRemainDistinct() {
+        LinkState shelfA = new LinkState();
+        shelfA.assocName = "Catalog";
+        shelfA.participants = List.of("library1", "book1");
+        shelfA.qualifierValues = List.of(List.of(), List.of("'A1'"));
+
+        LinkState shelfB = new LinkState();
+        shelfB.assocName = "Catalog";
+        shelfB.participants = List.of("library1", "book1");
+        shelfB.qualifierValues = List.of(List.of(), List.of("'B2'"));
+
+        FullObjectSnapshot current = new FullObjectSnapshot();
+        current.links.put(shelfA.getIdentity(), shelfA);
+        current.links.put(shelfB.getIdentity(), shelfB);
+
+        ModelDelta delta = SnapshotDeltaComputer.compute(WorkspaceSide.SOURCE, null, current);
+
+        assertEquals(2, current.links.size());
+        assertEquals(2, delta.addedLinks().size());
+    }
+
+    @Test
     void testMixedChanges_AllDetected() {
         FullObjectSnapshot previous = new FullObjectSnapshot();
         previous.objects.put("family1", makeObject("family1", "Family", Map.of("name", "Simpson")));

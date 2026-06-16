@@ -29,6 +29,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultOclToCypherCompilerTest {
+
     @Test
     void compilesMultipleInvariantsFromOneOclDocument() {
         String spec = """
@@ -270,6 +271,33 @@ class DefaultOclToCypherCompilerTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("CASE WHEN"));
+    }
+
+    @Test
+    void compilesCollectionValuedPropertyProjectionByNormalizingThroughFlatten() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Family inv ChildFamiliesIncludeSelf: self.children.family->includes(self)");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("reduce("));
+        assertTrue(result.getCypher().contains("IN ["));
     }
 
     @Test
@@ -675,6 +703,107 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
+    void compilesSelectedNavigationExistsAndOneViaSubqueryPlans() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult exists = compiler.compile(
+                "context Family inv AdultBart: self.children->select(c | c.age >= 18)->exists(c | c.name = 'Bart')");
+        CypherCompilationResult one = compiler.compile(
+                "context Family inv ExactlyOneAdult: self.children->one(c | c.age >= 18)");
+
+        assertTrue(exists.isSupported(), exists.getReason());
+        assertTrue(exists.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(exists.getCypher().contains("AND ("));
+        assertTrue(one.isSupported(), one.getReason());
+        assertTrue(one.getCypher().contains("COUNT { MATCH (self)-[r]->(c)"));
+        assertTrue(one.getCypher().contains("= $"));
+    }
+
+    @Test
+    void compilesRejectedNavigationChecksViaSubqueryPlans() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult empty = compiler.compile(
+                "context Family inv AdultOnly: self.children->reject(c | c.age >= 18)->isEmpty()");
+        CypherCompilationResult one = compiler.compile(
+                "context Family inv OneMinorNamedLisa: self.children->reject(c | c.age >= 18)->one(c | c.name = 'Lisa')");
+
+        assertTrue(empty.isSupported(), empty.getReason());
+        assertTrue(empty.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(empty.getCypher().contains("NOT ("));
+        assertTrue(one.isSupported(), one.getReason());
+        assertTrue(one.getCypher().contains("COUNT { MATCH (self)-[r]->(c)"));
+        assertTrue(one.getCypher().contains("NOT ("));
+    }
+
+    @Test
+    void compilesMultiLevelSelectRejectChainViaSingleExistsSubquery() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Family inv ChainedFilters: self.children->select(c | c.age >= 18)->reject(c | c.name = 'Bart')->exists(c | c.name = 'Lisa')");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("NOT ("));
+        assertTrue(result.getCypher().contains("AND ("));
+    }
+
+    @Test
     void compilesReverseNavigationUsingIncomingDirection() {
         String spec = """
                 model Demo
@@ -871,6 +1000,160 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
+    void compilesCollectionIncludingAndExcluding() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult including = compiler.compile(
+                "context Family inv AddedBartPresent: self.name.split(',')->including('Bart')->includes('Bart')");
+        CypherCompilationResult excluding = compiler.compile(
+                "context Family inv RemovedBartGone: self.name.split(',')->excluding('Bart')->excludes('Bart')");
+        CypherCompilationResult uniqueIncluding = compiler.compile(
+                "context Family inv UniqueAddedBartPresent: self.name.split(',')->asSet()->including('Bart')->includes('Bart')");
+
+        assertTrue(including.isSupported(), including.getReason());
+        assertTrue(including.getCypher().contains(" + ["));
+        assertTrue(excluding.isSupported(), excluding.getReason());
+        assertTrue(excluding.getCypher().contains("WHERE NOT ("));
+        assertTrue(uniqueIncluding.isSupported(), uniqueIncluding.getReason());
+        assertTrue(uniqueIncluding.getCypher().contains("CASE WHEN any(existing"));
+    }
+
+    @Test
+    void compilesCollectionAppendAndPrepend() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult append = compiler.compile(
+                "context Family inv AppendedBartPresent: self.name.split(',')->append('Bart')->includes('Bart')");
+        CypherCompilationResult prepend = compiler.compile(
+                "context Family inv PrependedBartFirst: self.name.split(',')->prepend('Bart')->first() = 'Bart'");
+        CypherCompilationResult uniquePrepend = compiler.compile(
+                "context Family inv UniquePrependedBartFirst: self.name.split(',')->asOrderedSet()->prepend('Bart')->first() = 'Bart'");
+
+        assertTrue(append.isSupported(), append.getReason());
+        assertTrue(append.getCypher().contains(" + ["));
+        assertTrue(prepend.isSupported(), prepend.getReason());
+        assertTrue(prepend.getCypher().contains("(["));
+        assertTrue(prepend.getCypher().contains("] + "));
+        assertTrue(uniquePrepend.isSupported(), uniquePrepend.getReason());
+        assertTrue(uniquePrepend.getCypher().contains("CASE WHEN any(existing"));
+    }
+
+    @Test
+    void compilesCollectionSubSequence() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult sequenceSubSequence = compiler.compile(
+                "context Family inv MiddleNameDefined: self.name.split(',')->subSequence(1, 2)->last().isDefined()");
+        CypherCompilationResult orderedSetSubSequence = compiler.compile(
+                "context Family inv FirstUniqueMiddleNameDefined: self.name.split(',')->asOrderedSet()->subSequence(1, 2)->first().isDefined()");
+
+        assertTrue(sequenceSubSequence.isSupported(), sequenceSubSequence.getReason());
+        assertTrue(sequenceSubSequence.getCypher().contains("[("));
+        assertTrue(sequenceSubSequence.getCypher().contains("..("));
+        assertTrue(orderedSetSubSequence.isSupported(), orderedSetSubSequence.getReason());
+        assertTrue(orderedSetSubSequence.getCypher().contains("CASE WHEN any(existing"));
+        assertTrue(orderedSetSubSequence.getCypher().contains("[("));
+    }
+
+    @Test
+    void compilesIteratorSortedBy() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult sortedSequence = compiler.compile(
+                "context Family inv SortedNamesBeginDefined: self.name.split(',')->sortedBy(token | token)->first().isDefined()");
+        CypherCompilationResult sortedUnique = compiler.compile(
+                "context Family inv SortedUniqueNamesBeginDefined: self.name.split(',')->asSet()->sortedBy(token | token)->first().isDefined()");
+
+        assertTrue(sortedSequence.isSupported(), sortedSequence.getReason());
+        assertTrue(sortedSequence.getCypher().contains("COLLECT { UNWIND range("));
+        assertTrue(sortedSequence.getCypher().contains("ORDER BY"));
+
+        assertTrue(sortedUnique.isSupported(), sortedUnique.getReason());
+        assertTrue(sortedUnique.getCypher().contains("CASE WHEN any(existing"));
+        assertTrue(sortedUnique.getCypher().contains("ORDER BY"));
+    }
+
+    @Test
+    void compilesMethodOclAsType() {
+        String spec = """
+                model Demo
+                class Person
+                end
+                class Employee < Person
+                attributes
+                    salary : Integer
+                end
+                class Manager < Person
+                attributes
+                    level : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult castSuccess = compiler.compile(
+                "context Employee inv SalaryVisibleAfterCast: self.oclAsType(Employee).salary >= 0");
+        CypherCompilationResult castMismatch = compiler.compile(
+                "context Employee inv WrongCastBecomesUndefined: self.oclAsType(Manager).isUndefined()");
+
+        assertTrue(castSuccess.isSupported(), castSuccess.getReason());
+        assertTrue(castSuccess.getCypher().contains("CASE WHEN"));
+        assertTrue(castSuccess.getCypher().contains("ELSE null END"));
+        assertTrue(castSuccess.getCypher().contains("ObjectInstanceOf"));
+
+        assertTrue(castMismatch.isSupported(), castMismatch.getReason());
+        assertTrue(castMismatch.getCypher().contains("CASE WHEN"));
+        assertTrue(castMismatch.getCypher().contains("ELSE null END"));
+    }
+
+    @Test
     void compilesIteratorAnyAndOne() {
         String spec = """
                 model Demo
@@ -900,7 +1183,7 @@ class DefaultOclToCypherCompilerTest {
         assertTrue(any.isSupported(), any.getReason());
         assertTrue(any.getCypher().contains("head(["));
         assertTrue(one.isSupported(), one.getReason());
-        assertTrue(one.getCypher().contains("single("));
+        assertTrue(one.getCypher().contains("COUNT { MATCH (self)-[r]->(c)") || one.getCypher().contains("single("));
     }
 
     @Test
@@ -1012,7 +1295,8 @@ class DefaultOclToCypherCompilerTest {
         assertTrue(intersection.getCypher().contains("CASE WHEN any(existing"));
         assertTrue(bagIntersection.isSupported(), bagIntersection.getReason());
         assertTrue(bagIntersection.getCypher().contains("any("));
-        assertFalse(bagIntersection.getCypher().contains("CASE WHEN any(existing"));
+        assertTrue(bagIntersection.getCypher().contains("remaining"));
+        assertTrue(bagIntersection.getCypher().contains("CASE WHEN any(existing"));
     }
 
     @Test
@@ -1081,6 +1365,188 @@ class DefaultOclToCypherCompilerTest {
         assertTrue(scalarCount.getCypher().contains("size(["));
         assertTrue(nodeCount.isSupported(), nodeCount.getReason());
         assertTrue(nodeCount.getCypher().contains("size(["));
+    }
+
+    @Test
+    void compilesCollectionAggregates() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    score : Real
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult sum = compiler.compile(
+                "context Family inv TotalAgePositive: self.children->collect(c | c.age)->sum() >= 0");
+        CypherCompilationResult min = compiler.compile(
+                "context Family inv MinAgeUndefinedWhenEmpty: self.children->collect(c | c.age)->min().isUndefined()");
+        CypherCompilationResult max = compiler.compile(
+                "context Family inv MaxScorePositive: self.children->collect(c | c.score)->max() >= 0.0");
+
+        assertTrue(sum.isSupported(), sum.getReason());
+        assertTrue(sum.getCypher().contains("reduce("));
+        assertTrue(sum.getCypher().contains("= 0"));
+        assertTrue(min.isSupported(), min.getReason());
+        assertTrue(min.getCypher().contains("best"));
+        assertTrue(min.getCypher().contains(" IS NULL"));
+        assertTrue(max.isSupported(), max.getReason());
+        assertTrue(max.getCypher().contains("reduce("));
+        assertTrue(max.getCypher().contains(">"));
+    }
+
+    @Test
+    void compilesOptimizedNavigationAggregates() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    score : Real
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult sum = compiler.compile(
+                "context Family inv TotalAgePositive: self.children->collect(c | c.age)->sum() >= 0");
+        CypherCompilationResult max = compiler.compile(
+                "context Family inv AdultScoreMax: self.children->select(c | c.age >= 18)->collect(c | c.score)->max() >= 0.0");
+
+        assertTrue(sum.isSupported(), sum.getReason());
+        assertTrue(sum.getCypher().contains("[(self)-[r]->(c)"));
+        assertTrue(sum.getCypher().contains("| acc"));
+        assertTrue(sum.getCypher().contains("+ item"));
+
+        assertTrue(max.isSupported(), max.getReason());
+        assertTrue(max.getCypher().contains("[(self)-[r]->(c)"));
+        assertTrue(max.getCypher().contains("AND ("));
+        assertTrue(max.getCypher().contains("best"));
+    }
+
+    @Test
+    void compilesOptimizedNavigationChainsWithDifferentIteratorNames() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                    score : Real
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult exists = compiler.compile(
+                "context Family inv ChainedFilters: self.children->select(a | a.age >= 18)->reject(b | b.name = 'Bart')->exists(c | c.name = 'Lisa')");
+        CypherCompilationResult sum = compiler.compile(
+                "context Family inv AdultScoreSum: self.children->select(a | a.age >= 18)->collect(b | b.score)->sum() >= 0.0");
+
+        assertTrue(exists.isSupported(), exists.getReason());
+        assertTrue(exists.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(exists.getCypher().contains("AND ("));
+
+        assertTrue(sum.isSupported(), sum.getReason());
+        assertTrue(sum.getCypher().contains("[(self)-[r]->(b)"));
+        assertTrue(sum.getCypher().contains("reduce("));
+        assertTrue(sum.getCypher().contains("AND ("));
+    }
+
+    @Test
+    void compilesOptimizedNavigationIsUnique() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Family inv UniqueAdultNames: self.children->select(c | c.age >= 18)->isUnique(c | c.name)");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("size(["));
+        assertTrue(result.getCypher().contains("reduce("));
+        assertTrue(result.getCypher().contains("any(existing"));
+        assertTrue(result.getCypher().contains("AND ("));
+    }
+
+    @Test
+    void compilesIsUniqueIterator() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                    age : Integer
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult uniqueNames = compiler.compile(
+                "context Family inv UniqueChildNames: self.children->isUnique(c | c.name)");
+        CypherCompilationResult uniqueAges = compiler.compile(
+                "context Family inv UniqueChildAges: self.children->isUnique(c | c.age)");
+
+        assertTrue(uniqueNames.isSupported(), uniqueNames.getReason());
+        assertTrue(uniqueNames.getCypher().contains("size(["));
+        assertTrue(uniqueNames.getCypher().contains("CASE WHEN any(existing"));
+        assertTrue(uniqueAges.isSupported(), uniqueAges.getReason());
+        assertTrue(uniqueAges.getCypher().contains(" = size("));
     }
 
     @Test
@@ -1166,7 +1632,7 @@ class DefaultOclToCypherCompilerTest {
                 attributes
                     name : String
                 end
-                """; 
+                """;
 
         StringWriter buffer = new StringWriter();
         MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
@@ -1245,7 +1711,61 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
-    void rejectsNavigationOverNAryAssociation() {
+    void compilesFlattenNotEmptyViaNestedExistsSubquery() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Family inv FlattenedFamiliesExist: self.children->collect(c | c.family)->flatten()->notEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("size("));
+    }
+
+    @Test
+    void compilesFlattenIsEmptyViaNestedNotExistsSubquery() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Family inv FlattenedFamiliesEmpty: self.children->collect(c | c.family)->flatten()->isEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("size("));
+    }
+
+    @Test
+    void compilesNavigationOverNAryAssociation() {
         String spec = """
                 model Demo
                 class Person
@@ -1269,18 +1789,12 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile(
                 "context Person inv HasPets: self.pet->notEmpty()");
 
-        assertFalse(result.isSupported());
-        assertTrue(result.getReason().startsWith("SEMANTIC:"));
-        assertNotNull(result.getDiagnostic());
-        assertEquals(2, result.getDiagnostics().size());
-        assertEquals("SEMANTIC", result.getDiagnostic().phase().name());
-        assertEquals(OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED, result.getDiagnostic().code());
-        assertTrue(result.getReason().contains("non-binary associations"));
-        assertTrue(result.getDiagnostics().get(1).message().contains("Hint:"));
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]-("));
     }
 
     @Test
-    void rejectsNavigationOverQualifiedAssociation() {
+    void compilesNavigationOverQualifiedAssociationWithoutQualifierFiltering() {
         String spec = """
                 model Demo
                 class Library
@@ -1301,17 +1815,152 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile(
                 "context Library inv HasBooks: self.book->notEmpty()");
 
-        assertFalse(result.isSupported());
-        assertNotNull(result.getDiagnostic());
-        assertEquals(2, result.getDiagnostics().size());
-        assertEquals("SEMANTIC", result.getDiagnostic().phase().name());
-        assertEquals(OclDiagnosticCode.QUALIFIED_ASSOCIATION_UNSUPPORTED, result.getDiagnostic().code());
-        assertTrue(result.getReason().contains("qualified associations"));
-        assertTrue(result.getDiagnostics().get(1).message().contains("Hint:"));
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->("));
     }
 
     @Test
-    void rejectsNavigationOverRedefiningAssociation() {
+    void compilesNavigationOverQualifiedAssociationWithVariableQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                attributes
+                    defaultShelf : String
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Library inv ShelfLookup: let shelf = self.defaultShelf in self.book[shelf]->notEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("targetQualifiers[0]"));
+    }
+
+    @Test
+    void compilesNavigationOverQualifiedAssociationWithComputedQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                attributes
+                    defaultShelf : String
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Library inv ShelfLookup: self.book[self.defaultShelf.concat('')]->notEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("targetQualifiers[0]"));
+        assertTrue(result.getCypher().contains("replace(toString"));
+    }
+
+    @Test
+    void compilesNavigationOverQualifiedAssociationWithEnumLiteralQualifierFilter() {
+        String spec = """
+                model Demo
+                enum Shelf { A1, B2 }
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : Shelf)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Library inv ShelfLookup: self.book[Shelf::A1]->notEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("targetQualifiers[0]"));
+    }
+
+    @Test
+    void compilesNavigationOverQualifiedAssociationWithEnumAttributeQualifierFilter() {
+        String spec = """
+                model Demo
+                enum Shelf { A1, B2 }
+                class Library
+                attributes
+                    defaultShelf : Shelf
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : Shelf)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Library inv ShelfLookup: self.book[self.defaultShelf]->notEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("targetQualifiers[0]"));
+        assertTrue(result.getCypher().contains("replace(toString"));
+    }
+
+    @Test
+    void compilesNavigationOverQualifiedAssociationWithLiteralQualifierFilter() {
+        String spec = """
+                model Demo
+                class Library
+                end
+                class Book
+                end
+                association Catalog between
+                    Library[1] role library
+                    Book[*] role book qualifier (shelf : String)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Library inv ShelfLookup: self.book['A1']->notEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("targetQualifiers[0]"));
+    }
+
+    @Test
+    void compilesNavigationOverRedefiningAssociation() {
         String spec = """
                 model Demo
                 class Person
@@ -1340,13 +1989,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile(
                 "context Employee inv HasStartupEmployer: self.startupEmployer->notEmpty()");
 
-        assertFalse(result.isSupported());
-        assertNotNull(result.getDiagnostic());
-        assertEquals(2, result.getDiagnostics().size());
-        assertEquals("SEMANTIC", result.getDiagnostic().phase().name());
-        assertEquals(OclDiagnosticCode.REDEFINING_ASSOCIATION_UNSUPPORTED, result.getDiagnostic().code());
-        assertTrue(result.getReason().contains("redefining associations"));
-        assertTrue(result.getDiagnostics().get(1).message().contains("Hint:"));
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->("));
     }
 
     @Test
@@ -1609,7 +2253,7 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
-    void rejectsCollectionValuedAttributeDuringBinding() {
+    void compilesCollectionValuedPrimitiveAttribute() {
         String spec = """
                 model Demo
                 class Person
@@ -1623,15 +2267,280 @@ class DefaultOclToCypherCompilerTest {
         assertNotNull(model, buffer.toString());
 
         DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
-        CypherCompilationResult result = compiler.compile("context Person inv HasAliases: self.aliases->notEmpty()");
+        CypherCompilationResult result = compiler.compile("context Person inv HasAliases: self.aliases->count('Bart') >= 1 and self.aliases->first().isDefined()");
 
-        assertFalse(result.isSupported());
-        assertNotNull(result.getDiagnostic());
-        assertEquals(2, result.getDiagnostics().size());
-        assertEquals("SEMANTIC", result.getDiagnostic().phase().name());
-        assertEquals(OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED, result.getDiagnostic().code());
-        assertTrue(result.getReason().contains("Collection-valued attributes"));
-        assertTrue(result.getDiagnostics().get(1).message().contains("Hint:"));
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("split("));
+        assertTrue(result.getCypher().contains("size(["));
+        assertTrue(result.getCypher().contains("head("));
+    }
+
+    @Test
+    void compilesCollectionValuedObjectReferenceAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    friends : Sequence(Person)
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Person inv HasSelfOrEmpty: self.friends->includes(self) or self.friends->isEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("objectReference"));
+        assertTrue(result.getCypher().contains("HasReferenceValue"));
+        assertTrue(result.getCypher().contains("ORDER BY r.index"));
+        assertTrue(result.getCypher().contains("any("));
+    }
+
+    @Test
+    void compilesNestedCollectionValuedPrimitiveAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Person inv HasBartSomewhere: self.aliases2d->flatten()->count('Bart') >= 1");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("HasNestedCollectionValue"));
+        assertTrue(result.getCypher().contains("split("));
+        assertTrue(result.getCypher().contains("reduce("));
+    }
+
+    @Test
+    void compilesNestedCollectionValuedObjectReferenceAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    friendGroups : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Person inv HasSelfSomewhere: self.friendGroups->flatten()->includes(self) or self.friendGroups->flatten()->isEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("HasNestedCollectionValue"));
+        assertTrue(result.getCypher().contains("HasReferenceValue"));
+        assertTrue(result.getCypher().contains("ORDER BY r.index"));
+    }
+
+    @Test
+    void compilesDeepNestedCollectionValuedPrimitiveAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases3d : Sequence(Sequence(Sequence(String)))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Person inv HasBartSomewhere: self.aliases3d->flatten()->flatten()->count('Bart') >= 1");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("HasNestedCollectionValue"));
+        assertTrue(result.getCypher().contains("COLLECT { MATCH (nestedAttr"));
+        assertTrue(result.getCypher().contains("reduce("));
+    }
+
+    @Test
+    void compilesDeepNestedCollectionValuedObjectReferenceAttribute() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    friendGroups3d : Sequence(Sequence(Sequence(Person)))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult result = compiler.compile(
+                "context Person inv HasSelfSomewhere: self.friendGroups3d->flatten()->flatten()->includes(self) or self.friendGroups3d->flatten()->flatten()->isEmpty()");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("HasNestedCollectionValue"));
+        assertTrue(result.getCypher().contains("HasReferenceValue"));
+        assertTrue(result.getCypher().contains("COLLECT { MATCH (nestedAttr"));
+        assertTrue(result.getCypher().contains("ORDER BY r.index"));
+    }
+
+    @Test
+    void compilesOrderedAndUniqueNestedCollectionCombinations() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult orderedPrimitive = compiler.compile(
+                "context Person inv OrderedAliases: self.aliases2d->asOrderedSet()->flatten()->first().isDefined()");
+        CypherCompilationResult uniquePrimitive = compiler.compile(
+                "context Person inv UniqueAliases: self.aliases2d->asSet()->flatten()->count('Bart') >= 1");
+        CypherCompilationResult uniqueRefs = compiler.compile(
+                "context Person inv UniqueFriends: self.friendGroups2d->asSet()->flatten()->count(self) >= 0");
+
+        assertTrue(orderedPrimitive.isSupported(), orderedPrimitive.getReason());
+        assertTrue(orderedPrimitive.getCypher().contains("HasNestedCollectionValue"));
+        assertTrue(orderedPrimitive.getCypher().contains("head("));
+
+        assertTrue(uniquePrimitive.isSupported(), uniquePrimitive.getReason());
+        assertTrue(uniquePrimitive.getCypher().contains("any(existing"));
+        assertTrue(uniquePrimitive.getCypher().contains("reduce("));
+
+        assertTrue(uniqueRefs.isSupported(), uniqueRefs.getReason());
+        assertTrue(uniqueRefs.getCypher().contains("HasReferenceValue"));
+        assertTrue(uniqueRefs.getCypher().contains("any(existing"));
+    }
+
+    @Test
+    void compilesNestedCollectionSetOperationsAndContainmentChecks() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult uniqueUnion = compiler.compile(
+                "context Person inv UniqueNestedAliases: self.aliases2d->flatten()->asSet()->union(self.aliases2d->flatten()->asSet())->count('Bart') >= 0");
+        CypherCompilationResult orderedIntersection = compiler.compile(
+                "context Person inv OrderedNestedAliases: self.aliases2d->flatten()->asOrderedSet()->intersection(self.aliases2d->flatten()->asOrderedSet())->first().isDefined()");
+        CypherCompilationResult includesAll = compiler.compile(
+                "context Person inv NestedAliasesIncludeSelf: self.aliases2d->flatten()->includesAll(self.aliases2d->flatten())");
+        CypherCompilationResult excludesAll = compiler.compile(
+                "context Person inv NestedAliasesExcludeIntersection: self.aliases2d->flatten()->excludesAll(self.aliases2d->flatten()->intersection(self.aliases2d->flatten())) or self.aliases2d->flatten()->includesAll(self.aliases2d->flatten())");
+
+        assertTrue(uniqueUnion.isSupported(), uniqueUnion.getReason());
+        assertTrue(uniqueUnion.getCypher().contains("CASE WHEN any(existing"));
+
+        assertTrue(orderedIntersection.isSupported(), orderedIntersection.getReason());
+        assertTrue(orderedIntersection.getCypher().contains("CASE WHEN any(existing"));
+        assertTrue(orderedIntersection.getCypher().contains("head("));
+
+        assertTrue(includesAll.isSupported(), includesAll.getReason());
+        assertTrue(includesAll.getCypher().contains("all("));
+        assertTrue(includesAll.getCypher().contains("any("));
+
+        assertTrue(excludesAll.isSupported(), excludesAll.getReason());
+        assertTrue(excludesAll.getCypher().contains("none("));
+    }
+
+    @Test
+    void compilesNestedObjectReferenceSetOperationsAndContainmentChecks() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    friendGroups2d : Sequence(Sequence(Person))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult uniqueUnion = compiler.compile(
+                "context Person inv UniqueNestedFriends: self.friendGroups2d->flatten()->asSet()->union(self.friendGroups2d->flatten()->asSet())->count(self) >= 0");
+        CypherCompilationResult orderedIntersection = compiler.compile(
+                "context Person inv OrderedNestedFriends: self.friendGroups2d->flatten()->asOrderedSet()->intersection(self.friendGroups2d->flatten()->asOrderedSet())->first().isDefined() or self.friendGroups2d->flatten()->isEmpty()");
+        CypherCompilationResult includesAll = compiler.compile(
+                "context Person inv NestedFriendsIncludeSelf: self.friendGroups2d->flatten()->includesAll(self.friendGroups2d->flatten())");
+        CypherCompilationResult excludesAll = compiler.compile(
+                "context Person inv NestedFriendsExcludeIntersection: self.friendGroups2d->flatten()->excludesAll(self.friendGroups2d->flatten()->intersection(self.friendGroups2d->flatten())) or self.friendGroups2d->flatten()->includesAll(self.friendGroups2d->flatten())");
+
+        assertTrue(uniqueUnion.isSupported(), uniqueUnion.getReason());
+        assertTrue(uniqueUnion.getCypher().contains("HasReferenceValue"));
+        assertTrue(uniqueUnion.getCypher().contains("CASE WHEN any(existing"));
+
+        assertTrue(orderedIntersection.isSupported(), orderedIntersection.getReason());
+        assertTrue(orderedIntersection.getCypher().contains("HasReferenceValue"));
+        assertTrue(orderedIntersection.getCypher().contains("head("));
+
+        assertTrue(includesAll.isSupported(), includesAll.getReason());
+        assertTrue(includesAll.getCypher().contains("all("));
+        assertTrue(includesAll.getCypher().contains("any("));
+
+        assertTrue(excludesAll.isSupported(), excludesAll.getReason());
+        assertTrue(excludesAll.getCypher().contains("none("));
+    }
+
+    @Test
+    void compilesNestedBagOperationsWithoutImplicitDeduplication() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    aliases2d : Sequence(Sequence(String))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+        CypherCompilationResult bagUnion = compiler.compile(
+                "context Person inv BagNestedAliases: self.aliases2d->flatten()->asBag()->union(self.aliases2d->flatten()->asBag())->count('Bart') >= 2");
+        CypherCompilationResult bagIntersection = compiler.compile(
+                "context Person inv SharedNestedAliases: self.aliases2d->flatten()->asBag()->intersection(self.aliases2d->flatten()->asBag())->count('Bart') >= 2");
+
+        assertTrue(bagUnion.isSupported(), bagUnion.getReason());
+        assertTrue(bagUnion.getCypher().contains(" + "));
+        assertFalse(bagUnion.getCypher().contains("CASE WHEN any(existing"));
+
+        assertTrue(bagIntersection.isSupported(), bagIntersection.getReason());
+        assertTrue(bagIntersection.getCypher().contains("reduce("));
+        assertTrue(bagIntersection.getCypher().contains("remaining"));
+        assertTrue(bagIntersection.getCypher().contains("CASE WHEN any(existing"));
     }
 
     @Test
@@ -1744,13 +2653,13 @@ class DefaultOclToCypherCompilerTest {
         DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(
                 index,
                 new OclSemanticBinder(index) {
-                    @Override
-                    public BoundContextInvariant bindContext(org.uet.dse.neo4j.oclite.ast.ASTContext context) {
-                        throw new OclCodedUnsupportedOperationException(
-                                OclDiagnosticCode.UNSUPPORTED_METHOD_CALL,
-                                "Synthetic semantic gap for custom method.");
-                    }
-                },
+            @Override
+            public BoundContextInvariant bindContext(org.uet.dse.neo4j.oclite.ast.ASTContext context) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.UNSUPPORTED_METHOD_CALL,
+                        "Synthetic semantic gap for custom method.");
+            }
+        },
                 new OclIrBuilder(),
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
@@ -1785,13 +2694,13 @@ class DefaultOclToCypherCompilerTest {
                 index,
                 new OclSemanticBinder(index),
                 new OclIrBuilder() {
-                    @Override
-                    public org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery buildInvariant(OclSemanticBinder.BoundContextInvariant invariant) {
-                        throw new OclCodedUnsupportedOperationException(
-                                OclDiagnosticCode.UNSUPPORTED_BOUND_EXPRESSION,
-                                "Synthetic IR lowering gap.");
-                    }
-                },
+            @Override
+            public org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery buildInvariant(OclSemanticBinder.BoundContextInvariant invariant) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.UNSUPPORTED_BOUND_EXPRESSION,
+                        "Synthetic IR lowering gap.");
+            }
+        },
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
                 new OclCypherRenderer());
@@ -1826,11 +2735,11 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrBuilder(),
                 new OclIrOptimizer(),
                 new OclCypherPlanner() {
-                    @Override
-                    public OclCypherPlan.InvariantPlan planInvariant(org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery invariantQuery) {
-                        throw new IllegalStateException("Synthetic planning failure for test.");
-                    }
-                },
+            @Override
+            public OclCypherPlan.InvariantPlan planInvariant(org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery invariantQuery) {
+                throw new IllegalStateException("Synthetic planning failure for test.");
+            }
+        },
                 new OclCypherRenderer());
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
@@ -1864,13 +2773,13 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrBuilder(),
                 new OclIrOptimizer(),
                 new OclCypherPlanner() {
-                    @Override
-                    public OclCypherPlan.InvariantPlan planInvariant(org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery invariantQuery) {
-                        throw new OclCodedUnsupportedOperationException(
-                                OclDiagnosticCode.UNSUPPORTED_COUNT_OPERATOR,
-                                "Synthetic planner mismatch for count predicate.");
-                    }
-                },
+            @Override
+            public OclCypherPlan.InvariantPlan planInvariant(org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery invariantQuery) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.UNSUPPORTED_COUNT_OPERATOR,
+                        "Synthetic planner mismatch for count predicate.");
+            }
+        },
                 new OclCypherRenderer());
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
@@ -1904,11 +2813,11 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
                 new OclCypherRenderer() {
-                    @Override
-                    public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
-                        throw new UnsupportedOperationException("Synthetic rendering failure for test.");
-                    }
-                });
+            @Override
+            public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
+                throw new UnsupportedOperationException("Synthetic rendering failure for test.");
+            }
+        });
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
 
@@ -1942,13 +2851,13 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
                 new OclCypherRenderer() {
-                    @Override
-                    public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
-                        throw new OclCodedUnsupportedOperationException(
-                                OclDiagnosticCode.UNSUPPORTED_COLLECTION_OPERATION,
-                                "Synthetic renderer collection gap.");
-                    }
-                });
+            @Override
+            public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.UNSUPPORTED_COLLECTION_OPERATION,
+                        "Synthetic renderer collection gap.");
+            }
+        });
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
 
@@ -1981,18 +2890,18 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
                 new OclCypherRenderer() {
-                    @Override
-                    public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
-                        throw new UnsupportedOperationException("Unsupported iterator: sortedBy");
-                    }
-                });
+            @Override
+            public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
+                throw new UnsupportedOperationException("Unsupported iterator: sortedBy");
+            }
+        });
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
 
         assertFalse(result.isSupported());
         assertEquals("RENDERING", result.getDiagnostic().phase().name());
         assertEquals(2, result.getDiagnostics().size());
-        assertTrue(result.getDiagnostics().get(1).message().contains("select/collect/exists/forall/one/any"));
+        assertTrue(result.getDiagnostics().get(1).message().contains("select/reject/collect/exists/forall/one/any/isUnique/sortedBy"));
     }
 
     @Test
@@ -2017,11 +2926,11 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
                 new OclCypherRenderer() {
-                    @Override
-                    public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
-                        throw new UnsupportedOperationException("Unsupported operator: xor");
-                    }
-                });
+            @Override
+            public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
+                throw new UnsupportedOperationException("Unsupported operator: xor");
+            }
+        });
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
 
@@ -2053,11 +2962,11 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrOptimizer(),
                 new OclCypherPlanner(),
                 new OclCypherRenderer() {
-                    @Override
-                    public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
-                        throw new UnsupportedOperationException("Unsupported method call: sortedBy");
-                    }
-                });
+            @Override
+            public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
+                throw new UnsupportedOperationException("Unsupported method call: sortedBy");
+            }
+        });
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");
 
@@ -2139,11 +3048,11 @@ class DefaultOclToCypherCompilerTest {
                 new OclIrBuilder(),
                 new OclIrOptimizer(),
                 new OclCypherPlanner() {
-                    @Override
-                    public OclCypherPlan.InvariantPlan planInvariant(org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery invariantQuery) {
-                        throw new IllegalStateException("Unsupported plan source: SyntheticPlan");
-                    }
-                },
+            @Override
+            public OclCypherPlan.InvariantPlan planInvariant(org.uet.dse.neo4jtgg.ocl.ir.OclIr.InvariantQuery invariantQuery) {
+                throw new IllegalStateException("Unsupported plan source: SyntheticPlan");
+            }
+        },
                 new OclCypherRenderer());
 
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18");

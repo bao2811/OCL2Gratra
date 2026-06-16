@@ -332,9 +332,7 @@ public class Neo4jWorkspaceRuntimeService {
     }
 
     private String buildLinkIdentity(ImportLinkSpec link) {
-        return link.getAssociationName() + link.getEndpointNames().stream()
-                .map(endpoint -> "_" + endpoint)
-                .collect(Collectors.joining());
+        return link.getIdentity();
     }
 
     private Map<String, Object> buildAttributeMetadata(MAttribute attribute) {
@@ -451,7 +449,9 @@ public class Neo4jWorkspaceRuntimeService {
                     association.name(),
                     label,
                     sourceEnd.name(),
-                    targetEnd.name());
+                    targetEnd.name(),
+                    qualifierValuesForEnd(linkSpec, 0),
+                    qualifierValuesForEnd(linkSpec, 1));
             return;
         }
 
@@ -481,16 +481,26 @@ public class Neo4jWorkspaceRuntimeService {
     private void deleteLink(org.neo4j.driver.TransactionContext tx, ImportLinkSpec linkSpec) {
         List<String> endpoints = linkSpec.getEndpointNames();
         if (endpoints.size() == 2) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("left", endpoints.get(0));
+            params.put("right", endpoints.get(1));
+            params.put("assocName", linkSpec.getAssociationName());
+            params.put("sourceQualifiers", qualifierValuesForEnd(linkSpec, 0));
+            params.put("targetQualifiers", qualifierValuesForEnd(linkSpec, 1));
             tx.run("""
                     MATCH (a {use_id: $left})-[r]->(b {use_id: $right})
                     WHERE r.name = $assocName OR r.associationName = $assocName
+                      AND coalesce(r.sourceQualifiers, []) = $sourceQualifiers
+                      AND coalesce(r.targetQualifiers, []) = $targetQualifiers
                     DELETE r
-                    """, Map.of("left", endpoints.get(0), "right", endpoints.get(1), "assocName", linkSpec.getAssociationName()));
+                    """, params);
             tx.run("""
                     MATCH (a {use_id: $right})-[r]->(b {use_id: $left})
                     WHERE r.name = $assocName OR r.associationName = $assocName
+                      AND coalesce(r.sourceQualifiers, []) = $targetQualifiers
+                      AND coalesce(r.targetQualifiers, []) = $sourceQualifiers
                     DELETE r
-                    """, Map.of("left", endpoints.get(0), "right", endpoints.get(1), "assocName", linkSpec.getAssociationName()));
+                    """, params);
             return;
         }
 
@@ -509,5 +519,13 @@ public class Neo4jWorkspaceRuntimeService {
             return value;
         }
         return Character.toLowerCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private List<String> qualifierValuesForEnd(ImportLinkSpec linkSpec, int endIndex) {
+        if (linkSpec.getQualifierValues().size() <= endIndex) {
+            return List.of();
+        }
+        List<String> values = linkSpec.getQualifierValues().get(endIndex);
+        return values != null ? values : List.of();
     }
 }

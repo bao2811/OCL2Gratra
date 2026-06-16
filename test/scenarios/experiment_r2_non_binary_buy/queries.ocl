@@ -1,0 +1,8 @@
+context Person inv BuyerHasPet:
+    self.pet->notEmpty()
+
+context Company inv SellerHasAdultBuyer:
+    self.buyer->exists(p | p.age >= 18)
+
+context Animal inv PetHasSellerNamedAcme:
+    self.seller->exists(c | c.name = 'Acme')

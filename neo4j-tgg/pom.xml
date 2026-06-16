@@ -26,12 +26,6 @@
         </dependency>
         <dependency>
             <groupId>org.tzi.use</groupId>
-            <artifactId>rtl</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.tzi.use</groupId>
             <artifactId>neo4j</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>

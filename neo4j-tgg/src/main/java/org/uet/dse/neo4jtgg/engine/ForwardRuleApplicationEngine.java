@@ -505,6 +505,7 @@ public class ForwardRuleApplicationEngine {
         LinkState state = new LinkState();
         state.assocName = spec.getAssociationName();
         state.participants = List.copyOf(spec.getEndpointNames());
+        state.qualifierValues = List.copyOf(spec.getQualifierValues());
         return state;
     }
 

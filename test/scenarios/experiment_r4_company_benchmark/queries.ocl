@@ -1,0 +1,29 @@
+context Company inv HasEmployees:
+    self.employee->notEmpty()
+
+context Company inv WorkingAge:
+    self.employee->forAll(p | p.age <= 65)
+
+context Company inv HasSenior:
+    self.employee->exists(p | p.age > 50)
+
+context Company inv SeniorSelect:
+    self.employee->select(p | p.age > 50)->notEmpty()
+
+context Company inv EmployeeCount:
+    self.employee->size() >= 1
+
+context Company inv NamedManager:
+    self.manager.firstName.isDefined()
+
+context Person inv HasEmployer:
+    self.employer->notEmpty()
+
+context Person inv AdultWorker:
+    self.age >= 18 implies self.employer->notEmpty()
+
+context Company inv HighSalaryExists:
+    self.employee->exists(e | e.salary > 5000)
+
+context Company inv AllNamed:
+    self.employee->forAll(e | e.firstName.isDefined())

@@ -880,7 +880,15 @@ public class DefaultOclValidationService implements OclValidationService {
                     || referencesVariable(binary.right, variableName);
         }
         if (expression instanceof ASTProperty property) {
-            return referencesVariable(property.source, variableName);
+            if (referencesVariable(property.source, variableName)) {
+                return true;
+            }
+            for (ASTExpression qualifier : property.qualifiers) {
+                if (referencesVariable(qualifier, variableName)) {
+                    return true;
+                }
+            }
+            return false;
         }
         if (expression instanceof ASTMethodCall methodCall) {
             if (referencesVariable(methodCall.source, variableName)) {

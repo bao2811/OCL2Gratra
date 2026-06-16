@@ -49,8 +49,19 @@ public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
     }
 
     @Override
+    public ASTNode visitEnumLiteralExpr(OCLParser.EnumLiteralExprContext ctx) {
+        return new ASTEnumLiteral(ctx.enumType.getText(), ctx.enumLiteral.getText());
+    }
+
+    @Override
     public ASTNode visitNavigationExpr(OCLParser.NavigationExprContext ctx) {
-        return new ASTProperty((ASTExpression)visit(ctx.primary()), ctx.Identifier().getText());
+        List<ASTExpression> qualifiers = new ArrayList<>();
+        if (ctx.argList() != null) {
+            for (OCLParser.ExpressionContext arg : ctx.argList().expression()) {
+                qualifiers.add((ASTExpression) visit(arg));
+            }
+        }
+        return new ASTProperty((ASTExpression) visit(ctx.primary()), ctx.Identifier().getText(), qualifiers);
     }
 
     @Override

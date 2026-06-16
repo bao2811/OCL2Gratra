@@ -218,7 +218,9 @@ public class Neo4jUseMirrorService {
                     continue;
                 }
                 if (mirrorModel.getAssociation(linkState.assocName) != null) {
-                    api.createLink(linkState.assocName, linkState.participants.toArray(new String[0]));
+                    api.createLink(linkState.assocName,
+                            linkState.participants.toArray(new String[0]),
+                            qualifierExpressions(linkState.qualifierValues));
                 }
             }
         }
@@ -257,5 +259,17 @@ public class Neo4jUseMirrorService {
                 }
             }
         }
+    }
+
+    private String[][] qualifierExpressions(List<List<String>> qualifierValues) {
+        if (qualifierValues == null || qualifierValues.isEmpty()) {
+            return new String[0][];
+        }
+        String[][] expressions = new String[qualifierValues.size()][];
+        for (int i = 0; i < qualifierValues.size(); i++) {
+            List<String> endValues = qualifierValues.get(i);
+            expressions[i] = endValues == null ? new String[0] : endValues.toArray(new String[0]);
+        }
+        return expressions;
     }
 }

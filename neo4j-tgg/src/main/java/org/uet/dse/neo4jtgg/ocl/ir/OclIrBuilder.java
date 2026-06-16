@@ -51,7 +51,11 @@ public class OclIrBuilder {
                         property.type(),
                         property.attribute());
             }
-            return new OclIr.NavigationAccess(buildExpression(property.source()), property.navigation(), property.type());
+            return new OclIr.NavigationAccess(
+                    buildExpression(property.source()),
+                    property.navigation(),
+                    buildArguments(property.qualifiers()),
+                    property.type());
         }
         if (expression instanceof OclSemanticBinder.BoundMethodCall methodCall) {
             return new OclIr.MethodCall(

@@ -43,10 +43,11 @@ expression
 
 primary
     : literal                                      #LiteralExpr
+    | enumType=Identifier '::' enumLiteral=Identifier #EnumLiteralExpr
     | Identifier                                   #IdExpr
     | 'if' condition=expression 'then' thenBranch=expression 'else' elseBranch=expression 'endif' #IfExp
     | primary '.' Identifier '(' argList? ')'     #MethodCallExpr
-    | primary '.' Identifier                       #NavigationExpr
+    | primary '.' Identifier ('[' argList? ']')?  #NavigationExpr
     | primary '->' iteratorOp=Identifier '(' iteratorVar=Identifier (':' iteratorType=Identifier)? '|' expression ')' #IteratorExpr
     | primary '->' Identifier '(' argList? ')'     #CollectionOpExpr
     | 'let' varName=Identifier '=' value=expression 'in' body=expression #LetExpr

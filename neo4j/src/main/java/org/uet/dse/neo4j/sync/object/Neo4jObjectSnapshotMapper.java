@@ -122,8 +122,14 @@ public class Neo4jObjectSnapshotMapper {
   static LinkState toBinaryLink(Record rec) {
     LinkState ls = new LinkState();
     ls.assocName = rec.get("assocName").asString();
-    ls.edgeLabel = rec.get("label").asString();
+    if (rec.containsKey("label") && !rec.get("label").isNull()) {
+      ls.edgeLabel = rec.get("label").asString();
+    }
     ls.participants = Arrays.asList(rec.get("src").asString(), rec.get("tgt").asString());
+    ls.qualifierValues = List.of(
+        rec.get("sourceQualifiers").asList(v -> v.isNull() ? null : v.asString()),
+        rec.get("targetQualifiers").asList(v -> v.isNull() ? null : v.asString())
+    );
     return ls;
   }
 

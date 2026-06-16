@@ -17,7 +17,8 @@ public final class OclCypherPlan {
     public sealed interface ExpressionPlan permits VariablePlan, LiteralPlan, NotPlan, BinaryPlan,
             AttributeAccessPlan, NavigationAccessPlan, MethodCallPlan, CollectionOperationPlan,
             IfPlan, LetPlan,
-            IteratorOperationPlan, ExistsSubqueryPlan, NotExistsSubqueryPlan, CountSubqueryComparisonPlan {
+            IteratorOperationPlan, ExistsSubqueryPlan, NotExistsSubqueryPlan, CountSubqueryComparisonPlan,
+            NavigationAggregationPlan, NavigationUniquenessPlan {
         OclTypeBinding type();
     }
 
@@ -47,6 +48,7 @@ public final class OclCypherPlan {
     }
 
     public record NavigationAccessPlan(ExpressionPlan source, OclMetamodelIndex.NavigationInfo navigation,
+                                       List<ExpressionPlan> qualifiers,
                                        OclTypeBinding type) implements ExpressionPlan {
     }
 
@@ -75,6 +77,14 @@ public final class OclCypherPlan {
 
     public record CountSubqueryComparisonPlan(NavigationMatchPlan match, String operator,
                                               long literal, OclTypeBinding type) implements ExpressionPlan {
+    }
+
+    public record NavigationAggregationPlan(NavigationMatchPlan match, ExpressionPlan projection,
+                                            String operationName, OclTypeBinding type) implements ExpressionPlan {
+    }
+
+    public record NavigationUniquenessPlan(NavigationMatchPlan match, ExpressionPlan projection,
+                                           OclTypeBinding type) implements ExpressionPlan {
     }
 
     public enum PredicateMode {

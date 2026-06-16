@@ -214,8 +214,20 @@ public class Neo4jObjectRepository {
   }
 
   public void upsertBinaryLink(TransactionContext tx, String srcObj, String tgtObj, String assocName, String label, String sRole, String tRole) {
+    upsertBinaryLink(tx, srcObj, tgtObj, assocName, label, sRole, tRole, List.of(), List.of());
+  }
 
-    tx.run(Neo4jObjectQuery.upsertBinaryLink(label), Map.of("id1", srcObj, "id2", tgtObj, "name", assocName, "sRole", sRole, "tRole", tRole));
+  public void upsertBinaryLink(TransactionContext tx, String srcObj, String tgtObj, String assocName, String label,
+                               String sRole, String tRole, List<String> sourceQualifiers, List<String> targetQualifiers) {
+
+    tx.run(Neo4jObjectQuery.upsertBinaryLink(label), Map.of(
+        "id1", srcObj,
+        "id2", tgtObj,
+        "name", assocName,
+        "sRole", sRole,
+        "tRole", tRole,
+        "sQualifiers", sourceQualifiers != null ? sourceQualifiers : List.of(),
+        "tQualifiers", targetQualifiers != null ? targetQualifiers : List.of()));
   }
 
   public void upsertTernaryLink(TransactionContext tx, String assocName, List<Map<String, Object>> participants) {

@@ -1,0 +1,11 @@
+context Library inv ShelfA1Exists:
+    self.book['A1']->notEmpty()
+
+context Library inv ShelfViaVariable:
+    let shelf = self.defaultShelf in self.book[shelf]->notEmpty()
+
+context Library inv ShelfViaExpression:
+    self.book[self.defaultShelf.concat('')]->notEmpty()
+
+context Library inv ThickBookOnDefaultShelf:
+    self.book[self.defaultShelf]->collect(b | b.pages)->max() >= 100

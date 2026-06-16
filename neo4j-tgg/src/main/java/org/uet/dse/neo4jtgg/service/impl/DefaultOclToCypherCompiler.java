@@ -419,7 +419,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
-                        "Hint: remodel this as navigation, or project the collection through supported operations before Cypher compilation.",
+                        "Hint: collection-valued attributes are supported, but this case still needs valid collection metadata or the nested collection graph path during rendering.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -435,7 +435,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
-                        "Hint: expose the qualified lookup as an explicit attribute/filter pair or refactor the model to a supported binary navigation.",
+                        "Hint: primitive scalar qualifier expressions are supported, but custom typed qualifier serialization still needs dedicated support.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -467,7 +467,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
-                        "Hint: rewrite this iterator into a supported one such as select/collect/exists/forall/one/any, or extend semantic binding first.",
+                        "Hint: rewrite this iterator into a supported one such as select/reject/collect/exists/forall/one/any/isUnique/sortedBy, or extend semantic binding first.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -532,7 +532,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         primary.phase(),
                         primary.code(),
-                        "Hint: rewrite this iterator into select/collect/exists/forall/one/any, or add planner-renderer support for the missing iterator.",
+                        "Hint: rewrite this iterator into select/reject/collect/exists/forall/one/any/isUnique/sortedBy, or add planner-renderer support for the missing iterator.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -640,9 +640,6 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         if (message.contains("only supported on ordered collections")) {
             return OclDiagnosticCode.UNORDERED_POSITIONAL_ACCESS;
         }
-        if (message.contains("Collection-valued attributes are not supported yet")) {
-            return OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED;
-        }
         if (message.contains("non-binary associations")) {
             return OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED;
         }
@@ -740,7 +737,15 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                     || referencesVariable(binary.right, variableName);
         }
         if (expression instanceof ASTProperty property) {
-            return referencesVariable(property.source, variableName);
+            if (referencesVariable(property.source, variableName)) {
+                return true;
+            }
+            for (ASTExpression qualifier : property.qualifiers) {
+                if (referencesVariable(qualifier, variableName)) {
+                    return true;
+                }
+            }
+            return false;
         }
         if (expression instanceof ASTMethodCall methodCall) {
             if (referencesVariable(methodCall.source, variableName)) {
