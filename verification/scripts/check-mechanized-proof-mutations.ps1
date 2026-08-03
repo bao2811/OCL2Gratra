@@ -140,3 +140,7 @@ try {
         Remove-Item -LiteralPath $resolvedRoot -Recurse -Force
     }
 }
+
+# The last deliberately rejected child checker exits non-zero. Do not leak that
+# expected mutation exit code to the calling PowerShell/GitHub Actions process.
+$global:LASTEXITCODE = 0
