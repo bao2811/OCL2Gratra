@@ -1,3 +1,9 @@
-#! /usr/bin/sh
+#!/usr/bin/env sh
+set -eu
 
-mvn install:install-file -Dfile=./lib/kodkod.jar -DgroupId=kodkod -DartifactId=kodkod -Dversion=1.0 -Dpackaging=jar
+mvn --batch-mode org.apache.maven.plugins:maven-install-plugin:3.1.2:install-file \
+  -Dfile=./lib/kodkod.jar \
+  -DgroupId=kodkod \
+  -DartifactId=kodkod \
+  -Dversion=1.0 \
+  -Dpackaging=jar

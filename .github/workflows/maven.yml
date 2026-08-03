@@ -48,6 +48,9 @@ jobs:
         run: |
           ./verification/scripts/check-mechanized-proof.ps1
           ./verification/scripts/check-mechanized-proof-mutations.ps1
+      - name: Install bundled Kodkod artifact
+        working-directory: validator
+        run: ./init.sh
       - name: Build reactor artifacts
         # Legacy USE integration tests are not the OCL2Cypher proof gate and
         # currently contain platform-sensitive golden-output cases. The next
