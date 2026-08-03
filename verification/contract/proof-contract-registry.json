@@ -1,6 +1,6 @@
 {
   "version": "PC-2026-07-22.2",
-  "registrySchemaVersion": 3,
+  "registrySchemaVersion": 4,
   "assumptions": [
     { "id": "A1", "key": "parse_and_admission" },
     { "id": "A2", "key": "successful_well_typed_binding" },
@@ -70,17 +70,23 @@
     { "id": "EV-PO12-ALIAS", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/BottomSafeReceiverAgreementTest.java", "symbol": "class BottomSafeReceiverAgreementTest" },
     { "id": "EV-PO13-RAW-AST", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/RawCypherAstTotalityTest.java", "symbol": "class RawCypherAstTotalityTest" },
     { "id": "EV-PO14-DIRECT-TEXT-BRIDGE", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/Neo4jCypherAstBridgeTest.java", "symbol": "class Neo4jCypherAstBridgeTest" },
+    { "id": "EV-PO14-BOTTOM-ROUNDTRIP", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/BottomSafeReceiverAgreementTest.java", "symbol": "bottomSafeReceiverBranchesRoundTripThroughBothParsers" },
+    { "id": "EV-PO14-CONSTRUCTOR-MATRIX", "kind": "file", "path": "verification/coverage/cypher_plan_constructor_matrix.csv" },
+    { "id": "EV-PO14-CONSTRUCTOR-MATRIX-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclCypherPlanConstructorEvidenceMatrixTest.java", "symbol": "everySealedPlanConstructorHasFactoryPlannerRendererFormalRuleAndRoundTripEvidence" },
     { "id": "EV-PO15-RUNTIME-MANIFEST", "kind": "file", "path": "verification/evidence/cypher5-val-runtime-2026-08-01.tsv" },
     { "id": "EV-PO15-RUNTIME-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/Cypher5ValRuntimeEvidenceManifestTest.java", "symbol": "class Cypher5ValRuntimeEvidenceManifestTest" },
     { "id": "EV-PO16-OCL47-MANIFEST", "kind": "file", "path": "verification/evidence/oclval47-nonvacuity-runtime-2026-08-01.tsv" },
     { "id": "EV-PO16-OCL47-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclVal47NonVacuityEvidenceTest.java", "symbol": "class OclVal47NonVacuityEvidenceTest" },
     { "id": "EV-PO17-CHECKER", "kind": "source", "path": "verification/scripts/check-verification-contract.ps1", "symbol": "Machine verification contract PASS" },
     { "id": "EV-PO17-MUTATIONS", "kind": "source", "path": "verification/scripts/check-verification-contract-mutations.ps1", "symbol": "Machine verification mutation tests PASS" },
-    { "id": "EV-PO18-LEAN", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem theorem6_at_object" },
+    { "id": "EV-PO18-LEAN", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem java_ir_eval_refinement" },
     { "id": "EV-PO18-CHECKER", "kind": "source", "path": "verification/scripts/check-mechanized-proof.ps1", "symbol": "Mechanized proof check PASS" },
     { "id": "EV-PO18-MUTATIONS", "kind": "source", "path": "verification/scripts/check-mechanized-proof-mutations.ps1", "symbol": "Mechanized proof mutation tests PASS" },
     { "id": "EV-PO18-NORM-BOUNDARY", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/OclRewritePreservationTest.java", "symbol": "formalNormalizerAndGraphOptimizerAreSemanticNotSyntacticCounterparts" },
     { "id": "EV-PO18-CAPTURE-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/OclRewritePreservationTest.java", "symbol": "fusionFallsBackWhenIteratorRenameWouldCaptureNestedBinder" },
+    { "id": "EV-PO18-JAVA-MATRIX", "kind": "file", "path": "verification/coverage/java_ir_refinement_matrix.csv" },
+    { "id": "EV-PO18-JAVA-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclIrJavaRefinementCoverageTest.java", "symbol": "everyProductionOptimizedConstructorHasLeanAndJavaRefinementEvidence" },
+    { "id": "EV-PO18-JAVA-REFINEMENT", "kind": "source", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/PipelineRefinementVerifier.java", "symbol": "verifyOptimizedToPlan" },
     { "id": "EV-PO19-ARTIFACT-GATE", "kind": "source", "path": ".github/workflows/maven.yml", "symbol": "proof-contract-PC-2026-07-22.2" },
     { "id": "EV-PO19-REPORT", "kind": "source", "path": "verification/scripts/write-proof-report.ps1", "symbol": "proof-report.schema.v1" }
   ],
@@ -98,13 +104,14 @@
     { "id": "PO-11", "title": "ScalarClosed enforcement", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO11-SCALAR"] },
     { "id": "PO-12", "title": "Bottom-safe alias preservation", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO12-ALIAS"] },
     { "id": "PO-13", "title": "Raw AST closure/totality", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO13-RAW-AST"] },
-    { "id": "PO-14", "title": "Direct-text parse/normalization bridge", "classification": "required", "status": "partial", "evidenceIds": ["EV-PO14-DIRECT-TEXT-BRIDGE"] },
+    { "id": "PO-14", "title": "Admitted direct-text parse/normalization bridge", "classification": "required", "status": "discharged", "scope": "all 17 sealed plan constructors over the admitted renderer profile, including bottom-safe receiver branches; arbitrary out-of-profile plan field combinations remain outside the claim", "evidenceIds": ["EV-PO14-DIRECT-TEXT-BRIDGE", "EV-PO14-BOTTOM-ROUNDTRIP", "EV-PO14-CONSTRUCTOR-MATRIX", "EV-PO14-CONSTRUCTOR-MATRIX-GUARD"] },
     { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD"] },
     { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD"] },
     { "id": "PO-17", "title": "Semantic proof synchronization", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO17-CHECKER", "EV-PO17-MUTATIONS"] },
-    { "id": "PO-18", "title": "Mechanized core lemmas", "classification": "recommended", "status": "partial", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD"] },
+    { "id": "PO-18", "title": "Mechanized core lemmas", "classification": "recommended", "status": "partial", "scope": "full structural relational refinement over all 16 production OptimizedExpression constructors is mechanized and reflection-guarded; concrete primitive OCL/graph commutation premises, normalization-rule semantics, Neo4j semantics, and AdapterAdequate remain outside this discharge", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD", "EV-PO18-JAVA-MATRIX", "EV-PO18-JAVA-GUARD", "EV-PO18-JAVA-REFINEMENT"] },
     { "id": "PO-19", "title": "Clean machine-verification artifact", "classification": "required", "status": "open", "evidenceIds": ["EV-PO19-ARTIFACT-GATE", "EV-PO19-REPORT"] },
-    { "id": "PO-20", "title": "Paper publication build (external)", "classification": "out_of_scope", "status": "open", "evidenceIds": [] }
+    { "id": "PO-20", "title": "Paper publication build (external)", "classification": "out_of_scope", "status": "open", "evidenceIds": [] },
+    { "id": "PO-21", "title": "AdapterAdequate composition from PA1--PA9", "classification": "required", "status": "open", "scope": "a mathematical composition theorem connecting the nine checked adapter obligations to the implementation observation interface", "evidenceIds": [] }
   ],
   "runtimeProfiles": [
     {
@@ -153,6 +160,32 @@
       "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValRealNeo4jCoverageTest.java"
     ]
   },
+  "planConstructorCoverage": {
+    "matrixPath": "verification/coverage/cypher_plan_constructor_matrix.csv",
+    "constructors": [
+      "VariablePlan", "LiteralPlan", "SetLiteralPlan", "NotPlan", "BinaryPlan",
+      "AttributeAccessPlan", "NavigationAccessPlan", "MethodCallPlan", "CollectionOperationPlan",
+      "IfPlan", "LetPlan", "IteratorOperationPlan", "ExistsSubqueryPlan", "NotExistsSubqueryPlan",
+      "CountSubqueryComparisonPlan", "NavigationAggregationPlan", "NavigationUniquenessPlan"
+    ],
+    "requiredColumns": [
+      "constructor", "ir_constructor", "factory_method", "planner_method",
+      "renderer_method", "formal_rule", "evidence_test", "evidence_method"
+    ]
+  },
+  "javaIrRefinementCoverage": {
+    "matrixPath": "verification/coverage/java_ir_refinement_matrix.csv",
+    "constructors": [
+      "Variable", "Literal", "SetLiteral", "Not", "Binary", "AttributeAccess",
+      "NavigationAccess", "MethodCall", "CollectionOperation", "IteratorOperation",
+      "If", "Let", "NavigationPredicateCheck", "NavigationCountComparison",
+      "NavigationAggregation", "NavigationUniquenessCheck"
+    ],
+    "requiredColumns": [
+      "java_constructor", "lean_constructor", "lean_agreement_case", "planner_method",
+      "java_refinement_method", "evidence_test", "evidence_method"
+    ]
+  },
   "implementationVocabulary": [
     { "term": "ObjectInstanceOf", "role": "M1 object to runtime UmlClass typing link", "path": "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphVocabulary.java", "literal": "public static final String OBJECT_INSTANCE_OF = \"ObjectInstanceOf\";" },
     { "term": "InstanceOf", "role": "M2 schema element to MetaNode typing link", "path": "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphVocabulary.java", "literal": "public static final String SCHEMA_INSTANCE_OF = \"InstanceOf\";" },
@@ -186,7 +219,7 @@
       "root_rewrite_strictly_decreases", "typed_rewrite_preserves_type",
       "scoped_rename_preserves_binder_boundary", "named_to_scoped_semantic_correspondence",
       "java_capture_guard_sound", "java_guarded_rename_preserves_scoped_semantics",
-      "structural_preservation", "theorem6_forward",
+      "structural_preservation", "java_ir_eval_refinement", "theorem6_forward",
       "theorem6_backward", "theorem6_at_object"
     ],
     "axiomAudit": {
@@ -196,6 +229,7 @@
         { "name": "Ocl2CypherProof.BoolExpr.normalize_preserves_eval", "expected": ["propext"] },
         { "name": "Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free", "expected": ["propext"] },
         { "name": "Ocl2CypherProof.Formula.structural_preservation", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement", "expected": ["propext"] },
         { "name": "Ocl2CypherProof.theorem6_at_object", "expected": [] },
         { "name": "Ocl2CypherProof.Normalization.all_rewrite_semantics", "expected": [] },
         { "name": "Ocl2CypherProof.Normalization.typed_rewrite_preserves_type", "expected": ["propext"] },
@@ -211,15 +245,14 @@
     "coverage": [
       { "id": "MK-FINITE-SET", "status": "mechanized", "scope": "predicate-set image/subset/exists/forall and injective membership reflection" },
       { "id": "MK-ENCODE", "status": "mechanized", "scope": "flat typed bottom/scalar/entity/finite-set value encoding" },
-      { "id": "MK-NORMALIZE", "status": "partial", "scope": "all eleven listed rewrite-family semantic equations over validation Bool/finite List, intrinsic Bool/Nat/Elem/Set N2 indexes, lexical named-to-de-Bruijn semantic correspondence, soundness and scoped-semantic preservation of the exact three-disjunct Java capture guard over the Boolean binder kernel, relative normal form, idempotence, and lexicographic root decrease; full Java-constructor T_OPT refinement remains open" },
-      { "id": "MK-T4", "status": "partial", "scope": "structural Boolean-formula lifting from primitive observation agreement" },
+      { "id": "MK-NORMALIZE", "status": "partial", "scope": "all eleven listed rewrite-family semantic equations over validation Bool/finite List, intrinsic Bool/Nat/Elem/Set N2 indexes, lexical named-to-de-Bruijn semantic correspondence, soundness and scoped-semantic preservation of the exact three-disjunct Java capture guard over the Boolean binder kernel, relative normal form, idempotence, and lexicographic root decrease; concrete semantic premises for every production optimization rule remain open" },
+      { "id": "MK-T4", "status": "mechanized", "scope": "relational structural induction over all 16 production OclIr.OptimizedExpression constructors, including recursive expression lists and optional predicates, under one explicit primitive-agreement premise per constructor" },
       { "id": "MK-T6", "status": "mechanized", "scope": "forward/backward pointwise violation-ID inclusions under agreement and ID injectivity" }
     ],
     "openScope": [
       "nested collection encodeValue injectivity",
-      "metamodel-specific OCL subtyping/coercion and universal Java T_OPT semantic refinement for all normalization rules",
-      "exhaustive constructor mapping from production Java OclIr to the named/de Bruijn Boolean binder kernel and universal Java T_OPT semantic refinement beyond guarded fusion",
-      "full typed OCL_val Theorem 4 induction",
+      "metamodel-specific OCL subtyping/coercion and concrete semantic agreement for every Java T_OPT normalization rule",
+      "instantiation of the 16-constructor relational algebra with the actual object and graph evaluators, including Java payload semantics",
       "Neo4j/Cypher semantics and AdapterAdequate",
       "universal Theorem 6 composition beyond the abstract agreement premises"
     ]

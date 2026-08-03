@@ -8,6 +8,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -166,20 +167,85 @@ final class PipelineRefinementVerifier {
             verifyOptimizedToPlan(value.source(), plan.source());
             verifyOptimizedToPlan(value.body(), plan.body());
         } else if (source instanceof OclIr.NavigationPredicateCheck value) {
-            boolean expected = switch (value.kind()) {
-                case EXISTS -> target instanceof OclCypherPlan.ExistsSubqueryPlan;
-                case NOT_EXISTS, FORALL -> target instanceof OclCypherPlan.NotExistsSubqueryPlan;
+            OclCypherPlan.NavigationMatchPlan match = switch (value.kind()) {
+                case EXISTS -> {
+                    assertTrue(target instanceof OclCypherPlan.ExistsSubqueryPlan);
+                    yield ((OclCypherPlan.ExistsSubqueryPlan) target).match();
+                }
+                case NOT_EXISTS, FORALL -> {
+                    assertTrue(target instanceof OclCypherPlan.NotExistsSubqueryPlan);
+                    yield ((OclCypherPlan.NotExistsSubqueryPlan) target).match();
+                }
             };
-            assertTrue(expected, "Unexpected predicate plan " + target.getClass().getSimpleName());
-        } else if (source instanceof OclIr.NavigationCountComparison) {
-            assertTrue(target instanceof OclCypherPlan.CountSubqueryComparisonPlan);
-        } else if (source instanceof OclIr.NavigationAggregation) {
+            verifyNavigationMatch(value.navigation(), value.iteratorName(), value.predicate(),
+                    value.kind() == OclIr.NavigationPredicateKind.FORALL
+                            ? OclCypherPlan.PredicateMode.NEGATED
+                            : OclCypherPlan.PredicateMode.NORMAL,
+                    match);
+        } else if (source instanceof OclIr.NavigationCountComparison value) {
+            OclCypherPlan.NavigationMatchPlan match;
+            if (isExistsCountShape(value.operator(), value.literal())) {
+                assertTrue(target instanceof OclCypherPlan.ExistsSubqueryPlan);
+                match = ((OclCypherPlan.ExistsSubqueryPlan) target).match();
+            } else if (isNotExistsCountShape(value.operator(), value.literal())) {
+                assertTrue(target instanceof OclCypherPlan.NotExistsSubqueryPlan);
+                match = ((OclCypherPlan.NotExistsSubqueryPlan) target).match();
+            } else {
+                assertTrue(target instanceof OclCypherPlan.CountSubqueryComparisonPlan);
+                OclCypherPlan.CountSubqueryComparisonPlan plan =
+                        (OclCypherPlan.CountSubqueryComparisonPlan) target;
+                assertEquals(value.operator(), plan.operator());
+                assertEquals(value.literal(), plan.literal());
+                match = plan.match();
+            }
+            verifyNavigationMatch(value.navigation(), value.iteratorName(), value.predicate(),
+                    OclCypherPlan.PredicateMode.NORMAL, match);
+        } else if (source instanceof OclIr.NavigationAggregation value) {
             assertTrue(target instanceof OclCypherPlan.NavigationAggregationPlan);
-        } else if (source instanceof OclIr.NavigationUniquenessCheck) {
+            OclCypherPlan.NavigationAggregationPlan plan = (OclCypherPlan.NavigationAggregationPlan) target;
+            assertEquals(value.operationName(), plan.operationName());
+            verifyNavigationMatch(value.navigation(), value.iteratorName(), value.predicate(),
+                    OclCypherPlan.PredicateMode.NORMAL, plan.match());
+            verifyOptimizedToPlan(value.projection(), plan.projection());
+        } else if (source instanceof OclIr.NavigationUniquenessCheck value) {
             assertTrue(target instanceof OclCypherPlan.NavigationUniquenessPlan);
+            OclCypherPlan.NavigationUniquenessPlan plan = (OclCypherPlan.NavigationUniquenessPlan) target;
+            verifyNavigationMatch(value.navigation(), value.iteratorName(), value.predicate(),
+                    OclCypherPlan.PredicateMode.NORMAL, plan.match());
+            verifyOptimizedToPlan(value.projection(), plan.projection());
         } else {
             throw new AssertionError("Unverified optimized constructor: " + source.getClass().getName());
         }
+    }
+
+    private static void verifyNavigationMatch(OclIr.NavigationAccess source, String iteratorName,
+                                              OclIr.Expression predicate,
+                                              OclCypherPlan.PredicateMode nonEmptyMode,
+                                              OclCypherPlan.NavigationMatchPlan target) {
+        assertEquals(iteratorName != null ? iteratorName : "nav", target.targetAlias());
+        assertEquals(source.type().elementType(), target.targetType());
+        verifyOptimizedToPlan(source.source(), target.owner());
+        verifyOptimizedToPlan(source, target.navigation());
+        if (predicate == null) {
+            assertNull(target.predicate());
+            assertEquals(OclCypherPlan.PredicateMode.NONE, target.predicateMode());
+        } else {
+            assertNotNull(target.predicate());
+            assertEquals(nonEmptyMode, target.predicateMode());
+            verifyOptimizedToPlan(predicate, target.predicate());
+        }
+    }
+
+    private static boolean isExistsCountShape(String operator, long literal) {
+        return (operator.equals(">") && literal == 0)
+                || (operator.equals(">=") && literal == 1)
+                || (operator.equals("<>") && literal == 0);
+    }
+
+    private static boolean isNotExistsCountShape(String operator, long literal) {
+        return (operator.equals("=") && literal == 0)
+                || (operator.equals("<") && literal == 1)
+                || (operator.equals("<=") && literal == 0);
     }
 
     private static void verifyPlanLists(List<? extends OclIr.Expression> source,

@@ -111,14 +111,14 @@ try {
 }
 $registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
-if ([int]$registry.registrySchemaVersion -ne 3) {
-    Add-CheckError "Registry: expected schema version 3, actual '$($registry.registrySchemaVersion)'"
+if ([int]$registry.registrySchemaVersion -ne 4) {
+    Add-CheckError "Registry: expected schema version 4, actual '$($registry.registrySchemaVersion)'"
 }
 Test-ExactSequence @($registry.assumptions.id) @('A1','A2','A3','A4','A5','A6','A7','A8','A9') 'Registry assumptions'
 Test-ExactSequence @($registry.scopeLemmas.id) @('M1','M2','M3','M3a','M4','M5') 'Registry scope lemmas'
 Test-ExactSequence @($registry.theorems.id) @('PC-T0','PC-T1','PC-T2','PC-T3','PC-T4','PC-T5','PC-T6') 'Registry theorems'
 Test-ExactSequence @($registry.semanticFunctions.id) @(1..28 | ForEach-Object { 'SF-{0:d2}' -f $_ }) 'Registry semantic functions'
-Test-ExactSequence @($registry.proofObligations.id) @(1..20 | ForEach-Object { 'PO-{0:d2}' -f $_ }) 'Registry proof obligations'
+Test-ExactSequence @($registry.proofObligations.id) @(1..21 | ForEach-Object { 'PO-{0:d2}' -f $_ }) 'Registry proof obligations'
 Test-ExactSequence @($registry.implementationVocabulary.term) @(
     'ObjectInstanceOf','InstanceOf','classKey','attributeKey','associationKey',
     'sourceQualifiers','targetQualifiers','__oclBottom'
@@ -248,6 +248,52 @@ foreach ($artifactPath in @($registry.constructorCoverage.artifactPaths)) {
     }
 }
 
+$planMatrixRelative = ([string]$registry.planConstructorCoverage.matrixPath).Replace('\','/')
+[void]$trackedPaths.Add($planMatrixRelative)
+$planMatrixPath = Resolve-WorkspacePath $planMatrixRelative 'Plan-constructor matrix'
+if ($null -eq $planMatrixPath -or -not (Test-Path -LiteralPath $planMatrixPath -PathType Leaf)) {
+    Add-CheckError "Plan-constructor matrix is missing: $planMatrixRelative"
+} else {
+    $planRows = @((Read-Utf8 $planMatrixPath) | ConvertFrom-Csv)
+    Test-ExactSequence @($planRows.constructor) @($registry.planConstructorCoverage.constructors) `
+        'Plan-constructor registry/matrix'
+    $actualColumns = if ($planRows.Count -gt 0) {
+        @($planRows[0].PSObject.Properties.Name)
+    } else { @() }
+    Test-ExactSequence $actualColumns @($registry.planConstructorCoverage.requiredColumns) `
+        'Plan-constructor matrix columns'
+    foreach ($row in $planRows) {
+        foreach ($column in @($registry.planConstructorCoverage.requiredColumns)) {
+            if ([string]::IsNullOrWhiteSpace([string]$row.$column)) {
+                Add-CheckError "Plan-constructor row '$($row.constructor)' has empty column '$column'"
+            }
+        }
+    }
+}
+
+$javaIrMatrixRelative = ([string]$registry.javaIrRefinementCoverage.matrixPath).Replace('\','/')
+[void]$trackedPaths.Add($javaIrMatrixRelative)
+$javaIrMatrixPath = Resolve-WorkspacePath $javaIrMatrixRelative 'Java-IR refinement matrix'
+if ($null -eq $javaIrMatrixPath -or -not (Test-Path -LiteralPath $javaIrMatrixPath -PathType Leaf)) {
+    Add-CheckError "Java-IR refinement matrix is missing: $javaIrMatrixRelative"
+} else {
+    $javaIrRows = @((Read-Utf8 $javaIrMatrixPath) | ConvertFrom-Csv)
+    Test-ExactSequence @($javaIrRows.java_constructor) @($registry.javaIrRefinementCoverage.constructors) `
+        'Java-IR refinement registry/matrix'
+    $actualColumns = if ($javaIrRows.Count -gt 0) {
+        @($javaIrRows[0].PSObject.Properties.Name)
+    } else { @() }
+    Test-ExactSequence $actualColumns @($registry.javaIrRefinementCoverage.requiredColumns) `
+        'Java-IR refinement matrix columns'
+    foreach ($row in $javaIrRows) {
+        foreach ($column in @($registry.javaIrRefinementCoverage.requiredColumns)) {
+            if ([string]::IsNullOrWhiteSpace([string]$row.$column)) {
+                Add-CheckError "Java-IR refinement row '$($row.java_constructor)' has empty column '$column'"
+            }
+        }
+    }
+}
+
 foreach ($vocabulary in @($registry.implementationVocabulary)) {
     $relativePath = ([string]$vocabulary.path).Replace('\','/')
     [void]$trackedPaths.Add($relativePath)
@@ -273,7 +319,7 @@ $expectedMechanizationTheorems = @(
     'root_rewrite_strictly_decreases','typed_rewrite_preserves_type',
     'scoped_rename_preserves_binder_boundary','named_to_scoped_semantic_correspondence',
     'java_capture_guard_sound','java_guarded_rename_preserves_scoped_semantics',
-    'structural_preservation','theorem6_forward','theorem6_backward','theorem6_at_object'
+    'structural_preservation','java_ir_eval_refinement','theorem6_forward','theorem6_backward','theorem6_at_object'
 )
 if ($null -eq $registry.mechanization) {
     Add-CheckError 'Registry: missing mechanization contract'
@@ -285,7 +331,7 @@ if ($null -eq $registry.mechanization) {
     }
     Test-ExactSequence @($registry.mechanization.requiredTheorems) $expectedMechanizationTheorems 'Registry mechanization theorems'
     Test-ExactSequence @($registry.mechanization.coverage | ForEach-Object { "$($_.id):$($_.status)" }) @(
-        'MK-FINITE-SET:mechanized','MK-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:partial','MK-T6:mechanized'
+        'MK-FINITE-SET:mechanized','MK-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:mechanized','MK-T6:mechanized'
     ) 'Registry mechanization coverage'
     if (@($registry.mechanization.openScope).Count -eq 0) {
         Add-CheckError 'Mechanization contract must state its open scope'
@@ -321,7 +367,7 @@ if ($null -eq $registry.mechanization) {
             Add-CheckError "Mechanization source has stale registry SHA-256; expected $registryHash"
         }
         foreach ($theorem in $expectedMechanizationTheorems) {
-            if ($proof -notmatch ('(?m)^theorem\s+' + [regex]::Escape($theorem) + '\b')) {
+            if ($proof -notmatch ('(?m)^\s*theorem\s+' + [regex]::Escape($theorem) + '\b')) {
                 Add-CheckError "Mechanization source is missing required theorem $theorem"
             }
         }
@@ -394,4 +440,4 @@ if (-not [string]::IsNullOrWhiteSpace($ReportPath)) {
 }
 
 $trackedStatus = if ($RequireGitTracked) { 'checked' } else { 'skipped' }
-Write-Host "Machine verification contract PASS: contract=$($registry.version), schema=$($registry.registrySchemaVersion), theorems=$(@($registry.theorems).Count), obligations=$(@($registry.proofObligations).Count), constructors=$(@($registry.constructorCoverage.features).Count), vocabulary=$(@($registry.implementationVocabulary).Count), tracked=$trackedStatus."
+Write-Host "Machine verification contract PASS: contract=$($registry.version), schema=$($registry.registrySchemaVersion), theorems=$(@($registry.theorems).Count), obligations=$(@($registry.proofObligations).Count), constructors=$(@($registry.constructorCoverage.features).Count), planConstructors=$(@($registry.planConstructorCoverage.constructors).Count), javaIrConstructors=$(@($registry.javaIrRefinementCoverage.constructors).Count), vocabulary=$(@($registry.implementationVocabulary).Count), tracked=$trackedStatus."

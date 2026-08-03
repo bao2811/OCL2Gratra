@@ -128,3 +128,6 @@ md/
 
 # Downloaded local Lean toolchain and release archive
 /_build_lib/
+
+# Local Lake build cache; CI rebuilds it from the tracked Lean project
+/verification/lean/.lake/

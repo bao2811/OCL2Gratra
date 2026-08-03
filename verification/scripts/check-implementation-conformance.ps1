@@ -45,6 +45,8 @@ $tests = @(
     'OpenCypherFrontendReferenceContractTest',
     'Neo4jCypherAstBridgeTest',
     'OclCypherPlanFormalTreeAgreementTest',
+    'OclCypherPlanConstructorEvidenceMatrixTest',
+    'OclIrJavaRefinementCoverageTest',
     'Cypher5ValRuntimeEvidenceManifestTest',
     'OclRewritePreservationTest',
     'OclDualCheckTest'

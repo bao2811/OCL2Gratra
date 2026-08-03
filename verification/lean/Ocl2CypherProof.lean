@@ -3,16 +3,16 @@ import Init.Data.List.Lemmas
 /-!
 Machine-checked kernel for selected obligations of PC-2026-07-22.2.
 
-This file intentionally models only the flat typed-value and Boolean formula
-kernel registered in the machine verification contract. It is not a formalization of the Java renderer,
-Neo4j, nested collections, or the complete OCL_val syntax.
+This file models the registered flat typed-value, normalization, Boolean, and
+16-constructor relational-refinement kernels. It is not a formalization of the
+Java renderer, Neo4j, nested collections, or the complete OCL_val syntax.
 -/
 
 namespace Ocl2CypherProof
 
 def proofContractVersion : String := "PC-2026-07-22.2"
 def proofRegistrySha256 : String :=
-  "d08ef1b23812ccfb9b074df444e7b3cfcca7fa6e50f53556dd4d10fc80423ab8"
+  "1f265aa54aaeebebcdf3f62d0784ab12fdad6f7a4835e9d7e36dbbe4547a2e06"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/
@@ -1190,6 +1190,251 @@ theorem structural_preservation (f : A → B)
 
 end Formula
 
+/-! ## Full production-constructor structural kernel for Theorem 4
+
+`JavaIrRefinement.Expr` mirrors every constructor permitted by the production
+`OclIr.OptimizedExpression` interface.  Object and graph interpretations are
+given as two algebras.  `AlgebraAgreement` states the primitive commutation
+premise for each Java constructor, and `java_ir_eval_refinement` composes those
+premises by structural induction, including lists and optional predicates.
+This theorem does not assume Neo4j semantics or AdapterAdequate; those remain
+separate required premises/obligations.
+-/
+
+namespace JavaIrRefinement
+
+mutual
+  inductive Expr where
+    | variableE
+    | literalE
+    | setLiteralE (elements : ExprList)
+    | notE (body : Expr)
+    | binaryE (left right : Expr)
+    | attributeAccessE (source : Expr)
+    | navigationAccessE (source : Expr) (qualifiers : ExprList)
+    | methodCallE (source : Expr) (arguments : ExprList)
+    | collectionOperationE (source : Expr) (arguments : ExprList)
+    | iteratorOperationE (source body : Expr)
+    | ifE (condition thenBranch elseBranch : Expr)
+    | letE (value body : Expr)
+    | navigationPredicateE (navigation : Expr) (predicate : OptionalExpr)
+    | navigationCountE (navigation : Expr) (predicate : OptionalExpr)
+    | navigationAggregationE (navigation : Expr) (predicate : OptionalExpr)
+        (projection : Expr)
+    | navigationUniquenessE (navigation : Expr) (predicate : OptionalExpr)
+        (projection : Expr)
+
+  inductive ExprList where
+    | nil
+    | cons (head : Expr) (tail : ExprList)
+
+  inductive OptionalExpr where
+    | none
+    | some (value : Expr)
+end
+
+structure Algebra (Value : Type u) where
+  variableValue : Value
+  literalValue : Value
+  setLiteralOp : List Value → Value
+  notOp : Value → Value
+  binaryOp : Value → Value → Value
+  attributeAccessOp : Value → Value
+  navigationAccessOp : Value → List Value → Value
+  methodCallOp : Value → List Value → Value
+  collectionOperationOp : Value → List Value → Value
+  iteratorOperationOp : Value → Value → Value
+  iteOp : Value → Value → Value → Value
+  letOp : Value → Value → Value
+  navigationPredicateOp : Value → Option Value → Value
+  navigationCountOp : Value → Option Value → Value
+  navigationAggregationOp : Value → Option Value → Value → Value
+  navigationUniquenessOp : Value → Option Value → Value → Value
+
+mutual
+  def eval (algebra : Algebra Value) : Expr → Value
+    | .variableE => algebra.variableValue
+    | .literalE => algebra.literalValue
+    | .setLiteralE elements => algebra.setLiteralOp (evalList algebra elements)
+    | .notE body => algebra.notOp (eval algebra body)
+    | .binaryE left right => algebra.binaryOp (eval algebra left) (eval algebra right)
+    | .attributeAccessE source => algebra.attributeAccessOp (eval algebra source)
+    | .navigationAccessE source qualifiers =>
+        algebra.navigationAccessOp (eval algebra source) (evalList algebra qualifiers)
+    | .methodCallE source arguments =>
+        algebra.methodCallOp (eval algebra source) (evalList algebra arguments)
+    | .collectionOperationE source arguments =>
+        algebra.collectionOperationOp (eval algebra source) (evalList algebra arguments)
+    | .iteratorOperationE source body =>
+        algebra.iteratorOperationOp (eval algebra source) (eval algebra body)
+    | .ifE condition thenBranch elseBranch =>
+        algebra.iteOp (eval algebra condition) (eval algebra thenBranch) (eval algebra elseBranch)
+    | .letE value body => algebra.letOp (eval algebra value) (eval algebra body)
+    | .navigationPredicateE navigation predicate =>
+        algebra.navigationPredicateOp (eval algebra navigation) (evalOptional algebra predicate)
+    | .navigationCountE navigation predicate =>
+        algebra.navigationCountOp (eval algebra navigation) (evalOptional algebra predicate)
+    | .navigationAggregationE navigation predicate projection =>
+        algebra.navigationAggregationOp (eval algebra navigation)
+          (evalOptional algebra predicate) (eval algebra projection)
+    | .navigationUniquenessE navigation predicate projection =>
+        algebra.navigationUniquenessOp (eval algebra navigation)
+          (evalOptional algebra predicate) (eval algebra projection)
+
+  def evalList (algebra : Algebra Value) : ExprList → List Value
+    | .nil => []
+    | .cons head tail => eval algebra head :: evalList algebra tail
+
+  def evalOptional (algebra : Algebra Value) : OptionalExpr → Option Value
+    | .none => none
+    | .some value => some (eval algebra value)
+end
+
+def RelatedOption (relation : ObjectValue → GraphValue → Prop) :
+    Option ObjectValue → Option GraphValue → Prop
+  | none, none => True
+  | some objectValue, some graphValue => relation objectValue graphValue
+  | _, _ => False
+
+inductive RelatedList (relation : ObjectValue → GraphValue → Prop) :
+    List ObjectValue → List GraphValue → Prop where
+  | nil : RelatedList relation [] []
+  | cons : relation objectHead graphHead →
+      RelatedList relation objectTail graphTail →
+      RelatedList relation (objectHead :: objectTail) (graphHead :: graphTail)
+
+structure AlgebraAgreement (relation : ObjectValue → GraphValue → Prop)
+    (object : Algebra ObjectValue) (graph : Algebra GraphValue) : Prop where
+  variableCase : relation object.variableValue graph.variableValue
+  literalCase : relation object.literalValue graph.literalValue
+  setLiteralCase : ∀ objectValues graphValues,
+    RelatedList relation objectValues graphValues →
+      relation (object.setLiteralOp objectValues) (graph.setLiteralOp graphValues)
+  notCase : ∀ objectValue graphValue, relation objectValue graphValue →
+    relation (object.notOp objectValue) (graph.notOp graphValue)
+  binaryCase : ∀ objectLeft graphLeft objectRight graphRight,
+    relation objectLeft graphLeft → relation objectRight graphRight →
+      relation (object.binaryOp objectLeft objectRight) (graph.binaryOp graphLeft graphRight)
+  attributeAccessCase : ∀ objectSource graphSource, relation objectSource graphSource →
+    relation (object.attributeAccessOp objectSource) (graph.attributeAccessOp graphSource)
+  navigationAccessCase : ∀ objectSource graphSource objectQualifiers graphQualifiers,
+    relation objectSource graphSource → RelatedList relation objectQualifiers graphQualifiers →
+      relation (object.navigationAccessOp objectSource objectQualifiers)
+        (graph.navigationAccessOp graphSource graphQualifiers)
+  methodCallCase : ∀ objectSource graphSource objectArguments graphArguments,
+    relation objectSource graphSource → RelatedList relation objectArguments graphArguments →
+      relation (object.methodCallOp objectSource objectArguments)
+        (graph.methodCallOp graphSource graphArguments)
+  collectionOperationCase : ∀ objectSource graphSource objectArguments graphArguments,
+    relation objectSource graphSource → RelatedList relation objectArguments graphArguments →
+      relation (object.collectionOperationOp objectSource objectArguments)
+        (graph.collectionOperationOp graphSource graphArguments)
+  iteratorOperationCase : ∀ objectSource graphSource objectBody graphBody,
+    relation objectSource graphSource → relation objectBody graphBody →
+      relation (object.iteratorOperationOp objectSource objectBody)
+        (graph.iteratorOperationOp graphSource graphBody)
+  iteCase : ∀ objectCondition graphCondition objectThen graphThen objectElse graphElse,
+    relation objectCondition graphCondition → relation objectThen graphThen →
+      relation objectElse graphElse →
+      relation (object.iteOp objectCondition objectThen objectElse)
+        (graph.iteOp graphCondition graphThen graphElse)
+  letCase : ∀ objectValue graphValue objectBody graphBody,
+    relation objectValue graphValue → relation objectBody graphBody →
+      relation (object.letOp objectValue objectBody) (graph.letOp graphValue graphBody)
+  navigationPredicateCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate,
+    relation objectNavigation graphNavigation →
+      RelatedOption relation objectPredicate graphPredicate →
+      relation (object.navigationPredicateOp objectNavigation objectPredicate)
+        (graph.navigationPredicateOp graphNavigation graphPredicate)
+  navigationCountCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate,
+    relation objectNavigation graphNavigation →
+      RelatedOption relation objectPredicate graphPredicate →
+      relation (object.navigationCountOp objectNavigation objectPredicate)
+        (graph.navigationCountOp graphNavigation graphPredicate)
+  navigationAggregationCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate
+      objectProjection graphProjection,
+    relation objectNavigation graphNavigation →
+      RelatedOption relation objectPredicate graphPredicate →
+      relation objectProjection graphProjection →
+      relation (object.navigationAggregationOp objectNavigation objectPredicate objectProjection)
+        (graph.navigationAggregationOp graphNavigation graphPredicate graphProjection)
+  navigationUniquenessCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate
+      objectProjection graphProjection,
+    relation objectNavigation graphNavigation →
+      RelatedOption relation objectPredicate graphPredicate →
+      relation objectProjection graphProjection →
+      relation (object.navigationUniquenessOp objectNavigation objectPredicate objectProjection)
+        (graph.navigationUniquenessOp graphNavigation graphPredicate graphProjection)
+
+mutual
+  theorem java_ir_eval_refinement
+      (agreement : AlgebraAgreement relation object graph) (expression : Expr) :
+      relation (eval object expression) (eval graph expression) := by
+    cases expression with
+    | variableE => exact agreement.variableCase
+    | literalE => exact agreement.literalCase
+    | setLiteralE elements => exact agreement.setLiteralCase _ _ (java_ir_list_refinement agreement elements)
+    | notE body => exact agreement.notCase _ _ (java_ir_eval_refinement agreement body)
+    | binaryE left right =>
+        exact agreement.binaryCase _ _ _ _ (java_ir_eval_refinement agreement left)
+          (java_ir_eval_refinement agreement right)
+    | attributeAccessE source =>
+        exact agreement.attributeAccessCase _ _ (java_ir_eval_refinement agreement source)
+    | navigationAccessE source qualifiers =>
+        exact agreement.navigationAccessCase _ _ _ _ (java_ir_eval_refinement agreement source)
+          (java_ir_list_refinement agreement qualifiers)
+    | methodCallE source arguments =>
+        exact agreement.methodCallCase _ _ _ _ (java_ir_eval_refinement agreement source)
+          (java_ir_list_refinement agreement arguments)
+    | collectionOperationE source arguments =>
+        exact agreement.collectionOperationCase _ _ _ _ (java_ir_eval_refinement agreement source)
+          (java_ir_list_refinement agreement arguments)
+    | iteratorOperationE source body =>
+        exact agreement.iteratorOperationCase _ _ _ _ (java_ir_eval_refinement agreement source)
+          (java_ir_eval_refinement agreement body)
+    | ifE condition thenBranch elseBranch =>
+        exact agreement.iteCase _ _ _ _ _ _ (java_ir_eval_refinement agreement condition)
+          (java_ir_eval_refinement agreement thenBranch)
+          (java_ir_eval_refinement agreement elseBranch)
+    | letE value body =>
+        exact agreement.letCase _ _ _ _ (java_ir_eval_refinement agreement value)
+          (java_ir_eval_refinement agreement body)
+    | navigationPredicateE navigation predicate =>
+        exact agreement.navigationPredicateCase _ _ _ _ (java_ir_eval_refinement agreement navigation)
+          (java_ir_optional_refinement agreement predicate)
+    | navigationCountE navigation predicate =>
+        exact agreement.navigationCountCase _ _ _ _ (java_ir_eval_refinement agreement navigation)
+          (java_ir_optional_refinement agreement predicate)
+    | navigationAggregationE navigation predicate projection =>
+        exact agreement.navigationAggregationCase _ _ _ _ _ _
+          (java_ir_eval_refinement agreement navigation)
+          (java_ir_optional_refinement agreement predicate)
+          (java_ir_eval_refinement agreement projection)
+    | navigationUniquenessE navigation predicate projection =>
+        exact agreement.navigationUniquenessCase _ _ _ _ _ _
+          (java_ir_eval_refinement agreement navigation)
+          (java_ir_optional_refinement agreement predicate)
+          (java_ir_eval_refinement agreement projection)
+
+  theorem java_ir_list_refinement
+      (agreement : AlgebraAgreement relation object graph) (expressions : ExprList) :
+      RelatedList relation (evalList object expressions) (evalList graph expressions) := by
+    cases expressions with
+    | nil => exact .nil
+    | cons head tail =>
+        exact .cons (java_ir_eval_refinement agreement head)
+          (java_ir_list_refinement agreement tail)
+
+  theorem java_ir_optional_refinement
+      (agreement : AlgebraAgreement relation object graph) (expression : OptionalExpr) :
+      RelatedOption relation (evalOptional object expression) (evalOptional graph expression) := by
+    cases expression with
+    | none => trivial
+    | some value => exact java_ir_eval_refinement agreement value
+end
+
+end JavaIrRefinement
+
 /-! ## Theorem 6 two-inclusion kernel -/
 
 def returnedIds (id : Obj → Identifier) (violates : PSet Obj) : PSet Identifier :=
@@ -1225,6 +1470,7 @@ end Ocl2CypherProof
 #print axioms Ocl2CypherProof.BoolExpr.normalize_preserves_eval
 #print axioms Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free
 #print axioms Ocl2CypherProof.Formula.structural_preservation
+#print axioms Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement
 #print axioms Ocl2CypherProof.theorem6_at_object
 #print axioms Ocl2CypherProof.Normalization.all_rewrite_semantics
 #print axioms Ocl2CypherProof.Normalization.typed_rewrite_preserves_type

@@ -53,6 +53,7 @@ $expectedRequiredTheorems = @(
     'java_capture_guard_sound',
     'java_guarded_rename_preserves_scoped_semantics',
     'structural_preservation',
+    'java_ir_eval_refinement',
     'theorem6_forward',
     'theorem6_backward',
     'theorem6_at_object'
@@ -93,7 +94,7 @@ if ($requiredTheorems.Count -ne $expectedRequiredTheorems.Count) {
     }
 }
 foreach ($theorem in $requiredTheorems) {
-    if ($proof -notmatch ('(?m)^theorem\s+' + [regex]::Escape($theorem) + '\b')) {
+    if ($proof -notmatch ('(?m)^\s*theorem\s+' + [regex]::Escape($theorem) + '\b')) {
         Add-CheckError "Lean proof is missing required theorem $theorem"
     }
 }

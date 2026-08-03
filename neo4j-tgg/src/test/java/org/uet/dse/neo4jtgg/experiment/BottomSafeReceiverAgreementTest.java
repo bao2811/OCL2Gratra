@@ -11,6 +11,7 @@ import java.io.StringWriter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,6 +49,30 @@ class BottomSafeReceiverAgreementTest {
         assertTrue(guardedPrefix.contains("WITH (CASE WHEN"), result.cypher());
         assertTrue(guardedPrefix.contains("p"), result.cypher());
         assertTrue(guardedPrefix.contains("self"), result.cypher());
+    }
+
+    @Test
+    void bottomSafeReceiverBranchesRoundTripThroughBothParsers() {
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model());
+        List<String> invariants = List.of(
+                "context Person inv BottomAttribute: (if self.age > 0 then self else null endif).age >= 0",
+                "context Person inv BottomKind: (if self.age > 0 then self else null endif).oclIsKindOf(Person)",
+                "context Person inv BottomCast: (if self.age > 0 then self else null endif).oclAsType(Person).age >= 0",
+                "context Person inv NestedAliases: Person.allInstances()->forAll(p | "
+                        + "(if p.age > self.age then p else null endif).oclIsKindOf(Person) or p = self)");
+
+        for (String invariant : invariants) {
+            String cypher = compiler.compileInvariantInstrumented(invariant).cypher();
+            String normalized = GeneratedCypherSyntaxTree.render(GeneratedCypherSyntaxTree.parse(cypher));
+            assertEquals(normalized,
+                    GeneratedCypherSyntaxTree.render(GeneratedCypherSyntaxTree.parse(normalized)), invariant);
+            assertEquals(GeneratedCypherCanonicalTree.parse(cypher).text(),
+                    GeneratedCypherCanonicalTree.parse(normalized).text(), invariant);
+            assertEquals(Neo4jCypherAstBridge.parse(cypher).canonicalTree(),
+                    Neo4jCypherAstBridge.parse(normalized).canonicalTree(), invariant);
+            assertTrue(normalized.contains("Key IS NOT NULL"), normalized);
+            assertTrue(normalized.contains("CASE WHEN"), normalized);
+        }
     }
 
     private int firstEntityPatternAfter(String cypher, int start) {

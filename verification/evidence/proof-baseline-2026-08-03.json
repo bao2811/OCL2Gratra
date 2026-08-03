@@ -1,27 +1,29 @@
 {
   "schema": "proof-evidence.schema.v1",
-  "capturedAt": "2026-08-03T13:31:53+07:00",
+  "capturedAt": "2026-08-03T16:19:21+07:00",
   "proofContract": "PC-2026-07-22.2",
-  "sourceRevision": "7420285ae0a6c29ffe5abdb645e9e5ee41d65f1c",
+  "sourceRevision": "7badcf199d881f09dfb456ae91082997aabbae47",
   "gitDirtyAtCapture": true,
   "machineContract": {
-    "registrySchemaVersion": 3,
+    "registrySchemaVersion": 4,
     "theorems": 7,
-    "proofObligations": 20,
+    "proofObligations": 21,
     "admittedConstructors": 47,
+    "planConstructors": 17,
+    "javaIrConstructors": 16,
     "implementationVocabularyTerms": 8,
     "checker": "PASS",
     "mutationsKilled": "6/6"
   },
   "lean": {
     "version": "4.32.2",
-    "requiredTheorems": 24,
+    "requiredTheorems": 25,
     "kernel": "PASS",
     "mutationsKilled": "6/6"
   },
   "implementation": {
     "cleanRecompile": true,
-    "conformanceTests": 258,
+    "conformanceTests": 261,
     "failures": 0,
     "errors": 0,
     "skipped": 0,
