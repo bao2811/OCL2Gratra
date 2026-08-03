@@ -5,14 +5,11 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -72,6 +69,7 @@ class OclVal47NonVacuityEvidenceTest {
         requireEquals("0", metadata.get("allViolate"), "allViolate");
         requireEquals("0", metadata.get("emptyContext"), "emptyContext");
         requireEquals(RUNTIME_TEST, metadata.get("runtimeTest"), "runtimeTest");
+        requireEquals(EvidenceSourceHash.MODE, metadata.get("sourceHashMode"), "sourceHashMode");
         requireMatches(metadata.get("executedAt"), "\\d{4}-\\d{2}-\\d{2}T.+[+-]\\d{2}:\\d{2}", "executedAt");
         requireMatches(metadata.get("gitCommit"), "[0-9a-f]{40}", "gitCommit");
 
@@ -159,7 +157,7 @@ class OclVal47NonVacuityEvidenceTest {
     }
 
     private static void requireHash(Map<String, String> metadata, String key, Path source) throws Exception {
-        requireEquals(metadata.get(key), sha256(source), key);
+        requireEquals(metadata.get(key), EvidenceSourceHash.sha256(source), key);
     }
 
     private static String dependencyVersion(Path pom, String artifactId) throws IOException {
@@ -168,11 +166,6 @@ class OclVal47NonVacuityEvidenceTest {
         var matcher = pattern.matcher(Files.readString(pom));
         if (!matcher.find()) throw new IllegalStateException("Missing dependency version: " + artifactId);
         return matcher.group(1).trim();
-    }
-
-    private static String sha256(Path path) throws Exception {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(Files.readAllBytes(path))).toUpperCase(Locale.ROOT);
     }
 
     private static Path workspace() {

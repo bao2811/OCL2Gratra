@@ -9,12 +9,13 @@
 # database	demo
 # javaDriverDependency	5.21.0
 # encodingProfile	canonical-v1
-# rendererSha256	CCD59D2A7D3C4019235D58838C86C475A8EB93A246B1FA1886A5697B12B850E6
+# rendererSha256	F5990BFD75A0C4824CCFBE4A23E3F3B1BB6BA231263DE26B7E2B43801BDD9419
 # encodingSha256	56FAE055BAE31BE0C3D0359770F2932C968A29ABD00789D545C685610FE4B26D
 # matrixSha256	0EEC0853E1FCAFB2C1840E8879482E5A343CF9352A0349CC5B4A08CF4BA6EEC6
 # runtimeTestSha256	3ED48791DF850D466DEBE66BD22EAD943D5A8A4EFC082BD06D872C85E5C98689
 # cypherAssumptionsPassed	9/9
 # oclDifferentialPassed	47/47
+# sourceHashMode	utf8-lf-v1
 id	assumption	expected	status	observed	evidenceTest
 CY1	Representation/lookup	scalar/object-id parameter/property lookup, missing property, and non-null bottom representation	PASS	integerOk=true;realOk=true;textOk=true;booleanOk=true;objectIdOk=true;missingIsNull=true;bottomOk=true	Cypher5ValDialectRealNeo4jTest#selectedServerSatisfiesEveryRequiredDialectProbe
 CY2	Pattern	two forward/reverse paths and one DISTINCT target under exact metadata/qualifiers	PASS	forward=2/1;reverse=2/1	Cypher5ValDialectRealNeo4jTest#selectedServerSatisfiesEveryRequiredDialectProbe

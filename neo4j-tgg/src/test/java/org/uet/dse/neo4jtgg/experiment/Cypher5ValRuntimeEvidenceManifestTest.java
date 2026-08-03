@@ -5,13 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -47,7 +44,7 @@ class Cypher5ValRuntimeEvidenceManifestTest {
         List<String> altered = replace(original, "CY5\t", "rows=4;", "rows=99;");
         assertThrows(IllegalStateException.class, () -> validate(parse(altered), workspace));
 
-        List<String> stale = replace(original, "# rendererSha256\t", "CCD59D", "000000");
+        List<String> stale = replace(original, "# rendererSha256\t", "F5990B", "000000");
         assertThrows(IllegalStateException.class, () -> validate(parse(stale), workspace));
     }
 
@@ -66,20 +63,21 @@ class Cypher5ValRuntimeEvidenceManifestTest {
                 metadata.get("encodingProfile"), "encodingProfile");
         requireEquals("9/9", metadata.get("cypherAssumptionsPassed"), "cypherAssumptionsPassed");
         requireEquals("47/47", metadata.get("oclDifferentialPassed"), "oclDifferentialPassed");
+        requireEquals(EvidenceSourceHash.MODE, metadata.get("sourceHashMode"), "sourceHashMode");
         requireMatches(metadata.get("executedAt"), "\\d{4}-\\d{2}-\\d{2}T.+[+-]\\d{2}:\\d{2}", "executedAt");
         requireMatches(metadata.get("gitCommit"), "[0-9a-f]{40}", "gitCommit");
         requireEquals("true", metadata.get("gitDirtyAtCapture"), "gitDirtyAtCapture");
 
-        requireEquals(metadata.get("rendererSha256"), sha256(workspace.resolve(
+        requireEquals(metadata.get("rendererSha256"), EvidenceSourceHash.sha256(workspace.resolve(
                 "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java")),
                 "rendererSha256");
-        requireEquals(metadata.get("encodingSha256"), sha256(workspace.resolve(
+        requireEquals(metadata.get("encodingSha256"), EvidenceSourceHash.sha256(workspace.resolve(
                 "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphEncoding.java")),
                 "encodingSha256");
-        requireEquals(metadata.get("matrixSha256"), sha256(workspace.resolve(
+        requireEquals(metadata.get("matrixSha256"), EvidenceSourceHash.sha256(workspace.resolve(
                 "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/Cypher5ValAssumptionMatrix.java")),
                 "matrixSha256");
-        requireEquals(metadata.get("runtimeTestSha256"), sha256(workspace.resolve(
+        requireEquals(metadata.get("runtimeTestSha256"), EvidenceSourceHash.sha256(workspace.resolve(
                 "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/Cypher5ValDialectRealNeo4jTest.java")),
                 "runtimeTestSha256");
         requireEquals(Cypher5ValAssumptionMatrix.JAVA_DRIVER_DEPENDENCY,
@@ -150,11 +148,6 @@ class Cypher5ValRuntimeEvidenceManifestTest {
         var matcher = pattern.matcher(Files.readString(pom));
         if (!matcher.find()) throw new IllegalStateException("Missing dependency version: " + artifactId);
         return matcher.group(1).trim();
-    }
-
-    private static String sha256(Path path) throws Exception {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(Files.readAllBytes(path))).toUpperCase(Locale.ROOT);
     }
 
     private static Path workspace() {
