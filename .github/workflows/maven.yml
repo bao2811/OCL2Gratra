@@ -37,8 +37,12 @@ jobs:
           test: false
           use-mathlib-cache: false
           leanchecker: true
-          nanoda: true
-          nanoda-allow-sorry: false
+          # lean-action #169: its nanoda runner currently combines the new
+          # lean4export NDJSON stream with nanoda's stale debug parser.
+          nanoda: false
+      - name: Check Lean proof with pinned nanoda
+        shell: bash
+        run: bash ./verification/scripts/check-nanoda.sh
       - name: Check mechanization contract and mutations
         shell: pwsh
         run: |

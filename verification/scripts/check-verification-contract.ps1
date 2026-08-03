@@ -357,6 +357,67 @@ if ($null -eq $registry.mechanization) {
             Add-CheckError "Mechanization project file is missing: $relativePath"
         }
     }
+    $externalChecker = $registry.mechanization.externalChecker
+    if ($null -eq $externalChecker -or
+        [string]$externalChecker.kind -cne 'nanoda-ndjson' -or
+        [string]$externalChecker.lean4exportCommit -cne '9fb131bb100eb32ccf6836f14e4f8328d13b6792' -or
+        [string]$externalChecker.nanodaCommit -cne '418320295890faed83a96fd97907b12a3b6728c2' -or
+        [string]$externalChecker.upstreamIssue -cne 'https://github.com/leanprover/lean-action/issues/169') {
+        Add-CheckError 'Registry pinned nanoda NDJSON checker contract drift'
+    } else {
+        foreach ($property in @('sourcePath','configPath','workflowPath')) {
+            $relativePath = ([string]$externalChecker.$property).Replace('\','/')
+            [void]$trackedPaths.Add($relativePath)
+            $path = Resolve-WorkspacePath $relativePath "External checker $property"
+            if ($null -eq $path -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
+                Add-CheckError "External checker $property is missing: $relativePath"
+            }
+        }
+
+        $externalScriptPath = Resolve-WorkspacePath ([string]$externalChecker.sourcePath) 'External checker source'
+        if ($null -ne $externalScriptPath -and (Test-Path -LiteralPath $externalScriptPath -PathType Leaf)) {
+            $externalScript = Read-Utf8 $externalScriptPath
+            foreach ($pin in @(
+                "LEAN4EXPORT_COMMIT=`"$([string]$externalChecker.lean4exportCommit)`"",
+                "NANODA_COMMIT=`"$([string]$externalChecker.nanodaCommit)`""
+            )) {
+                if (-not $externalScript.Contains($pin)) {
+                    Add-CheckError "External checker source is missing registered pin: $pin"
+                }
+            }
+        }
+
+        $externalConfigPath = Resolve-WorkspacePath ([string]$externalChecker.configPath) 'External checker config'
+        if ($null -ne $externalConfigPath -and (Test-Path -LiteralPath $externalConfigPath -PathType Leaf)) {
+            try {
+                $externalConfig = (Read-Utf8 $externalConfigPath) | ConvertFrom-Json
+                Test-ExactSequence @($externalConfig.permitted_axioms) @(
+                    'propext','Classical.choice','Quot.sound','Lean.trustCompiler'
+                ) 'Nanoda permitted axioms'
+                if (-not [bool]$externalConfig.use_stdin -or
+                    [bool]$externalConfig.unpermitted_axiom_hard_error -or
+                    [bool]$externalConfig.unsafe_permit_all_axioms -or
+                    -not [bool]$externalConfig.nat_extension -or
+                    -not [bool]$externalConfig.string_extension -or
+                    [bool]$externalConfig.print_axioms -or
+                    -not [bool]$externalConfig.print_success_message) {
+                    Add-CheckError 'Nanoda NDJSON configuration policy drift'
+                }
+            } catch {
+                Add-CheckError "Nanoda configuration is invalid JSON: $($_.Exception.Message)"
+            }
+        }
+
+        $externalWorkflowPath = Resolve-WorkspacePath ([string]$externalChecker.workflowPath) 'External checker workflow'
+        if ($null -ne $externalWorkflowPath -and (Test-Path -LiteralPath $externalWorkflowPath -PathType Leaf)) {
+            $externalWorkflow = Read-Utf8 $externalWorkflowPath
+            if (-not $externalWorkflow.Contains('nanoda: false') -or
+                $externalWorkflow.Contains('nanoda: true') -or
+                -not $externalWorkflow.Contains('run: bash ./verification/scripts/check-nanoda.sh')) {
+                Add-CheckError 'GitHub workflow does not enforce the pinned nanoda NDJSON gate'
+            }
+        }
+    }
     $proofPath = Resolve-WorkspacePath ([string]$registry.mechanization.sourcePath) 'Mechanization source'
     if ($null -ne $proofPath -and (Test-Path -LiteralPath $proofPath -PathType Leaf)) {
         $proof = Read-Utf8 $proofPath

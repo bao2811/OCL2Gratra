@@ -211,6 +211,15 @@
       "verification/lean/lean-toolchain",
       "verification/lean/lake-manifest.json"
     ],
+    "externalChecker": {
+      "kind": "nanoda-ndjson",
+      "sourcePath": "verification/scripts/check-nanoda.sh",
+      "configPath": "verification/contract/nanoda-config.json",
+      "workflowPath": ".github/workflows/maven.yml",
+      "lean4exportCommit": "9fb131bb100eb32ccf6836f14e4f8328d13b6792",
+      "nanodaCommit": "418320295890faed83a96fd97907b12a3b6728c2",
+      "upstreamIssue": "https://github.com/leanprover/lean-action/issues/169"
+    },
     "requiredTheorems": [
       "image_reflects_membership", "image_preserves_subset", "exists_over_image", "forall_over_image",
       "encodeValue_injective", "implies_rewrite", "forall_rewrite", "notEmpty_rewrite",
