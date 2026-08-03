@@ -128,8 +128,17 @@ if ([string]::IsNullOrWhiteSpace($LeanPath) -or -not (Test-Path -LiteralPath $Le
         Add-CheckError "Lean $expectedLeanVersion executable is required but unavailable"
     }
 } else {
-    $versionOutput = (& $LeanPath '--version' 2>&1 | Out-String)
-    if ($LASTEXITCODE -ne 0 -or -not $versionOutput.Contains("version $expectedLeanVersion")) {
+    Push-Location (Resolve-Path -LiteralPath $MechanizedPath)
+    try {
+        # On CI, LeanPath can be the elan shim without a global default
+        # toolchain. Resolve its version inside the Lake project so elan reads
+        # this proof package's pinned lean-toolchain file.
+        $versionOutput = (& $LeanPath '--version' 2>&1 | Out-String)
+        $versionExit = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($versionExit -ne 0 -or -not $versionOutput.Contains("version $expectedLeanVersion")) {
         Add-CheckError "Lean executable version mismatch: $versionOutput"
     } else {
         $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
