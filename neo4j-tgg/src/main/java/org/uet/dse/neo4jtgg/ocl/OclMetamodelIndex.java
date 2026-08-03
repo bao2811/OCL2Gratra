@@ -20,8 +20,10 @@ import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class OclMetamodelIndex {
     private final MModel model;
@@ -57,7 +59,15 @@ public class OclMetamodelIndex {
 
     public NavigationInfo resolveNavigation(String className, String roleName) {
         ClassInfo classInfo = classes.get(className);
-        return classInfo == null ? null : classInfo.navigations().get(roleName);
+        if (classInfo == null) {
+            return null;
+        }
+        if (classInfo.ambiguousNavigations().contains(roleName)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.AMBIGUOUS_NAVIGATION,
+                    "Navigation role is ambiguous for class `" + className + "`: " + roleName);
+        }
+        return classInfo.navigations().get(roleName);
     }
 
     public MOperation resolveOperation(String className, String operationName, int parameterCount) {
@@ -89,15 +99,44 @@ public class OclMetamodelIndex {
                     navigations.put(entry.getKey(), createNavigationInfo(modelClass, entry.getKey(), entry.getValue()));
                 }
             }
+            Set<String> ambiguousNavigations = findAmbiguousNavigations(modelClass);
 
             Map<String, java.util.List<MOperation>> operations = new LinkedHashMap<>();
             for (MOperation operation : modelClass.operations()) {
                 operations.computeIfAbsent(operation.name(), ignored -> new java.util.ArrayList<>()).add(operation);
             }
 
-            result.put(modelClass.name(), new ClassInfo(modelClass, attributes, navigations, operations));
+            result.put(modelClass.name(), new ClassInfo(modelClass, attributes, navigations,
+                    ambiguousNavigations, operations));
         }
         return result;
+    }
+
+    private Set<String> findAmbiguousNavigations(MClass sourceClass) {
+        Map<String, Integer> roleCounts = new LinkedHashMap<>();
+        for (MAssociation association : model.associations()) {
+            if (association.associationEnds().size() != 2) {
+                continue;
+            }
+            MAssociationEnd first = association.associationEnds().get(0);
+            MAssociationEnd second = association.associationEnds().get(1);
+            countNavigableRole(sourceClass, first, second, roleCounts);
+            countNavigableRole(sourceClass, second, first, roleCounts);
+        }
+        Set<String> ambiguous = new LinkedHashSet<>();
+        roleCounts.forEach((role, count) -> {
+            if (count > 1) {
+                ambiguous.add(role);
+            }
+        });
+        return Set.copyOf(ambiguous);
+    }
+
+    private void countNavigableRole(MClass sourceClass, MAssociationEnd sourceEnd,
+                                    MAssociationEnd targetEnd, Map<String, Integer> roleCounts) {
+        if (sourceClass.equals(sourceEnd.cls()) || sourceClass.allParents().contains(sourceEnd.cls())) {
+            roleCounts.merge(targetEnd.nameAsRolename(), 1, Integer::sum);
+        }
     }
 
     private NavigationInfo createNavigationInfo(MClass sourceClass, String roleName, MNavigableElement navigableElement) {
@@ -192,6 +231,7 @@ public class OclMetamodelIndex {
     public record ClassInfo(MClass modelClass,
                             Map<String, MAttribute> attributes,
                             Map<String, NavigationInfo> navigations,
+                            Set<String> ambiguousNavigations,
                             Map<String, java.util.List<MOperation>> operations) {
     }
 
@@ -220,23 +260,29 @@ public class OclMetamodelIndex {
         }
 
         public boolean targetHasQualifiers() {
-            return navigableElement != null && navigableElement.hasQualifiers();
+            return sourceEnd != null && sourceEnd.hasQualifiers();
         }
 
         public List<VarDecl> targetQualifiers() {
-            return navigableElement != null ? List.copyOf(navigableElement.getQualifiers()) : List.of();
+            return sourceEnd != null ? List.copyOf(sourceEnd.getQualifiers()) : List.of();
         }
 
         public boolean supportsDirectCypherNavigation() {
-            return true;
+            return isBinaryAssociation()
+                    && direction != NavigationDirection.UNDIRECTED
+                    && sourceRoleName() != null
+                    && targetRoleName() != null;
         }
 
         public String unsupportedReason() {
-            return null;
+            if (!isBinaryAssociation()) {
+                return "Only resolved binary UML associations are admitted for Cypher navigation: " + roleName;
+            }
+            return "Navigation direction or association roles could not be resolved uniquely: " + roleName;
         }
 
         public OclDiagnosticCode unsupportedCode() {
-            return OclDiagnosticCode.GENERIC_FAILURE;
+            return OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED;
         }
 
         public String sourceRoleName() {

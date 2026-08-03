@@ -1,0 +1,240 @@
+{
+  "version": "PC-2026-07-22.2",
+  "registrySchemaVersion": 3,
+  "assumptions": [
+    { "id": "A1", "key": "parse_and_admission" },
+    { "id": "A2", "key": "successful_well_typed_binding" },
+    { "id": "A3", "key": "finite_set_validation_semantics" },
+    { "id": "A4", "key": "valid_finite_conforming_model" },
+    { "id": "A5", "key": "adequate_graph_encoding" },
+    { "id": "A6", "key": "supported_cypher_subset" },
+    { "id": "A7", "key": "invariant_query_returns_stable_ids" },
+    { "id": "A8", "key": "scalar_closed" },
+    { "id": "A9", "key": "bottom_separated" }
+  ],
+  "scopeLemmas": [
+    { "id": "M1", "title": "Source--AST Representation", "titleVi": "Biểu diễn Source--AST" },
+    { "id": "M2", "title": "Bound Subexpression Closure and Structural Induction", "titleVi": "Tính đóng biểu thức Bound con và quy nạp cấu trúc" },
+    { "id": "M3", "title": "Canonical Type Uniqueness" },
+    { "id": "M3a", "title": "Set Join Functionality", "titleVi": "Tính hàm của setJoin" },
+    { "id": "M4", "title": "Admission and Binding Soundness", "titleVi": "Tính đúng đắn của admission và binding" },
+    { "id": "M5", "title": "Exclusion Stability" }
+  ],
+  "theorems": [
+    { "id": "PC-T0", "number": 0, "title": "Object-Graph Representation", "titleVi": "Biểu diễn đối tượng--đồ thị", "statement": "validation observations of `(MM,M)` and `Phi(MM,M)` agree", "statementVi": "Các quan sát kiểm tra trên đối tượng và đồ thị trùng khớp", "assumptions": ["A4", "A5"], "requires": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"] },
+    { "id": "PC-T1", "number": 1, "title": "Binder Soundness", "titleVi": "Tính đúng đắn của binder", "statement": "admitted Source and Bound denotations are related and erase equally", "statementVi": "Kết quả Source và Bound tương ứng và có cùng kết quả xóa thẻ", "assumptions": ["A1", "A2", "A4"], "requires": ["M2", "M3", "M3a", "M4", "B1", "B2", "B3", "B4", "SB0"] },
+    { "id": "PC-T2", "number": 2, "title": "Validation Algebra Abstraction", "titleVi": "Trừu tượng hóa Đại số Kiểm tra", "statement": "erased Bound denotation equals object VA denotation", "statementVi": "Ngữ nghĩa Bound sau xóa thẻ bằng ngữ nghĩa VA phía đối tượng", "assumptions": ["A2", "A3", "A4"], "requires": ["M2", "M3", "A1", "A2", "A3", "B4"] },
+    { "id": "PC-T3", "number": 3, "title": "Normalization Preservation", "titleVi": "Bảo toàn chuẩn hóa", "statement": "normalization terminates, preserves type/denotation, and reaches `NF_R`", "statementVi": "Chuẩn hóa dừng, bảo toàn kiểu/ngữ nghĩa và đạt NF_R", "assumptions": ["A2", "A3"], "requires": ["N1", "N2", "N3", "N4"] },
+    { "id": "PC-T4", "number": 4, "title": "Validation Preservation", "titleVi": "Bảo toàn kiểm tra", "statement": "object and graph VA denotations commute with `encodeValue`", "statementVi": "Đánh giá VA trên đối tượng/đồ thị giao hoán với mã hóa giá trị", "assumptions": ["A2", "A3", "A4", "A5", "A8"], "requires": ["T0", "G1", "G2", "G3", "G4"] },
+    { "id": "PC-T5", "number": 5, "title": "Cypher Realization under Cypher Assumptions", "titleVi": "Hiện thực hóa Cypher dưới các giả thiết Cypher", "statement": "generated query realizes normalized graph VA under selected Cypher assumptions", "statementVi": "Cypher được sinh hiện thực hóa VA đồ thị dưới profile đích", "assumptions": ["A2", "A3", "A5", "A6", "A7", "A8", "A9"], "requires": ["C1", "C2", "C3", "C3a", "C4", "C5", "C6", "TXT1", "TXT2", "TXT3", "TXT4", "TXT5", "BR1-BR7", "CY1-CY9"] },
+    { "id": "PC-T6", "number": 6, "title": "End-to-End Validation Equivalence", "titleVi": "Tương đương kiểm tra đầu-cuối", "statement": "object violation set equals objects whose IDs are returned", "statementVi": "Tập vi phạm bằng tập đối tượng có định danh được trả về", "assumptions": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"], "requires": ["T0", "T1", "T2", "T3", "T4", "T5"] }
+  ],
+  "semanticFunctions": [
+    { "id": "SF-01", "name": "source_denotation", "signature": "Expr_S(tau) x Model x Env_S -> Val_S_bottom(tau)", "role": "independent Source OCL_val denotation" },
+    { "id": "SF-02", "name": "bound_denotation", "signature": "Expr_B(tau) x Model x Env_B -> Val_B_bottom(tau)", "role": "independent Bound OCL denotation" },
+    { "id": "SF-03", "name": "erase_source", "signature": "Val_S_bottom(tau) -> Val_obj_bottom(tau)", "role": "forgets Source semantic tags" },
+    { "id": "SF-04", "name": "erase_bound", "signature": "Val_B_bottom(tau) -> Val_obj_bottom(tau)", "role": "forgets Bound semantic tags" },
+    { "id": "SF-05", "name": "oclval_denotation", "signature": "Expr_S(tau) x Model x Env_S -> Val_obj_bottom(tau)", "role": "erase_source after SF-01" },
+    { "id": "SF-06", "name": "erased_bound_denotation", "signature": "Expr_B(tau) x Model x Env_B -> Val_obj_bottom(tau)", "role": "erase_bound after SF-02" },
+    { "id": "SF-07", "name": "object_va_denotation", "signature": "Expr_VA(tau) x Model x Env_obj -> Val_obj_bottom(tau)", "role": "object-side VA denotation" },
+    { "id": "SF-08", "name": "graph_va_denotation", "signature": "Expr_VA(tau) x Graph x Env_graph -> Val_G_bottom(tau)", "role": "graph-side VA denotation" },
+    { "id": "SF-09", "name": "graph_denotation_alias", "signature": "PrimitiveAccess_VA(tau) x Graph x Env_graph -> Val_G_bottom(tau)", "role": "restriction of SF-08, not a new semantics" },
+    { "id": "SF-10", "name": "encode_value", "signature": "Val_obj_bottom(tau) -> Val_G_bottom(tau)", "role": "typed object-to-graph value encoding" },
+    { "id": "SF-11", "name": "finite_set", "signature": "Val_I_bottom(Set(tau)) -> P_fin(Val_I_bottom(tau))", "role": "collection-position completion" },
+    { "id": "SF-12", "name": "navigation_source_lifting", "signature": "Receiver_I(C) -> P_fin(Val_I(C))", "role": "entity/set/bottom navigation lifting" },
+    { "id": "SF-13", "name": "validation_truth", "signature": "Val_I_bottom(Boolean) -> Boolean", "role": "true iff represented value is Boolean true" },
+    { "id": "SF-14", "name": "typed_equality", "signature": "Val_I_bottom(tau) x Val_I_bottom(tau) -> Boolean", "role": "total equality on one tagged type" },
+    { "id": "SF-15", "name": "attribute_interpretation", "signature": "Val_I_bottom(C) x Attribute(C,tau) -> Val_I_bottom(tau)", "role": "typed attribute observation" },
+    { "id": "SF-16", "name": "navigation_interpretation", "signature": "NavInput_I(C,D) -> P_fin(Val_I(D))", "role": "directional qualified binary navigation" },
+    { "id": "SF-17", "name": "class_interpretation", "signature": "Class(C) -> P_fin(Val_I(C))", "role": "finite allInstances interpretation" },
+    { "id": "SF-18", "name": "cypher_representation", "signature": "Val_G_C -> CyVal_C", "role": "injective target representation" },
+    { "id": "SF-19", "name": "cypher_abstraction", "signature": "CyVal_C -> Val_G_C", "role": "left inverse of SF-18" },
+    { "id": "SF-20", "name": "cypher_expression_evaluation", "signature": "CExpr x Row -> CyVal_C", "role": "selected-dialect expression evaluation" },
+    { "id": "SF-21", "name": "cypher_row_evaluation", "signature": "CQuery x Bag(Row) -> Bag(Row)", "role": "selected-dialect correlated row evaluation" },
+    { "id": "SF-22", "name": "cypher_query_evaluation", "signature": "CQuery x Graph x ParamEnv -> Bag(Row)", "role": "closed-query target evaluation" },
+    { "id": "SF-23", "name": "prelude_execution", "signature": "List(Clause) x Row -> Bag(Row)", "role": "scalar-plan prelude execution" },
+    { "id": "SF-24", "name": "semantic_set_projection", "signature": "Alias x Bag(Row) -> P_fin(Val_G_C)", "role": "abstracts one column and removes multiplicity" },
+    { "id": "SF-25", "name": "generated_parameter_map", "signature": "CQuery -> ParamEnv", "role": "values generated parameters" },
+    { "id": "SF-26", "name": "parameter_name_set", "signature": "CQuery -> P(ParamName)", "role": "free generated parameter names" },
+    { "id": "SF-27", "name": "returned_identifier_set", "signature": "CQuery x Graph x ParamEnv -> P(ObjectId)", "role": "set abstraction of returned identifiers" },
+    { "id": "SF-28", "name": "object_violation_set", "signature": "Expr_S(Boolean) x Class x Model -> P(Obj(M))", "role": "source validation violation set" }
+  ],
+  "evidence": [
+    { "id": "EV-PO01-VOCABULARY", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/RendererAccessorAgreementTest.java", "symbol": "class RendererAccessorAgreementTest" },
+    { "id": "EV-PO02-CERTIFIED", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/service/impl/CertifiedValidationCompilationTest.java", "symbol": "class CertifiedValidationCompilationTest" },
+    { "id": "EV-PO03-KEYS", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/CanonicalEncodingIndependentContractTest.java", "symbol": "class CanonicalEncodingIndependentContractTest" },
+    { "id": "EV-PO04-08-REPRESENTATION", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluatorTest.java", "symbol": "class RepresentationAdequacyEvaluatorTest" },
+    { "id": "EV-PO09-RENDERER", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/RendererAccessorAgreementTest.java", "symbol": "class RendererAccessorAgreementTest" },
+    { "id": "EV-PO10-BOTTOM", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/OclBottomTokenContractTest.java", "symbol": "class OclBottomTokenContractTest" },
+    { "id": "EV-PO11-SCALAR", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/OclScalarClosureCheckerTest.java", "symbol": "class OclScalarClosureCheckerTest" },
+    { "id": "EV-PO12-ALIAS", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/BottomSafeReceiverAgreementTest.java", "symbol": "class BottomSafeReceiverAgreementTest" },
+    { "id": "EV-PO13-RAW-AST", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/RawCypherAstTotalityTest.java", "symbol": "class RawCypherAstTotalityTest" },
+    { "id": "EV-PO14-DIRECT-TEXT-BRIDGE", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/Neo4jCypherAstBridgeTest.java", "symbol": "class Neo4jCypherAstBridgeTest" },
+    { "id": "EV-PO15-RUNTIME-MANIFEST", "kind": "file", "path": "verification/evidence/cypher5-val-runtime-2026-08-01.tsv" },
+    { "id": "EV-PO15-RUNTIME-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/Cypher5ValRuntimeEvidenceManifestTest.java", "symbol": "class Cypher5ValRuntimeEvidenceManifestTest" },
+    { "id": "EV-PO16-OCL47-MANIFEST", "kind": "file", "path": "verification/evidence/oclval47-nonvacuity-runtime-2026-08-01.tsv" },
+    { "id": "EV-PO16-OCL47-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclVal47NonVacuityEvidenceTest.java", "symbol": "class OclVal47NonVacuityEvidenceTest" },
+    { "id": "EV-PO17-CHECKER", "kind": "source", "path": "verification/scripts/check-verification-contract.ps1", "symbol": "Machine verification contract PASS" },
+    { "id": "EV-PO17-MUTATIONS", "kind": "source", "path": "verification/scripts/check-verification-contract-mutations.ps1", "symbol": "Machine verification mutation tests PASS" },
+    { "id": "EV-PO18-LEAN", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem theorem6_at_object" },
+    { "id": "EV-PO18-CHECKER", "kind": "source", "path": "verification/scripts/check-mechanized-proof.ps1", "symbol": "Mechanized proof check PASS" },
+    { "id": "EV-PO18-MUTATIONS", "kind": "source", "path": "verification/scripts/check-mechanized-proof-mutations.ps1", "symbol": "Mechanized proof mutation tests PASS" },
+    { "id": "EV-PO18-NORM-BOUNDARY", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/OclRewritePreservationTest.java", "symbol": "formalNormalizerAndGraphOptimizerAreSemanticNotSyntacticCounterparts" },
+    { "id": "EV-PO18-CAPTURE-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/OclRewritePreservationTest.java", "symbol": "fusionFallsBackWhenIteratorRenameWouldCaptureNestedBinder" },
+    { "id": "EV-PO19-ARTIFACT-GATE", "kind": "source", "path": ".github/workflows/maven.yml", "symbol": "proof-contract-PC-2026-07-22.2" },
+    { "id": "EV-PO19-REPORT", "kind": "source", "path": "verification/scripts/write-proof-report.ps1", "symbol": "proof-report.schema.v1" }
+  ],
+  "proofObligations": [
+    { "id": "PO-01", "title": "Vocabulary/schema agreement", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO01-VOCABULARY"] },
+    { "id": "PO-02", "title": "Certified negative admission", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO02-CERTIFIED"] },
+    { "id": "PO-03", "title": "Key agreement/injectivity", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO03-KEYS"] },
+    { "id": "PO-04", "title": "Object/id exactness", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO04-08-REPRESENTATION"] },
+    { "id": "PO-05", "title": "Type exactness/inheritance", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO04-08-REPRESENTATION"] },
+    { "id": "PO-06", "title": "Scalar attribute exactness", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO04-08-REPRESENTATION"] },
+    { "id": "PO-07", "title": "Link/qualifier exactness", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO04-08-REPRESENTATION"] },
+    { "id": "PO-08", "title": "allInstances agreement", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO04-08-REPRESENTATION"] },
+    { "id": "PO-09", "title": "Renderer/accessor agreement", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO09-RENDERER"] },
+    { "id": "PO-10", "title": "BottomSeparated enforcement", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO10-BOTTOM"] },
+    { "id": "PO-11", "title": "ScalarClosed enforcement", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO11-SCALAR"] },
+    { "id": "PO-12", "title": "Bottom-safe alias preservation", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO12-ALIAS"] },
+    { "id": "PO-13", "title": "Raw AST closure/totality", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO13-RAW-AST"] },
+    { "id": "PO-14", "title": "Direct-text parse/normalization bridge", "classification": "required", "status": "partial", "evidenceIds": ["EV-PO14-DIRECT-TEXT-BRIDGE"] },
+    { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD"] },
+    { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD"] },
+    { "id": "PO-17", "title": "Semantic proof synchronization", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO17-CHECKER", "EV-PO17-MUTATIONS"] },
+    { "id": "PO-18", "title": "Mechanized core lemmas", "classification": "recommended", "status": "partial", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD"] },
+    { "id": "PO-19", "title": "Clean machine-verification artifact", "classification": "required", "status": "open", "evidenceIds": ["EV-PO19-ARTIFACT-GATE", "EV-PO19-REPORT"] },
+    { "id": "PO-20", "title": "Paper publication build (external)", "classification": "out_of_scope", "status": "open", "evidenceIds": [] }
+  ],
+  "runtimeProfiles": [
+    {
+      "id": "RP-NEO4J-2026.06-CYPHER5-CANONICAL-V1",
+      "serverVersion": "2026.06.0",
+      "edition": "enterprise",
+      "cypherVersion": "5",
+      "database": "demo",
+      "encodingProfile": "canonical-v1",
+      "parserArtifact": "org.neo4j:cypher-parser-factory:2026.06.0",
+      "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO16-OCL47-MANIFEST"]
+    }
+  ],
+  "constructorCoverage": {
+    "matrixPath": "verification/coverage/oclval_coverage_matrix.csv",
+    "admittedCaseSourcePath": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValFragmentCoverageTest.java",
+    "features": [
+      "self", "lexical variable", "Boolean literal", "Integer literal", "Real literal", "String literal",
+      "attribute", "navigation forward", "navigation reverse", "qualified navigation", "allInstances",
+      "not", "and", "or", "implies", "equals", "not equals", "less than", "less or equal",
+      "greater than", "greater or equal", "addition", "subtraction", "multiplication", "division",
+      "if", "let", "exists", "forAll", "select", "reject", "collect scalar", "includes", "excludes",
+      "includesAll", "excludesAll", "size", "isEmpty", "notEmpty", "oclIsKindOf", "oclAsType", "xor",
+      "Set literal", "union", "intersection", "asSet", "isUnique"
+    ],
+    "requiredColumns": {
+      "parse": "OclDocumentParser",
+      "bind": "OclSemanticBinder",
+      "typing": "BoundTypeRules",
+      "va": "OclIrBuilder",
+      "normalize": "OclIrOptimizer",
+      "cypher": "OclCypherPlannerRenderer",
+      "proof_case": "T1-T5",
+      "positive_test": "OclValFragmentCoverageTest",
+      "negative_test": "OclValNegativeAdmissionCoverageTest",
+      "real_neo4j": "OclValRealNeo4jCoverageTest"
+    },
+    "artifactPaths": [
+      "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/service/impl/OclDocumentParser.java",
+      "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclSemanticBinder.java",
+      "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclIrBuilder.java",
+      "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclIrOptimizer.java",
+      "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherPlanner.java",
+      "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java",
+      "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValNegativeAdmissionCoverageTest.java",
+      "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValRealNeo4jCoverageTest.java"
+    ]
+  },
+  "implementationVocabulary": [
+    { "term": "ObjectInstanceOf", "role": "M1 object to runtime UmlClass typing link", "path": "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphVocabulary.java", "literal": "public static final String OBJECT_INSTANCE_OF = \"ObjectInstanceOf\";" },
+    { "term": "InstanceOf", "role": "M2 schema element to MetaNode typing link", "path": "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphVocabulary.java", "literal": "public static final String SCHEMA_INSTANCE_OF = \"InstanceOf\";" },
+    { "term": "classKey", "role": "exact class identity used by invariant context/allInstances", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "(cls {classKey: $" },
+    { "term": "attributeKey", "role": "exact scalar attribute-slot identity", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": ".attributeKey = $" },
+    { "term": "associationKey", "role": "exact association identity for navigation", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": ".associationKey = $" },
+    { "term": "sourceQualifiers", "role": "qualifier payload at the source association end", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "case OUTGOING, UNDIRECTED -> \"sourceQualifiers\";" },
+    { "term": "targetQualifiers", "role": "qualifier payload at the target association end", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "case INCOMING -> \"targetQualifiers\";" },
+    { "term": "__oclBottom", "role": "reserved semantic bottom marker", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclBottomToken.java", "literal": "public static final String MARKER = \"__oclBottom\";" }
+  ],
+  "mechanization": {
+    "framework": "Lean",
+    "version": "4.32.2",
+    "toolchain": "leanprover/lean4:v4.32.2",
+    "releaseAsset": "lean-4.32.2-windows.zip",
+    "releaseAssetBytes": 832110051,
+    "releaseAssetSha256": "369c2b480a2a6f8bfb727af42c333c894c4872a73b3503099abad7bef67549fa",
+    "sourcePath": "verification/lean/Ocl2CypherProof.lean",
+    "checkerPath": "verification/scripts/check-mechanized-proof.ps1",
+    "mutationCheckerPath": "verification/scripts/check-mechanized-proof-mutations.ps1",
+    "projectPaths": [
+      "verification/lean/lakefile.toml",
+      "verification/lean/lean-toolchain",
+      "verification/lean/lake-manifest.json"
+    ],
+    "requiredTheorems": [
+      "image_reflects_membership", "image_preserves_subset", "exists_over_image", "forall_over_image",
+      "encodeValue_injective", "implies_rewrite", "forall_rewrite", "notEmpty_rewrite",
+      "normalize_preserves_eval", "normalize_reaches_redex_free", "implies_root_strictly_decreases",
+      "all_rewrite_semantics", "normalize_reaches_normal_form", "normalize_idempotent",
+      "root_rewrite_strictly_decreases", "typed_rewrite_preserves_type",
+      "scoped_rename_preserves_binder_boundary", "named_to_scoped_semantic_correspondence",
+      "java_capture_guard_sound", "java_guarded_rename_preserves_scoped_semantics",
+      "structural_preservation", "theorem6_forward",
+      "theorem6_backward", "theorem6_at_object"
+    ],
+    "axiomAudit": {
+      "allowedCoreAxioms": ["propext", "Quot.sound"],
+      "theorems": [
+        { "name": "Ocl2CypherProof.encodeValue_injective", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.BoolExpr.normalize_preserves_eval", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.Formula.structural_preservation", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.theorem6_at_object", "expected": [] },
+        { "name": "Ocl2CypherProof.Normalization.all_rewrite_semantics", "expected": [] },
+        { "name": "Ocl2CypherProof.Normalization.typed_rewrite_preserves_type", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.Normalization.Scoped.scoped_rename_preserves_binder_boundary", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.Normalization.NamedBridge.named_to_scoped_semantic_correspondence", "expected": ["propext", "Quot.sound"] },
+        { "name": "Ocl2CypherProof.Normalization.NamedBridge.java_capture_guard_sound", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.Normalization.NamedBridge.java_guarded_rename_preserves_scoped_semantics", "expected": ["propext", "Quot.sound"] },
+        { "name": "Ocl2CypherProof.Normalization.RewriteExpr.normalize_reaches_normal_form", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.Normalization.RewriteExpr.normalize_idempotent", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.Normalization.RewriteExpr.RootRule.root_rewrite_strictly_decreases", "expected": ["propext"] }
+      ]
+    },
+    "coverage": [
+      { "id": "MK-FINITE-SET", "status": "mechanized", "scope": "predicate-set image/subset/exists/forall and injective membership reflection" },
+      { "id": "MK-ENCODE", "status": "mechanized", "scope": "flat typed bottom/scalar/entity/finite-set value encoding" },
+      { "id": "MK-NORMALIZE", "status": "partial", "scope": "all eleven listed rewrite-family semantic equations over validation Bool/finite List, intrinsic Bool/Nat/Elem/Set N2 indexes, lexical named-to-de-Bruijn semantic correspondence, soundness and scoped-semantic preservation of the exact three-disjunct Java capture guard over the Boolean binder kernel, relative normal form, idempotence, and lexicographic root decrease; full Java-constructor T_OPT refinement remains open" },
+      { "id": "MK-T4", "status": "partial", "scope": "structural Boolean-formula lifting from primitive observation agreement" },
+      { "id": "MK-T6", "status": "mechanized", "scope": "forward/backward pointwise violation-ID inclusions under agreement and ID injectivity" }
+    ],
+    "openScope": [
+      "nested collection encodeValue injectivity",
+      "metamodel-specific OCL subtyping/coercion and universal Java T_OPT semantic refinement for all normalization rules",
+      "exhaustive constructor mapping from production Java OclIr to the named/de Bruijn Boolean binder kernel and universal Java T_OPT semantic refinement beyond guarded fusion",
+      "full typed OCL_val Theorem 4 induction",
+      "Neo4j/Cypher semantics and AdapterAdequate",
+      "universal Theorem 6 composition beyond the abstract agreement premises"
+    ]
+  },
+  "artifactPolicy": {
+    "kind": "machine-verification",
+    "reportSchema": "proof-report.schema.v1",
+    "reportGeneratorPath": "verification/scripts/write-proof-report.ps1",
+    "baselineEvidencePath": "verification/evidence/proof-baseline-2026-08-03.json",
+    "paperPublication": "external-local-only"
+  },
+  "claimPolicy": {
+    "prototypeCorrectness": "conditional",
+    "activeValue": "active",
+    "blockingClassifications": ["required"],
+    "blockingStatuses": ["open", "partial"]
+  }
+}

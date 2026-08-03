@@ -1,0 +1,72 @@
+# schema	oclval47-nonvacuity-runtime-evidence-v1
+# proofContract	PC-2026-07-22.2
+# executedAt	2026-08-01T23:28:20+07:00
+# gitCommit	7420285ae0a6c29ffe5abdb645e9e5ee41d65f1c
+# gitDirtyAtCapture	true
+# neo4jKernel	2026.06.0
+# cypherComponent	5
+# edition	enterprise
+# database	demo
+# javaDriverDependency	5.21.0
+# encodingProfile	canonical-v1
+# fixtureProfile	oclval47-nonvacuity-v1
+# runtimeTest	OclValRealNeo4jCoverageTest#allAdmittedConstructsAgreeWithUseOnRealNeo4j
+# cases	47
+# equivalent	47
+# mixed	28
+# profileTautology	19
+# allViolate	0
+# emptyContext	0
+# expectationManifestSha256	BDB8BB8DB6E10CB8D518B2114DEBF1AA17E50EE8CA81A91A878880ABEEBA49AB
+# fixtureSha256	6A082F792FF331EFA58C049813E4426107A4CB63597E17EED4D6EF03B77A7904
+# runtimeTestSha256	D492D3CC02EE3F1CD2FCAAD7B404E31BC058119D2FADBC68AC8C4B82C7C02C6F
+# rendererSha256	CCD59D2A7D3C4019235D58838C86C475A8EB93A246B1FA1886A5697B12B850E6
+# encodingSha256	56FAE055BAE31BE0C3D0359770F2932C968A29ABD00789D545C685610FE4B26D
+id	obligation	classification	expectedViolations	useObserved	neo4jObserved	status
+Person::C01	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C02	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C03	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C04	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personZero	person17;personNeg;personBlank;personZero	person17;personNeg;personBlank;personZero	PASS
+Person::C05	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personZero	person17;personNeg;personBlank;personZero	person17;personNeg;personBlank;personZero	PASS
+Person::C06	MIXED_REQUIRED	NON_VACUOUS_MIXED	personBlank	personBlank	personBlank	PASS
+Person::C07	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	personNeg	personNeg	PASS
+Company::C08	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty	companyEmpty	companyEmpty	PASS
+Person::C09	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Library::C10	MIXED_REQUIRED	NON_VACUOUS_MIXED	libraryEmpty	libraryEmpty	libraryEmpty	PASS
+Person::C11	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C12	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	personNeg	personNeg	PASS
+Person::C13	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg;personBlank	personNeg;personBlank	personNeg;personBlank	PASS
+Person::C14	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	personNeg	personNeg	PASS
+Person::C15	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C16	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C17	MIXED_REQUIRED	NON_VACUOUS_MIXED	personBlank	personBlank	personBlank	PASS
+Person::C18	MIXED_REQUIRED	NON_VACUOUS_MIXED	personOld	personOld	personOld	PASS
+Person::C19	MIXED_REQUIRED	NON_VACUOUS_MIXED	personOld	personOld	personOld	PASS
+Person::C20	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg;personZero	personNeg;personZero	personNeg;personZero	PASS
+Person::C21	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	personNeg	personNeg	PASS
+Person::C22	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C23	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C24	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C25	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	personNeg	personNeg	PASS
+Person::C26	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C27	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personZero	person17;personNeg;personBlank;personZero	person17;personNeg;personBlank;personZero	PASS
+Company::C28	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty;companyNegative	companyEmpty;companyNegative	companyEmpty;companyNegative	PASS
+Company::C29	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyNegative	companyNegative	companyNegative	PASS
+Company::C30	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Company::C31	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Company::C32	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty;companyNegative;companyMisc	companyEmpty;companyNegative;companyMisc	companyEmpty;companyNegative;companyMisc	PASS
+Person::C33	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C34	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Company::C35	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Company::C36	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyNegative	companyNegative	companyNegative	PASS
+Company::C37	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Company::C38	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyNegative	companyNegative	companyNegative	PASS
+Company::C39	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty	companyEmpty	companyEmpty	PASS
+Person::C40	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C41	PROFILE_TAUTOLOGY	ALL_PASS				PASS
+Person::C42	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personOld;personZero	person17;personNeg;personBlank;personOld;personZero	person17;personNeg;personBlank;personOld;personZero	PASS
+Person::C43	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	PASS
+Person::C44	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	PASS
+Person::C45	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	PASS
+Person::C46	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	PASS
+Person::C47	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	employee30;person18;personNeg;personBlank;personOld;personZero	PASS

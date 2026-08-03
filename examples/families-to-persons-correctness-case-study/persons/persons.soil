@@ -1,0 +1,28 @@
+!new PersonRegister('person_register')
+!new Male('male_homer')
+!new Female('female_marge')
+!new Male('male_bart')
+!new Female('female_lisa')
+!new Male('male_ned')
+!new Male('male_rod')
+!new Male('male_todd')
+!new Male('duplicate_homer')
+!new Female('orphan_person')
+!set male_homer.name := 'Simpson, Homer'
+!set female_marge.name := 'Simpson, Marge'
+!set male_bart.name := 'Simpson, Bart'
+!set female_lisa.name := 'Simpson, Lisa'
+!set male_ned.name := 'Flanders, Ned'
+!set male_rod.name := 'Flanders, Rod'
+!set male_todd.name := ''
+!set duplicate_homer.name := 'Simpson, Homer'
+!set orphan_person.name := 'Ghost, Person'
+!insert (person_register,male_homer) into PersonRegistration
+!insert (person_register,female_marge) into PersonRegistration
+!insert (person_register,male_bart) into PersonRegistration
+!insert (person_register,female_lisa) into PersonRegistration
+!insert (person_register,male_ned) into PersonRegistration
+!insert (person_register,male_rod) into PersonRegistration
+!insert (person_register,male_todd) into PersonRegistration
+!insert (person_register,duplicate_homer) into PersonRegistration
+-- orphan_person deliberately has no register.

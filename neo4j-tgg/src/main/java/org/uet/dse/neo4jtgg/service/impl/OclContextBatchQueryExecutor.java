@@ -5,6 +5,7 @@ import org.neo4j.driver.Session;
 import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
 import org.uet.dse.neo4jtgg.model.OclRuleCompilationResult;
 import org.uet.dse.neo4jtgg.model.OclRuleDescriptor;
+import org.uet.dse.neo4jtgg.ocl.OclBottomToken;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -61,6 +62,7 @@ final class OclContextBatchQueryExecutor {
             return new BatchExecutionResult(Map.of(), 0L);
         }
         BatchQueryPlan plan = prepare(batchRules);
+        OclBottomToken.requireWellFormedGeneratedParameters(plan.parameters());
         long startedAt = System.nanoTime();
         Map<Integer, Map<String, String>> violationsByRuleIndex = new LinkedHashMap<>();
         List<Record> records = session.run(plan.cypher(), plan.parameters()).list();

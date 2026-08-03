@@ -2,20 +2,29 @@ package org.uet.dse.neo4j.repo.query;
 
 public class Neo4jModelQuery {
     public static final String DELETE_ASSOCIATION_EDGES =
-            "MATCH ()-[r {associationName: $name}]-() DELETE r";
+            "MATCH (s {modelKey: $modelName})-[r {associationName: $name, modelKey: $modelName}]->"
+                    + "(t {modelKey: $modelName}) DELETE r";
 
     public static String upsertBinaryAssociationEdge(String edgeLabel) {
         return String.format(
-                "MATCH (s {name: $sName}), (t {name: $tName}) " +
-                        "MERGE (s)-[r:%s {associationName: $assocName}]->(t) " +
-                        "SET r.sourceClassName    = $sName, " +
+                "MATCH (s {classKey: $sourceClassKey}), (t {classKey: $targetClassKey}) " +
+                        "MERGE (s)-[r:%s {associationKey: $associationKey}]->(t) " +
+                        "SET r.associationName    = $assocName, " +
+                        "    r.modelKey           = $modelName, " +
+                        "    r.sourceClassName    = $sName, " +
                         "    r.sourceClassrole    = $sRole, " +
                         "    r.sourceMultiplicity = $sMult, " +
                         "    r.sourceKind         = $sKind, " +
+                        "    r.sourceOrdered      = $sOrdered, " +
+                        "    r.sourceQualifierNames = $sQualifierNames, " +
+                        "    r.sourceQualifierTypes = $sQualifierTypes, " +
                         "    r.targetClassName    = $tName, " +
                         "    r.targerClassrole    = $tRole, " +
                         "    r.targetMultiplicity = $tMult, " +
                         "    r.targetKind         = $tKind, " +
+                        "    r.targetOrdered      = $tOrdered, " +
+                        "    r.targetQualifierNames = $tQualifierNames, " +
+                        "    r.targetQualifierTypes = $tQualifierTypes, " +
                         "    r.isTernary          = false",
                 edgeLabel
         );

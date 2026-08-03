@@ -1,15 +1,21 @@
 package org.uet.dse.neo4j.repo;
 
 import org.neo4j.driver.Driver;
+import org.neo4j.driver.QueryRunner;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
+import org.neo4j.driver.Transaction;
 import org.neo4j.driver.Values;
 import org.tzi.use.uml.mm.MAssociation;
 import org.tzi.use.uml.mm.MAssociationClass;
 import org.tzi.use.uml.mm.MAssociationEnd;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.mm.core.node.AbstractMetaNode;
+import org.uet.dse.neo4j.mm.core.node.AbstractClassNode;
+import org.uet.dse.neo4j.mm.core.node.NodeAttribute;
 import org.uet.dse.neo4j.mm.core.node.NodeEnumeration;
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+import org.uet.dse.neo4j.encoding.CanonicalGraphSchema;
 import org.uet.dse.neo4j.query.builder.CypherQueryBuilder;
 import org.uet.dse.neo4j.query.builder.MetaNodeCypherBuilder;
 import org.uet.dse.neo4j.query.model.MetaNodeDescriptor;
@@ -23,12 +29,13 @@ import java.util.Map;
 public class Neo4jModelRepository {
 
     private final Driver driver;
+    private final ThreadLocal<QueryRunner> sharedRunner = new ThreadLocal<>();
 
     public Neo4jModelRepository() {
         this.driver = Neo4jDriverManager.getInstance().getDriver();
     }
 
-    public void createAssociationEdge(MAssociation assoc) {
+    public void createAssociationEdge(MAssociation assoc, String modelName) {
         if (assoc.associationEnds().size() < 2) return;
 
         MAssociationEnd end0 = assoc.associationEnds().get(0);
@@ -38,20 +45,30 @@ public class Neo4jModelRepository {
         withSession(session -> {
             session.run(
                     Neo4jModelQuery.DELETE_ASSOCIATION_EDGES,
-                    Values.parameters("name", assoc.name())
+                    Values.parameters("name", assoc.name(), "modelName", modelName)
             );
             session.run(
                     Neo4jModelQuery.upsertBinaryAssociationEdge(edgeLabel),
                     Values.parameters(
                             "assocName", assoc.name(),
+                            "associationKey", CanonicalGraphEncoding.associationKey(modelName, assoc.name()),
+                            "modelName", modelName,
                             "sName", end0.cls().name(),
+                            "sourceClassKey", CanonicalGraphEncoding.classKey(modelName, end0.cls().name()),
                             "sRole", end0.name(),
                             "sMult", end0.multiplicity().toString(),
                             "sKind", end0.aggregationKind(),
+                            "sOrdered", end0.isOrdered(),
+                            "sQualifierNames", qualifierNames(end0),
+                            "sQualifierTypes", qualifierTypes(end0),
                             "tName", end1.cls().name(),
+                            "targetClassKey", CanonicalGraphEncoding.classKey(modelName, end1.cls().name()),
                             "tRole", end1.name(),
                             "tMult", end1.multiplicity().toString(),
-                            "tKind", end1.aggregationKind()
+                            "tKind", end1.aggregationKind(),
+                            "tOrdered", end1.isOrdered(),
+                            "tQualifierNames", qualifierNames(end1),
+                            "tQualifierTypes", qualifierTypes(end1)
                     )
             );
         });
@@ -106,6 +123,17 @@ public class Neo4jModelRepository {
     public void createInstanceNode(AbstractMetaNode node, String dynamicLabel, String modelName) {
         Map<String, Object> props = node.toPropertyMap();
         requireNameProperty(props, dynamicLabel);
+        props.put("modelKey", CanonicalGraphEncoding.modelKey(modelName));
+        props.put("canonicalKey", modelName + "::" + node.getMetaName() + "::" + node.getName());
+        if (node instanceof AbstractClassNode) {
+            props.put("classKey", CanonicalGraphEncoding.classKey(modelName, node.getName()));
+        }
+        if (node instanceof NodeAttribute attribute) {
+            String id = node.getName();
+            String suffix = "_" + attribute.getAttrName();
+            String owner = id.endsWith(suffix) ? id.substring(0, id.length() - suffix.length()) : id;
+            props.put("attributeKey", CanonicalGraphEncoding.attributeKey(modelName, owner, attribute.getAttrName()));
+        }
 
         withSession(session -> session.run(
                 Neo4jModelQuery.upsertInstanceNode(dynamicLabel),
@@ -125,14 +153,120 @@ public class Neo4jModelRepository {
         ));
     }
 
+    public QueryRunner currentRunner() {
+        QueryRunner runner = sharedRunner.get();
+        if (runner == null) throw new IllegalStateException("No active model synchronization batch");
+        return runner;
+    }
+
+    public void upsertClassesBatch(QueryRunner runner, String modelName, List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        runner.run("UNWIND $rows AS row "
+                        + "MATCH (m:ManageModel {name:$modelName})-[:DefineMetamodels]->"
+                        + "(meta:MetaNode {name:row.metaName}) "
+                        + "MERGE (inst:UmlClass {classKey:row.classKey}) "
+                        + "SET inst += row.props "
+                        + "MERGE (inst)-[:InstanceOf]->(meta)",
+                Map.of("rows", rows, "modelName", modelName));
+    }
+
+    public boolean isModelCurrent(String modelName, long modelHash) {
+        final boolean[] current = {false};
+        withSession(session -> current[0] = session.run(
+                "MATCH (m:ManageModel {name:$modelName, encodingVersion:$version, modelHash:$hash}) "
+                        + "RETURN m",
+                Map.of("modelName", modelName, "version", CanonicalGraphSchema.VERSION,
+                        "hash", modelHash)).hasNext());
+        return current[0];
+    }
+
+    public void upsertInheritanceBatch(QueryRunner runner, String modelName, List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        runner.run("UNWIND $rows AS row "
+                        + "MATCH (src:UmlClass {classKey:row.childKey}), "
+                        + "(tgt:UmlClass {classKey:row.parentKey}) "
+                        + "MERGE (src)-[r:Extends]->(tgt) "
+                        + "SET r.sourceName=row.childName, r.targetName=row.parentName, r.modelKey=$modelName",
+                Map.of("rows", rows, "modelName", modelName));
+    }
+
+    public void upsertAttributesBatch(QueryRunner runner, String modelName, List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        runner.run("UNWIND $rows AS row "
+                        + "MATCH (m:ManageModel {name:$modelName})-[:DefineMetamodels]->"
+                        + "(meta:MetaNode {name:'NodeAttribute'}) "
+                        + "MATCH (owner:UmlClass {classKey:row.ownerKey}) "
+                        + "MERGE (a:Attribute {attributeKey:row.attributeKey}) "
+                        + "SET a += row.props "
+                        + "MERGE (owner)-[:HasAttribute]->(a) "
+                        + "MERGE (a)-[:InstanceOf]->(meta) "
+                        + "WITH a OPTIONAL MATCH (a)-[old:ReferenceType]->() DELETE old",
+                Map.of("rows", rows, "modelName", modelName));
+    }
+
+    public void upsertAttributeReferencesBatch(QueryRunner runner, List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        runner.run("UNWIND $rows AS row "
+                        + "MATCH (a:Attribute {attributeKey:row.attributeKey}), "
+                        + "(target:UmlClass {classKey:row.referenceKey}) "
+                        + "MERGE (a)-[:ReferenceType]->(target)",
+                Map.of("rows", rows));
+    }
+
+    public void removeObsoleteBinaryAssociationTypes(QueryRunner runner, List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        runner.run("UNWIND $rows AS row "
+                        + "MATCH (s:UmlClass {classKey:row.sourceClassKey})-[r]->"
+                        + "(t:UmlClass {classKey:row.targetClassKey}) "
+                        + "WHERE r.associationKey=row.associationKey AND type(r) <> row.edgeLabel DELETE r",
+                Map.of("rows", rows));
+    }
+
+    public void upsertBinaryAssociationsBatch(QueryRunner runner, String edgeLabel,
+                                               List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        String query = String.format(
+                "UNWIND $rows AS row "
+                        + "MATCH (s:UmlClass {classKey:row.sourceClassKey}), "
+                        + "(t:UmlClass {classKey:row.targetClassKey}) "
+                        + "MERGE (s)-[r:%s {associationKey:row.associationKey}]->(t) "
+                        + "SET r += row.props, r.modelKey=$modelName, r.isTernary=false",
+                edgeLabel);
+        runner.run(query, Map.of("rows", rows, "modelName", rows.get(0).get("modelName")));
+    }
+
     public void initializeMetamodel(String modelName) {
         List<MetaNodeDescriptor> descriptors = MetaNodeRegistry.ALL.stream()
                 .map(MetaNodeDescriptor::from)
                 .toList();
 
-        withSession(session -> session.run(
-            MetaNodeCypherBuilder.buildInitializeScript(modelName, descriptors)
-        ));
+        withSession(session -> {
+            boolean initialized = session.run(
+                    "MATCH (m:ManageModel {name:$modelName, encodingVersion:$version}) RETURN m",
+                    Map.of("modelName", modelName, "version", CanonicalGraphSchema.VERSION)).hasNext();
+            if (!initialized) {
+                session.run(MetaNodeCypherBuilder.buildInitializeScript(modelName, descriptors));
+            }
+        });
+    }
+
+    /** Runs a complete model synchronization batch in one transaction. */
+    public void withSharedSession(java.util.function.Consumer<QueryRunner> block) {
+        QueryRunner existing = sharedRunner.get();
+        if (existing != null) {
+            block.accept(existing);
+            return;
+        }
+        String dbName = Neo4jDriverManager.getInstance().getActiveDatabase();
+        try (Session session = driver.session(SessionConfig.forDatabase(dbName))) {
+            try (Transaction transaction = session.beginTransaction()) {
+                sharedRunner.set(transaction);
+                block.accept(transaction);
+                transaction.commit();
+            }
+        } finally {
+            sharedRunner.remove();
+        }
     }
 
     public void upsertEnumeration(String enumName, List<String> literals, String modelName) {
@@ -151,7 +285,12 @@ public class Neo4jModelRepository {
      * closes the session. Centralises the repeated try-with-resources pattern
      * that previously appeared in every public method.
      */
-    private void withSession(java.util.function.Consumer<Session> block) {
+    private void withSession(java.util.function.Consumer<QueryRunner> block) {
+        QueryRunner batchRunner = sharedRunner.get();
+        if (batchRunner != null) {
+            block.accept(batchRunner);
+            return;
+        }
         String dbName = Neo4jDriverManager.getInstance().getActiveDatabase();
         try (Session session = driver.session(SessionConfig.forDatabase(dbName))) {
             Session loggingSession = new LoggingSession(session);
@@ -180,5 +319,13 @@ public class Neo4jModelRepository {
         if (props.get("name") == null) {
             throw new RuntimeException("Property 'name' is required for node: " + label);
         }
+    }
+
+    private static List<String> qualifierNames(MAssociationEnd end) {
+        return end.getQualifiers().stream().map(declaration -> declaration.name()).toList();
+    }
+
+    private static List<String> qualifierTypes(MAssociationEnd end) {
+        return end.getQualifiers().stream().map(declaration -> declaration.type().toString()).toList();
     }
 }

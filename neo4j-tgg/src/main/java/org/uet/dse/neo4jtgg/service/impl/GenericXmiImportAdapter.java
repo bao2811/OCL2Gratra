@@ -40,6 +40,15 @@ public class GenericXmiImportAdapter implements XmiImportAdapter {
     @Override
     public ImportBatch parse(TggWorkspaceContext context, WorkspaceSide side, File file) throws Exception {
         MModel model = requireModel(context, side);
+        return parse(model, side, file);
+    }
+
+    /** Parses XMI/XML for the single-model research workflow. */
+    public ImportBatch parse(MModel model, File file) throws Exception {
+        return parse(model, WorkspaceSide.SOURCE, file);
+    }
+
+    private ImportBatch parse(MModel model, WorkspaceSide side, File file) throws Exception {
         Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file);
         document.getDocumentElement().normalize();
 

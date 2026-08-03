@@ -19,6 +19,7 @@ import java.io.StringWriter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclIrOptimizerTest {
@@ -150,6 +151,75 @@ class OclIrOptimizerTest {
         assertTrue(optimized instanceof OclIr.Let);
         OclIr.Let letExpression = (OclIr.Let) optimized;
         assertEquals("threshold", letExpression.variableName());
+    }
+
+    @Test
+    void rewritesNavigationNotEmptyIntoExistsPredicateCheck() {
+        OclIr.InvariantQuery invariantQuery = buildFamilyInvariant(
+                "context Family inv HasChildren: self.children->notEmpty()");
+        assertTrue(OclSemanticIr.isSemantic(invariantQuery.predicate()));
+
+        OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
+
+        assertTrue(optimized instanceof OclIr.NavigationPredicateCheck);
+        assertTrue(OclOptimizedIr.isOptimized(optimized));
+        assertFalse(OclSemanticIr.isSemantic(optimized));
+        OclIr.NavigationPredicateCheck predicateCheck = (OclIr.NavigationPredicateCheck) optimized;
+        assertEquals(OclIr.NavigationPredicateKind.EXISTS, predicateCheck.kind());
+        assertEquals("nav", predicateCheck.iteratorName());
+        assertNull(predicateCheck.predicate());
+    }
+
+    @Test
+    void rewritesNavigationIsEmptyIntoNotExistsPredicateCheck() {
+        OclIr.Expression optimized = optimizeFamilyChildrenPredicate(
+                "context Family inv NoChildren: self.children->isEmpty()");
+
+        assertTrue(optimized instanceof OclIr.NavigationPredicateCheck);
+        OclIr.NavigationPredicateCheck predicateCheck = (OclIr.NavigationPredicateCheck) optimized;
+        assertEquals(OclIr.NavigationPredicateKind.NOT_EXISTS, predicateCheck.kind());
+        assertEquals("nav", predicateCheck.iteratorName());
+        assertNull(predicateCheck.predicate());
+    }
+
+    @Test
+    void rewritesNavigationSizeComparisonsIntoCountComparisonIr() {
+        OclIr.Expression greaterThanZero = optimizeFamilyChildrenPredicate(
+                "context Family inv SomeChildren: self.children->size() > 0");
+        OclIr.Expression equalsZero = optimizeFamilyChildrenPredicate(
+                "context Family inv NoChildren: self.children->size() = 0");
+
+        assertTrue(greaterThanZero instanceof OclIr.NavigationCountComparison);
+        OclIr.NavigationCountComparison gt = (OclIr.NavigationCountComparison) greaterThanZero;
+        assertEquals(">", gt.operator());
+        assertEquals(0L, gt.literal());
+        assertEquals("nav", gt.iteratorName());
+
+        assertTrue(equalsZero instanceof OclIr.NavigationCountComparison);
+        OclIr.NavigationCountComparison eq = (OclIr.NavigationCountComparison) equalsZero;
+        assertEquals("=", eq.operator());
+        assertEquals(0L, eq.literal());
+        assertEquals("nav", eq.iteratorName());
+    }
+
+    @Test
+    void rewritesImpliesIntoOrNotForm() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """;
+
+        OclIr.Expression optimized = optimizePredicate(spec,
+                "context Person inv AdultImpliesSenior: self.age >= 18 implies self.age >= 65");
+
+        assertTrue(optimized instanceof OclIr.Binary);
+        OclIr.Binary orExpression = (OclIr.Binary) optimized;
+        assertEquals("or", orExpression.operator());
+        assertTrue(orExpression.left() instanceof OclIr.Not);
+        assertTrue(orExpression.right() instanceof OclIr.Binary);
     }
 
     @Test
@@ -651,5 +721,53 @@ class OclIrOptimizerTest {
         ASTFile file = (ASTFile) ast;
         assertEquals(1, file.invariants().size());
         return file.invariants().get(0);
+    }
+
+    private OclIr.Expression optimizeFamilyChildrenPredicate(String ocl) {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+        return optimizePredicate(spec, ocl);
+    }
+
+    private OclIr.InvariantQuery buildFamilyInvariant(String ocl) {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+        return buildInvariant(spec, ocl);
+    }
+
+    private OclIr.Expression optimizePredicate(String spec, String ocl) {
+        OclIr.InvariantQuery invariantQuery = buildInvariant(spec, ocl);
+        return new OclIrOptimizer().optimizeExpression(invariantQuery.predicate());
+    }
+
+    private OclIr.InvariantQuery buildInvariant(String spec, String ocl) {
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
+                new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(ocl)))).oclFile());
+
+        OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
+        return new OclIrBuilder().buildInvariant(bound);
     }
 }

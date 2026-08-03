@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -219,7 +221,7 @@ class OclMetamodelIndexTest {
     }
 
     @Test
-    void supportsDirectNavigationForNAryAssociationRoles() {
+    void classifiesNAryAssociationRolesAsOutsideDirectCypherNavigation() {
         String spec = """
                 model Demo
                 class Person
@@ -245,7 +247,8 @@ class OclMetamodelIndexTest {
         assertEquals("Buy", pet.associationName());
         assertEquals(OclMetamodelIndex.NavigationDirection.UNDIRECTED, pet.direction());
         assertTrue(!pet.isBinaryAssociation());
-        assertTrue(pet.supportsDirectCypherNavigation());
+        assertFalse(pet.supportsDirectCypherNavigation());
+        assertEquals(OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED, pet.unsupportedCode());
     }
 
     @Test
@@ -257,8 +260,8 @@ class OclMetamodelIndexTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """;
 

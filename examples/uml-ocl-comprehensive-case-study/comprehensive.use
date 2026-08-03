@@ -1,0 +1,46 @@
+model ComprehensiveValidationCase
+
+class Organization
+attributes
+    name : String
+end
+
+class Department
+attributes
+    code : String
+    budget : Real
+    active : Boolean
+end
+
+class Person
+attributes
+    name : String
+    age : Integer
+    rating : Real
+    active : Boolean
+end
+
+class Employee < Person
+attributes
+    salary : Real
+end
+
+class Manager < Employee
+attributes
+    level : Integer
+end
+
+association OrganizationDepartments between
+    Organization[1] role organization
+    Department[*] role department
+end
+
+association DepartmentStaff between
+    Department[*] role department
+    Person[*] role staff
+end
+
+association DepartmentManagement between
+    Department[0..1] role managedDepartment
+    Manager[0..1] role manager
+end

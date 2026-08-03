@@ -1,0 +1,79 @@
+context Person inv Adult:
+  self.age >= 18
+
+context Person inv WorkingAge:
+  self.age <= 65
+
+context Person inv NonBlankName:
+  self.name <> ''
+
+context Person inv HighRating:
+  self.rating >= 4.0
+
+context Person inv ActiveXorAdult:
+  self.active xor self.age >= 18
+
+context Person inv ArithmeticBoundary:
+  self.age + 1 > 18 and self.age * 2 / 2 = self.age
+
+context Person inv LetAdult:
+  let threshold = 18 in self.age >= threshold
+
+context Person inv AgeSingletonIsEighteen:
+  Set{self.age} = Set{18}
+
+context Person inv NumericSetMembership:
+  Set{self.age}->union(Set{18.0})->includes(18)
+
+context Person inv SeniorIsManager:
+  if self.age >= 65 then self.oclIsKindOf(Manager) else true endif
+
+context Person inv ManagerCastLevel:
+  self.oclAsType(Manager).level > 0
+
+context Person inv HasEmployer:
+  self.employer->notEmpty()
+
+context Employee inv PositiveSalary:
+  self.salary > 0.0
+
+context Employee inv ManagerCastFromEmployee:
+  self.oclAsType(Manager).level > 0
+
+context Manager inv SeniorLevel:
+  self.level >= 3
+
+context Company inv HasEmployees:
+  self.employee->notEmpty()
+
+context Company inv HasManager:
+  self.manager->notEmpty()
+
+context Company inv RevenuePolicy:
+  if self.active then self.revenue > 0.0 else self.revenue >= 0.0 endif
+
+context Company inv AllEmployeesWorkingAge:
+  self.employee->forAll(p | p.age <= 65)
+
+context Company inv HasAdultEmployee:
+  self.employee->exists(p | p.age >= 18)
+
+context Company inv UniqueEmployeeNames:
+  self.employee->isUnique(p | p.name)
+
+context Company inv EmployeePartition:
+  self.employee->select(p | p.age < 18)
+    ->union(self.employee->reject(p | p.age < 18)) = self.employee
+
+context Company inv DistinctProjectionCardinality:
+  self.employee->collect(p | p.name)->size() = self.employee->size()
+
+context Company inv AgeIntersection:
+  self.employee->collect(p | p.age)->intersection(Set{18,30})->notEmpty()
+
+context Company inv ManagerPolicy:
+  if self.active then self.manager->notEmpty()
+  else self.manager->isEmpty() endif
+
+context Company inv SeesBothManagers:
+  Manager.allInstances()->size() = 2

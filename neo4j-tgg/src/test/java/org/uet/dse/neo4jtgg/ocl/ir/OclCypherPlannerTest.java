@@ -66,6 +66,43 @@ class OclCypherPlannerTest {
     }
 
     @Test
+    void plansZeroCountShortcutsAsExistsAndNotExistsSubqueries() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
+                new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
+                        "context Family inv CountShortcuts: self.children->size() > 0 and self.children->size() = 0")))).oclFile());
+
+        OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
+        OclIr.InvariantQuery optimized = new OclIrOptimizer().optimizeInvariant(new OclIrBuilder().buildInvariant(bound));
+        OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(optimized);
+
+        assertTrue(plan.predicate() instanceof OclCypherPlan.BinaryPlan);
+        OclCypherPlan.BinaryPlan predicate = (OclCypherPlan.BinaryPlan) plan.predicate();
+        assertTrue(predicate.left() instanceof OclCypherPlan.ExistsSubqueryPlan);
+        assertTrue(predicate.right() instanceof OclCypherPlan.NotExistsSubqueryPlan);
+        OclCypherPlan.ExistsSubqueryPlan existsPlan = (OclCypherPlan.ExistsSubqueryPlan) predicate.left();
+        OclCypherPlan.NotExistsSubqueryPlan notExistsPlan = (OclCypherPlan.NotExistsSubqueryPlan) predicate.right();
+        assertEquals(OclCypherPlan.PredicateMode.NONE, existsPlan.match().predicateMode());
+        assertEquals(OclCypherPlan.PredicateMode.NONE, notExistsPlan.match().predicateMode());
+    }
+
+    @Test
     void plansForAllAndEmptyChecksAsNotExistsSubqueries() {
         String spec = """
                 model Demo

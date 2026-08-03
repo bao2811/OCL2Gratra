@@ -1,0 +1,51 @@
+-- Boundary-oriented M1 fixture for differential validation.
+!new Company('acme')
+!new Company('empty_company')
+!set acme.name := 'Acme'
+!set empty_company.name := 'Empty'
+!set acme.active := true
+!set empty_company.active := false
+!set acme.revenue := 1000.0
+!set empty_company.revenue := 0.0
+
+!new Person('minor')
+!set minor.name := 'Alex'
+!set minor.age := 17
+!set minor.rating := 4.5
+!set minor.active := true
+
+!new Person('boundary')
+!set boundary.name := 'Alex'
+!set boundary.age := 18
+!set boundary.rating := 4.0
+!set boundary.active := true
+
+!new Employee('adult_employee')
+!set adult_employee.name := 'Bea'
+!set adult_employee.age := 30
+!set adult_employee.rating := 3.5
+!set adult_employee.active := false
+!set adult_employee.salary := 5000.0
+
+!new Manager('senior_employee')
+!set senior_employee.name := 'Cy'
+!set senior_employee.age := 70
+!set senior_employee.rating := 5.0
+!set senior_employee.active := true
+!set senior_employee.salary := -1.0
+!set senior_employee.level := 2
+
+!new Manager('lead_manager')
+!set lead_manager.name := 'Dee'
+!set lead_manager.age := 45
+!set lead_manager.rating := 4.8
+!set lead_manager.active := true
+!set lead_manager.salary := 7000.0
+!set lead_manager.level := 4
+
+!insert (acme,minor) into Employment
+!insert (acme,boundary) into Employment
+!insert (acme,adult_employee) into Employment
+!insert (acme,senior_employee) into Employment
+!insert (acme,lead_manager) into Employment
+!insert (acme,senior_employee) into CompanyManagement

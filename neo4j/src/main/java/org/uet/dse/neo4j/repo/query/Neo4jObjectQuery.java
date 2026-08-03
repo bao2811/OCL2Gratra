@@ -1,11 +1,14 @@
 package org.uet.dse.neo4j.repo.query;
 
+import static org.uet.dse.neo4j.encoding.CanonicalGraphVocabulary.OBJECT_INSTANCE_OF;
+import static org.uet.dse.neo4j.encoding.CanonicalGraphVocabulary.SCHEMA_INSTANCE_OF;
+
 public class Neo4jObjectQuery {
     public static String upsertObjectNode(String className) {
         return String.format(
                 "MATCH (cls {name: $clsName}) " +
                         "MERGE (obj:`%s` {use_id: $objName}) " +
-                        "MERGE (obj)-[:ObjectInstanceOf]->(cls)",
+                        "MERGE (obj)-[:" + OBJECT_INSTANCE_OF + "]->(cls)",
                 className
         );
     }
@@ -13,12 +16,42 @@ public class Neo4jObjectQuery {
     public static String upsertObjectNodeInModel(String className) {
         return String.format(
                 "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-                        "MATCH (cls {name: $clsName})-[:InstanceOf]->(meta) " +
-                        "MERGE (obj:`%s` {use_id: $objName}) " +
-                        "MERGE (obj)-[:ObjectInstanceOf]->(cls)",
+                        "MATCH (runtimeCls {classKey: $runtimeClassKey})-[:" + SCHEMA_INSTANCE_OF + "]->(meta) " +
+                        "MATCH (cls)-[:" + SCHEMA_INSTANCE_OF + "]->(meta) WHERE cls.classKey IN $classKeys " +
+                        "MERGE (obj:Object:`%s` {objectKey: $objectKey}) " +
+                        "SET obj.use_id = $objName, obj.modelKey = $modelName, " +
+                        "    obj.runtimeClassKey = $runtimeClassKey " +
+                        "MERGE (obj)-[:" + OBJECT_INSTANCE_OF + "]->(cls)",
                 className
         );
     }
+
+    public static String upsertObjectNodesBatchInModel(String className) {
+        return String.format(
+                "UNWIND $rows AS row "
+                        + "MATCH (runtimeCls:UmlClass {classKey:row.runtimeClassKey}) "
+                        + "MERGE (obj:Object:`%s` {objectKey:row.objectKey}) "
+                        + "SET obj.use_id=row.objName, obj.modelKey=$modelName, "
+                        + "obj.runtimeClassKey=row.runtimeClassKey "
+                        + "WITH row,obj OPTIONAL MATCH (obj)-[old:" + OBJECT_INSTANCE_OF + "]->(oldCls:UmlClass) "
+                        + "WHERE NOT oldCls.classKey IN row.classKeys "
+                        + "WITH row,obj,collect(old) AS staleMemberships "
+                        + "FOREACH (membership IN staleMemberships | DELETE membership) "
+                        + "WITH row,obj MATCH (cls:UmlClass) WHERE cls.classKey IN row.classKeys "
+                        + "MERGE (obj)-[:" + OBJECT_INSTANCE_OF + "]->(cls)",
+                className);
+    }
+
+    public static final String UPSERT_SCALAR_ATTRIBUTE_VALUES_BATCH =
+            "UNWIND $rows AS row "
+                    + "MATCH (obj:Object {objectKey:row.objectKey}) "
+                    + "MATCH (attrDef:Attribute {attributeKey:row.attributeKey}) "
+                    + "MERGE (val:AttributeValue {slotKey:row.slotKey}) "
+                    + "SET val.name=row.valId, val.attributeKey=row.attributeKey, val.modelKey=$modelName, "
+                    + "val.type=row.type, val.value=row.value, val.isCollection=row.isCollection, "
+                    + "val.collectionType=row.collectionType, val.isNestedCollection=false "
+                    + "MERGE (obj)-[:ObjectHasAttribute]->(val) "
+                    + "MERGE (val)-[:" + SCHEMA_INSTANCE_OF + "]->(attrDef)";
 
     public static final String DELETE_ATTRIBUTE_VALUE =
             "MATCH (v:AttributeValue {name: $vId}) DETACH DELETE v";
@@ -32,20 +65,24 @@ public class Neo4jObjectQuery {
                     "    val.collectionType    = $collType, " +
                     "    val.isNestedCollection = $isNested " +
                     "CREATE (obj)-[:ObjectHasAttribute]->(val) " +
-                    "CREATE (val)-[:InstanceOf]->(attrDef)";
+                    "CREATE (val)-[:" + SCHEMA_INSTANCE_OF + "]->(attrDef)";
 
     public static final String CREATE_ATTRIBUTE_VALUE_IN_MODEL =
             "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-                    "MATCH (obj {use_id: $objName})-[:ObjectInstanceOf]->(cls)-[:InstanceOf]->(meta) " +
+                    "MATCH (obj {use_id: $objName})-[:" + OBJECT_INSTANCE_OF + "]->(cls)-[:"
+                    + SCHEMA_INSTANCE_OF + "]->(meta) " +
                     "MATCH (cls)-[:HasAttribute]->(attrDef:Attribute {name: $attrDefId}) " +
-                    "CREATE (val:AttributeValue {name: $valId}) " +
-                    "SET val.type              = $type, " +
+                    "MERGE (val:AttributeValue {slotKey: $slotKey}) " +
+                    "SET val.attributeKey       = $attributeKey, " +
+                    "    val.name              = $valId, " +
+                    "    val.modelKey          = $modelName, " +
+                    "    val.type              = $type, " +
                     "    val.value             = $val, " +
                     "    val.isCollection      = $isColl, " +
                     "    val.collectionType    = $collType, " +
                     "    val.isNestedCollection = $isNested " +
-                    "CREATE (obj)-[:ObjectHasAttribute]->(val) " +
-                    "CREATE (val)-[:InstanceOf]->(attrDef)";
+                    "MERGE (obj)-[:ObjectHasAttribute]->(val) " +
+                    "MERGE (val)-[:" + SCHEMA_INSTANCE_OF + "]->(attrDef)";
     public static final String CREATE_OBJECT_REFERENCE =
             "MATCH (v {name: $vId}), (target {use_id: $tId}) " +
                     "CREATE (v)-[:objectReference {index: $idx}]->(target)";
@@ -53,7 +90,7 @@ public class Neo4jObjectQuery {
     public static final String CHECK_CLASS_EXISTS =
             "MATCH (meta:MetaNode) " +
                     "WHERE meta.name IN ['NodeConcreteClass','NodeAbstractClass','NodeAssociationClass'] " +
-                    "MATCH (cls {name: $name})-[:InstanceOf]->(meta) " +
+                    "MATCH (cls {name: $name})-[:" + SCHEMA_INSTANCE_OF + "]->(meta) " +
                     "RETURN cls LIMIT 1";
     public static String upsertBinaryLink(String label) {
         return String.format(
@@ -63,6 +100,28 @@ public class Neo4jObjectQuery {
                         "    r.sourceQualifiers = $sQualifiers, r.targetQualifiers = $tQualifiers",
                 label
         );
+    }
+
+    public static String upsertBinaryLinkInModel(String label) {
+        return String.format(
+                "MATCH (a {objectKey: $objectKey1}), (b {objectKey: $objectKey2}) " +
+                        "MERGE (a)-[r:%s {linkKey: $linkKey}]->(b) " +
+                        "SET r.name = $name, r.modelKey = $modelName, r.associationKey = $associationKey, " +
+                        "    r.sourceRole = $sRole, r.targetRole = $tRole, r.isTernary = false, " +
+                        "    r.sourceQualifiers = $sQualifiers, r.targetQualifiers = $tQualifiers",
+                label
+        );
+    }
+
+    public static String upsertBinaryLinksBatchInModel(String label) {
+        return String.format(
+                        "UNWIND $rows AS row "
+                        + "MATCH (a:Object {objectKey:row.sourceKey}), (b:Object {objectKey:row.targetKey}) "
+                        + "MERGE (a)-[r:%s {linkKey:row.linkKey}]->(b) "
+                        + "SET r.name=row.name, r.modelKey=$modelName, r.associationKey=row.associationKey, "
+                        + "r.sourceRole=row.sourceRole, r.targetRole=row.targetRole, r.isTernary=false, "
+                        + "r.sourceQualifiers=row.sourceQualifiers, r.targetQualifiers=row.targetQualifiers",
+                label);
     }
 
     public static String createTernaryHub(String assocName) {
@@ -115,7 +174,7 @@ public class Neo4jObjectQuery {
                     "       collect({obj: p.use_id, idx: r.index}) AS participants";
 
     public static final String PULL_LINK_OBJECTS =
-            "MATCH (lo)-[:ObjectInstanceOf]->(ac:AssociationClass) " +
+            "MATCH (lo)-[:" + OBJECT_INSTANCE_OF + "]->(ac:AssociationClass) " +
                     "MATCH (lo)-[r]->(p) WHERE r.isLinkObjectPart = true " +
                     "RETURN lo.use_id AS loName, ac.name AS acName, " +
                     "       collect(p.use_id) AS participants";
@@ -134,8 +193,9 @@ public class Neo4jObjectQuery {
             "MATCH (n {name: $nId}) SET n.value = $val";
 
     public static final String GET_OBJECTS_AND_NESTED_ATTRIBUTES =
-            "MATCH (o)-[:ObjectInstanceOf]->(cls) " +
-                    "OPTIONAL MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue)-[:InstanceOf]->(attrDef) " +
+            "MATCH (o)-[:" + OBJECT_INSTANCE_OF + "]->(cls) " +
+                    "OPTIONAL MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue)-[:"
+                    + SCHEMA_INSTANCE_OF + "]->(attrDef) " +
                     "OPTIONAL MATCH p = (val)-[:HasNestedCollection*0..5]->(leaf) " +
                     "WHERE NOT (leaf)-[:HasNestedCollection]->() " +
                     "RETURN o.use_id as objId, cls.name as className, " +

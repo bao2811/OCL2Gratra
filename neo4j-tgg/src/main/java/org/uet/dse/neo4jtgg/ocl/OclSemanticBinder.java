@@ -1,6 +1,7 @@
 package org.uet.dse.neo4jtgg.ocl;
 
 import org.tzi.use.uml.mm.MAttribute;
+import org.tzi.use.uml.mm.MClass;
 import org.tzi.use.uml.mm.MOperation;
 import org.tzi.use.uml.ocl.expr.VarDecl;
 import org.tzi.use.uml.ocl.type.BagType;
@@ -26,6 +27,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTOperationConstraint;
 import org.uet.dse.neo4j.oclite.ast.ASTProperty;
 import org.uet.dse.neo4j.oclite.ast.ASTRealLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTStringLiteral;
+import org.uet.dse.neo4j.oclite.ast.ASTSetLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTVar;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
@@ -39,9 +41,20 @@ import java.util.Map;
 
 public class OclSemanticBinder {
     private final OclMetamodelIndex metamodelIndex;
+    private final boolean certifiedFiniteSetSemantics;
 
     public OclSemanticBinder(OclMetamodelIndex metamodelIndex) {
+        this(metamodelIndex, false);
+    }
+
+    private OclSemanticBinder(OclMetamodelIndex metamodelIndex, boolean certifiedFiniteSetSemantics) {
         this.metamodelIndex = metamodelIndex;
+        this.certifiedFiniteSetSemantics = certifiedFiniteSetSemantics;
+    }
+
+    /** Binder view implementing the theorem profile's uniform finite-Set navigation policy. */
+    public OclSemanticBinder forCertifiedProfile() {
+        return certifiedFiniteSetSemantics ? this : new OclSemanticBinder(metamodelIndex, true);
     }
 
     public BoundContextInvariant bindContext(ASTContext context) {
@@ -115,9 +128,15 @@ public class OclSemanticBinder {
             }
             return new BoundLiteral(literal, OclTypeBinding.scalar(literal.enumTypeName), "#" + literal.literalName);
         }
+        if (expression instanceof ASTSetLiteral setLiteral) {
+            List<BoundExpression> elements = bindArguments(setLiteral.elements, scope);
+            return new BoundSetLiteral(setLiteral, elements, inferSetLiteralType(elements));
+        }
 
         if (expression instanceof ASTNot not) {
-            return new BoundNot(not, bind(not.expression, scope));
+            BoundExpression inner = bind(not.expression, scope);
+            requireBooleanScalar("not", inner.type());
+            return new BoundNot(not, inner);
         }
 
         if (expression instanceof ASTIf ifExpression) {
@@ -244,7 +263,11 @@ public class OclSemanticBinder {
             if (!navigation.supportsDirectCypherNavigation()) {
                 throw new OclCodedUnsupportedOperationException(navigation.unsupportedCode(), navigation.unsupportedReason());
             }
-            return new BoundProperty(property, source, navigation.resultBinding(), null, navigation, qualifierExpressions);
+            OclTypeBinding resultType = certifiedFiniteSetSemantics
+                    ? OclTypeBinding.nodeCollection(
+                            navigation.targetClassName(), OclTypeBinding.CollectionKind.SET)
+                    : navigation.resultBinding();
+            return new BoundProperty(property, source, resultType, null, navigation, qualifierExpressions);
         }
 
         throw new OclCodedUnsupportedOperationException(
@@ -339,17 +362,92 @@ public class OclSemanticBinder {
 
     private OclTypeBinding inferBinaryType(String operator, OclTypeBinding left, OclTypeBinding right) {
         return switch (operator) {
-            case "=", "<>", "and", "or", "implies", ">", "<", ">=", "<=" -> OclTypeBinding.scalar("Boolean");
+            case "and", "or", "xor", "implies" -> {
+                requireBooleanScalar(operator, left);
+                requireBooleanScalar(operator, right);
+                yield OclTypeBinding.scalar("Boolean");
+            }
+            case "=", "<>" -> {
+                requireEqualityCompatible(operator, left, right);
+                yield OclTypeBinding.scalar("Boolean");
+            }
+            case ">", "<", ">=", "<=" -> {
+                requireNumericScalar(operator, left);
+                requireNumericScalar(operator, right);
+                yield OclTypeBinding.scalar("Boolean");
+            }
             case "+", "-", "*", "/" -> {
+                requireNumericScalar(operator, left);
+                requireNumericScalar(operator, right);
                 if ("Real".equals(left.typeName()) || "Real".equals(right.typeName()) || "/".equals(operator)) {
                     yield OclTypeBinding.scalar("Real");
                 }
-                yield left;
+                yield OclTypeBinding.scalar("Integer");
             }
             default -> throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.UNSUPPORTED_OPERATOR,
                     "Unsupported operator: " + operator);
         };
+    }
+
+    private OclTypeBinding inferSetLiteralType(List<BoundExpression> elements) {
+        if (elements.isEmpty()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                    "Set{} requires at least one element because this compiler has no contextual type inference.");
+        }
+
+        OclTypeBinding elementType = null;
+        for (BoundExpression element : elements) {
+            OclTypeBinding candidate = element.type();
+            if (candidate.isCollection()) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                        "Nested collection elements are outside the certified Set literal fragment.");
+            }
+            elementType = elementType == null ? candidate : setJoin(elementType, candidate, "Set literal");
+        }
+        if (elementType == null) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                    "A Set literal containing only undefined values has no inferable element type.");
+        }
+        return OclTypeBinding.collectionOf(elementType, OclTypeBinding.CollectionKind.SET);
+    }
+
+    private void requireBooleanScalar(String operator, OclTypeBinding type) {
+        if (!isBooleanScalarType(type)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNSUPPORTED_OPERATOR,
+                    "Operator `" + operator + "` requires Boolean scalar operand(s), but found " + describeType(type) + ".");
+        }
+    }
+
+    private void requireNumericScalar(String operator, OclTypeBinding type) {
+        if (!isNumericScalarType(type)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNSUPPORTED_OPERATOR,
+                    "Operator `" + operator + "` requires Integer or Real scalar operand(s), but found " + describeType(type) + ".");
+        }
+    }
+
+    private void requireEqualityCompatible(String operator, OclTypeBinding left, OclTypeBinding right) {
+        if (!isEqualityCompatible(left, right)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNSUPPORTED_OPERATOR,
+                    "Operator `" + operator + "` requires compatible operand types, but found "
+                            + describeType(left) + " and " + describeType(right) + ".");
+        }
+    }
+
+    private boolean isEqualityCompatible(OclTypeBinding left, OclTypeBinding right) {
+        if (isVoidType(left) || isVoidType(right)) {
+            return true;
+        }
+        if (isNumericScalarType(left) && isNumericScalarType(right)) {
+            return true;
+        }
+        return left.equals(right);
     }
 
     private OclTypeBinding inferIfType(OclTypeBinding conditionType, OclTypeBinding thenType, OclTypeBinding elseType) {
@@ -407,7 +505,14 @@ public class OclSemanticBinder {
         if ("toString".equalsIgnoreCase(methodName)) {
             return OclTypeBinding.scalar("String");
         }
-        if ("oclIsTypeOf".equalsIgnoreCase(methodName) || "oclIsKindOf".equalsIgnoreCase(methodName)) {
+        if ("oclIsTypeOf".equalsIgnoreCase(methodName)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.OCL_IS_TYPE_OF_OUTSIDE_CERTIFIED_FRAGMENT,
+                    "oclIsTypeOf() is outside the certified OCL_val fragment until the graph encoding "
+                            + "provides a proved direct runtime-class accessor. Use oclIsKindOf() when "
+                            + "conformance semantics are intended.");
+        }
+        if ("oclIsKindOf".equalsIgnoreCase(methodName)) {
             return OclTypeBinding.scalar("Boolean");
         }
         if ("oclAsType".equalsIgnoreCase(methodName)) {
@@ -454,9 +559,26 @@ public class OclSemanticBinder {
 
     private OclTypeBinding inferIteratorType(String operation, OclTypeBinding sourceType, OclTypeBinding bodyType) {
         return switch (operation.toLowerCase()) {
-            case "select", "reject" -> sourceType;
-            case "exists", "forall", "one", "isunique" -> OclTypeBinding.scalar("Boolean");
-            case "any" -> sourceType.elementType();
+            case "select", "reject" -> {
+                requireBooleanScalar(operation, bodyType);
+                yield sourceType;
+            }
+            case "exists", "forall", "one" -> {
+                requireBooleanScalar(operation, bodyType);
+                yield OclTypeBinding.scalar("Boolean");
+            }
+            case "any" -> {
+                requireBooleanScalar(operation, bodyType);
+                yield sourceType.elementType();
+            }
+            case "isunique" -> {
+                if (bodyType.isCollection()) {
+                    throw new OclCodedUnsupportedOperationException(
+                            OclDiagnosticCode.UNSUPPORTED_ITERATOR,
+                            "isUnique() requires a non-collection projection in the certified fragment.");
+                }
+                yield OclTypeBinding.scalar("Boolean");
+            }
             case "collect" -> inferCollectType(sourceType, bodyType);
             case "sortedby" -> inferSortedByType(sourceType, bodyType);
             default -> throw new OclCodedUnsupportedOperationException(
@@ -466,6 +588,9 @@ public class OclSemanticBinder {
     }
 
     private OclTypeBinding inferCollectType(OclTypeBinding sourceType, OclTypeBinding bodyType) {
+        if (certifiedFiniteSetSemantics) {
+            return OclTypeBinding.collectionOf(bodyType, OclTypeBinding.CollectionKind.SET);
+        }
         OclTypeBinding.CollectionKind targetKind = sourceType.isOrderedCollection()
                 ? OclTypeBinding.CollectionKind.SEQUENCE
                 : OclTypeBinding.CollectionKind.BAG;
@@ -504,6 +629,7 @@ public class OclSemanticBinder {
 
     private OclTypeBinding inferUnionType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
         OclTypeBinding argumentType = requireSingleCollectionArgument("union", arguments);
+        OclTypeBinding elementType = setJoin(sourceType.elementType(), argumentType.elementType(), "union()");
         OclTypeBinding.CollectionKind resultKind = switch (sourceType.collectionKind()) {
             case SET -> argumentType.collectionKind() == OclTypeBinding.CollectionKind.BAG
                     ? OclTypeBinding.CollectionKind.BAG
@@ -515,11 +641,12 @@ public class OclSemanticBinder {
                     : OclTypeBinding.CollectionKind.SET;
             case COLLECTION, NONE -> sourceType.collectionKind();
         };
-        return sourceType.withCollectionKind(resultKind);
+        return OclTypeBinding.collectionOf(elementType, resultKind);
     }
 
     private OclTypeBinding inferIntersectionType(OclTypeBinding sourceType, List<BoundExpression> arguments) {
         OclTypeBinding argumentType = requireSingleCollectionArgument("intersection", arguments);
+        OclTypeBinding elementType = setJoin(sourceType.elementType(), argumentType.elementType(), "intersection()");
         OclTypeBinding.CollectionKind resultKind = switch (sourceType.collectionKind()) {
             case SET -> OclTypeBinding.CollectionKind.SET;
             case BAG -> argumentType.collectionKind() == OclTypeBinding.CollectionKind.SET
@@ -531,7 +658,46 @@ public class OclSemanticBinder {
                     : OclTypeBinding.CollectionKind.SET;
             case COLLECTION, NONE -> sourceType.collectionKind();
         };
-        return sourceType.withCollectionKind(resultKind);
+        return OclTypeBinding.collectionOf(elementType, resultKind);
+    }
+
+    /** Functional least common canonical type used by certified finite-set constructors. */
+    private OclTypeBinding setJoin(OclTypeBinding left, OclTypeBinding right, String operation) {
+        if (left.equals(right)) {
+            return left;
+        }
+        if (isVoidType(left)) {
+            return right;
+        }
+        if (isVoidType(right)) {
+            return left;
+        }
+        if (isNumericScalarType(left) && isNumericScalarType(right)) {
+            return OclTypeBinding.scalar("Real");
+        }
+        if (left.isNode() && right.isNode()) {
+            MClass leftClass = metamodelIndex.requireClass(left.typeName());
+            MClass rightClass = metamodelIndex.requireClass(right.typeName());
+            if (leftClass.allParents().contains(rightClass)) {
+                return right;
+            }
+            if (rightClass.allParents().contains(leftClass)) {
+                return left;
+            }
+            List<MClass> common = new ArrayList<>(leftClass.allParents());
+            common.retainAll(rightClass.allParents());
+            List<MClass> minimal = common.stream()
+                    .filter(candidate -> common.stream().noneMatch(other ->
+                            !candidate.equals(other) && other.allParents().contains(candidate)))
+                    .toList();
+            if (minimal.size() == 1) {
+                return OclTypeBinding.node(minimal.get(0).name());
+            }
+        }
+        throw new OclCodedUnsupportedOperationException(
+                OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
+                operation + " operands require one unique canonical element type, but found "
+                        + describeType(left) + " and " + describeType(right) + ".");
     }
 
     private OclTypeBinding requireSingleCollectionArgument(String operationName, List<BoundExpression> arguments) {
@@ -636,7 +802,33 @@ public class OclSemanticBinder {
     }
 
     private boolean isNumericScalarType(OclTypeBinding type) {
-        return "Integer".equals(type.typeName()) || "Real".equals(type.typeName());
+        return type != null
+                && !type.isCollection()
+                && !type.isNode()
+                && !type.isClassReference()
+                && ("Integer".equals(type.typeName()) || "Real".equals(type.typeName()));
+    }
+
+    private boolean isBooleanScalarType(OclTypeBinding type) {
+        return type != null
+                && !type.isCollection()
+                && !type.isNode()
+                && !type.isClassReference()
+                && "Boolean".equals(type.typeName());
+    }
+
+    private boolean isVoidType(OclTypeBinding type) {
+        return type != null && !type.isCollection() && "Void".equals(type.typeName());
+    }
+
+    private String describeType(OclTypeBinding type) {
+        if (type == null) {
+            return "<unknown>";
+        }
+        if (type.isCollection()) {
+            return type.collectionKind() + "(" + describeType(type.elementType()) + ")";
+        }
+        return type.kind() + "(" + type.typeName() + ")";
     }
 
     private OclTypeBinding inferPositionalAccessType(OclTypeBinding sourceType, String operationName) {
@@ -705,6 +897,13 @@ public class OclSemanticBinder {
     }
 
     public record BoundLiteral(ASTExpression ast, OclTypeBinding type, Object value) implements BoundExpression {
+    }
+
+    public record BoundSetLiteral(ASTSetLiteral ast, List<BoundExpression> elements,
+                                  OclTypeBinding type) implements BoundExpression {
+        public BoundSetLiteral {
+            elements = List.copyOf(elements);
+        }
     }
 
     public record BoundNot(ASTNot ast, BoundExpression expression) implements BoundExpression {

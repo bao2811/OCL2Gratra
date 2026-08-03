@@ -7,21 +7,45 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Semantics-preserving model-to-model transformation from
+ * {@link OclSemanticIr} to {@link OclOptimizedIr}.
+ *
+ * <p>The optimizer rewrites IR expressions into graph-friendly semantic forms
+ * without changing their denotation. It is intentionally placed before the
+ * Cypher planner so that optimizations such as navigation existence checks,
+ * count comparisons, let inlining, and constant folding are expressed at the
+ * IR level rather than hidden inside string rendering.</p>
+ *
+ * <pre>
+ * T_OPT : M_SemanticIR -> M_OptimizedIR
+ * [[ ir ]]_IR(M, rho) = [[ T_OPT(ir) ]]_OPT(M, rho)
+ * </pre>
+ */
 public class OclIrOptimizer {
     public OclIr.InvariantQuery optimizeInvariant(OclIr.InvariantQuery invariantQuery) {
         return new OclIr.InvariantQuery(
                 invariantQuery.contextClassName(),
                 invariantQuery.invariantName(),
-                optimizeExpression(invariantQuery.predicate()));
+                optimizeExpression(OclSemanticIr.requireSemantic(invariantQuery.predicate())));
     }
 
-    public OclIr.Expression optimizeExpression(OclIr.Expression expression) {
-        return optimizeExpression(expression, Map.of());
+    public OclIr.OptimizedExpression optimizeExpression(OclIr.SemanticExpression expression) {
+        return OclOptimizedIr.requireOptimized(optimizeExpression((OclIr.Expression) expression, Map.of()));
+    }
+
+    public OclIr.OptimizedExpression optimizeExpression(OclIr.Expression expression) {
+        return OclOptimizedIr.requireOptimized(optimizeExpression(expression, Map.of()));
     }
 
     private OclIr.Expression optimizeExpression(OclIr.Expression expression, Map<String, OclIr.Expression> bindings) {
         if (expression instanceof OclIr.Variable variable) {
             return bindings.getOrDefault(variable.name(), variable);
+        }
+        if (expression instanceof OclIr.SetLiteral setLiteral) {
+            return new OclIr.SetLiteral(
+                    setLiteral.elements().stream().map(element -> optimizeExpression(element, bindings)).toList(),
+                    setLiteral.type());
         }
         if (expression instanceof OclIr.Not not) {
             OclIr.Expression inner = optimizeExpression(not.expression(), bindings);
@@ -68,7 +92,24 @@ public class OclIrOptimizer {
                 return optimized;
             }
             OclIr.Expression folded = foldLiteralBinary(binary.operator(), left, right, binary.type());
-            return folded != null ? folded : new OclIr.Binary(binary.operator(), left, right, binary.type());
+            if (folded != null) {
+                return folded;
+            }
+            if ("implies".equals(binary.operator())) {
+                return new OclIr.Binary(
+                        "or",
+                        new OclIr.Not(left, binary.type()),
+                        right,
+                        binary.type());
+            }
+            if ("xor".equals(binary.operator())) {
+                return new OclIr.Binary(
+                        "or",
+                        new OclIr.Binary("and", left, new OclIr.Not(right, binary.type()), binary.type()),
+                        new OclIr.Binary("and", new OclIr.Not(left, binary.type()), right, binary.type()),
+                        binary.type());
+            }
+            return new OclIr.Binary(binary.operator(), left, right, binary.type());
         }
         if (expression instanceof OclIr.AttributeAccess attributeAccess) {
             return new OclIr.AttributeAccess(
@@ -134,6 +175,7 @@ public class OclIrOptimizer {
             case "<>" -> new OclIr.Literal(!Objects.equals(normalizeNumber(leftValue), normalizeNumber(rightValue)), type);
             case "and" -> new OclIr.Literal(toBoolean(leftValue) && toBoolean(rightValue), type);
             case "or" -> new OclIr.Literal(toBoolean(leftValue) || toBoolean(rightValue), type);
+            case "xor" -> new OclIr.Literal(toBoolean(leftValue) ^ toBoolean(rightValue), type);
             case "implies" -> new OclIr.Literal(!toBoolean(leftValue) || toBoolean(rightValue), type);
             case ">", "<", ">=", "<=" -> foldComparison(operator, leftValue, rightValue, type);
             case "+", "-", "*", "/" -> foldArithmetic(operator, leftValue, rightValue, type);
@@ -197,6 +239,11 @@ public class OclIrOptimizer {
         }
         if (expression instanceof OclIr.Literal) {
             return 0;
+        }
+        if (expression instanceof OclIr.SetLiteral setLiteral) {
+            return setLiteral.elements().stream()
+                    .mapToInt(element -> countVariableUses(element, variableName))
+                    .sum();
         }
         if (expression instanceof OclIr.Not not) {
             return countVariableUses(not.expression(), variableName);
@@ -288,13 +335,13 @@ public class OclIrOptimizer {
                                               OclIr.Expression body, OclTypeBinding type) {
         if (source instanceof OclIr.NavigationAccess navigationAccess) {
             return switch (operation.toLowerCase()) {
-                case "exists" -> new OclIr.NavigationPredicateCheck(navigationAccess, iteratorName, body,
+                case "exists" -> OclOptimizedIr.navigationPredicateCheck(navigationAccess, iteratorName, body,
                         OclIr.NavigationPredicateKind.EXISTS, type);
-                case "forall" -> new OclIr.NavigationPredicateCheck(navigationAccess, iteratorName, body,
+                case "forall" -> OclOptimizedIr.navigationPredicateCheck(navigationAccess, iteratorName, body,
                         OclIr.NavigationPredicateKind.FORALL, type);
-                case "one" -> new OclIr.NavigationCountComparison(navigationAccess, iteratorName, body,
+                case "one" -> OclOptimizedIr.navigationCountComparison(navigationAccess, iteratorName, body,
                         "=", 1L, type);
-                case "isunique" -> new OclIr.NavigationUniquenessCheck(navigationAccess, iteratorName, null, body, type);
+                case "isunique" -> OclOptimizedIr.navigationUniquenessCheck(navigationAccess, iteratorName, null, body, type);
                 default -> null;
             };
         }
@@ -302,11 +349,11 @@ public class OclIrOptimizer {
         if (filterSource != null) {
             OclIr.Expression combinedPredicate = combinePredicates(filterSource.predicate(), body);
             return switch (operation.toLowerCase()) {
-                case "exists" -> new OclIr.NavigationPredicateCheck(filterSource.navigationAccess(), iteratorName, combinedPredicate,
+                case "exists" -> OclOptimizedIr.navigationPredicateCheck(filterSource.navigationAccess(), iteratorName, combinedPredicate,
                         OclIr.NavigationPredicateKind.EXISTS, type);
-                case "one" -> new OclIr.NavigationCountComparison(filterSource.navigationAccess(), iteratorName, combinedPredicate,
+                case "one" -> OclOptimizedIr.navigationCountComparison(filterSource.navigationAccess(), iteratorName, combinedPredicate,
                         "=", 1L, type);
-                case "isunique" -> new OclIr.NavigationUniquenessCheck(filterSource.navigationAccess(), iteratorName,
+                case "isunique" -> OclOptimizedIr.navigationUniquenessCheck(filterSource.navigationAccess(), iteratorName,
                         filterSource.predicate(), body, type);
                 default -> null;
             };
@@ -317,7 +364,7 @@ public class OclIrOptimizer {
     private OclIr.Expression optimizeCollectionOperation(String operation, OclIr.Expression source, OclTypeBinding type) {
         NavigationAggregationSource aggregationSource = extractNavigationAggregationSource(source);
         if (aggregationSource != null && isNavigationAggregateOperation(operation)) {
-            return new OclIr.NavigationAggregation(
+            return OclOptimizedIr.navigationAggregation(
                     aggregationSource.navigationAccess(),
                     aggregationSource.iteratorName(),
                     aggregationSource.predicate(),
@@ -328,13 +375,13 @@ public class OclIrOptimizer {
         FlattenExistenceSource flattenExistenceSource = extractFlattenExistenceSource(source);
         if (flattenExistenceSource != null) {
             return switch (operation) {
-                case "isEmpty" -> new OclIr.NavigationPredicateCheck(
+                case "isEmpty" -> OclOptimizedIr.navigationPredicateCheck(
                         flattenExistenceSource.navigationAccess(),
                         flattenExistenceSource.iteratorName(),
                         flattenExistenceSource.nestedNotEmptyPredicate(),
                         OclIr.NavigationPredicateKind.NOT_EXISTS,
                         type);
-                case "notEmpty" -> new OclIr.NavigationPredicateCheck(
+                case "notEmpty" -> OclOptimizedIr.navigationPredicateCheck(
                         flattenExistenceSource.navigationAccess(),
                         flattenExistenceSource.iteratorName(),
                         flattenExistenceSource.nestedNotEmptyPredicate(),
@@ -345,9 +392,9 @@ public class OclIrOptimizer {
         }
         if (source instanceof OclIr.NavigationAccess navigationAccess) {
             return switch (operation) {
-                case "isEmpty" -> new OclIr.NavigationPredicateCheck(navigationAccess, "nav", null,
+                case "isEmpty" -> OclOptimizedIr.navigationPredicateCheck(navigationAccess, "nav", null,
                         OclIr.NavigationPredicateKind.NOT_EXISTS, type);
-                case "notEmpty" -> new OclIr.NavigationPredicateCheck(navigationAccess, "nav", null,
+                case "notEmpty" -> OclOptimizedIr.navigationPredicateCheck(navigationAccess, "nav", null,
                         OclIr.NavigationPredicateKind.EXISTS, type);
                 default -> null;
             };
@@ -355,9 +402,9 @@ public class OclIrOptimizer {
         NavigationFilterSource filterSource = extractNavigationFilterSource(source);
         if (filterSource != null) {
             return switch (operation) {
-                case "isEmpty" -> new OclIr.NavigationPredicateCheck(filterSource.navigationAccess(), filterSource.iteratorName(),
+                case "isEmpty" -> OclOptimizedIr.navigationPredicateCheck(filterSource.navigationAccess(), filterSource.iteratorName(),
                         filterSource.predicate(), OclIr.NavigationPredicateKind.NOT_EXISTS, type);
-                case "notEmpty" -> new OclIr.NavigationPredicateCheck(filterSource.navigationAccess(), filterSource.iteratorName(),
+                case "notEmpty" -> OclOptimizedIr.navigationPredicateCheck(filterSource.navigationAccess(), filterSource.iteratorName(),
                         filterSource.predicate(), OclIr.NavigationPredicateKind.EXISTS, type);
                 default -> null;
             };
@@ -415,7 +462,7 @@ public class OclIrOptimizer {
         if (sizeSource == null || literal == null) {
             return null;
         }
-        return new OclIr.NavigationCountComparison(
+        return OclOptimizedIr.navigationCountComparison(
                 sizeSource.navigationAccess(),
                 sizeSource.iteratorName(),
                 sizeSource.predicate(),
@@ -459,6 +506,9 @@ public class OclIrOptimizer {
                 ? new OclIr.Not(iteratorOperation.body(), OclTypeBinding.scalar("Boolean"))
                 : iteratorOperation.body();
         if (!iteratorName.equals(iteratorOperation.iteratorName())) {
+            if (!canRenameWithoutCapture(localPredicate, iteratorOperation.iteratorName(), iteratorName)) {
+                return null;
+            }
             localPredicate = renameVariable(localPredicate, iteratorOperation.iteratorName(), iteratorName);
         }
         if (iteratorOperation.source() instanceof OclIr.NavigationAccess navigationAccess) {
@@ -484,6 +534,99 @@ public class OclIrOptimizer {
         return new OclIr.Binary("and", left, right, OclTypeBinding.scalar("Boolean"));
     }
 
+    /**
+     * A fusion rename is safe only when the target name cannot become a binder
+     * for a formerly free occurrence of the source name. The test is
+     * deliberately conservative: when such a binder exists anywhere in the
+     * predicate, optimization falls back to the general iterator IR instead of
+     * risking variable capture. The three disjuncts are mirrored by Lean's
+     * {@code NamedBridge.JavaCaptureGuard}: identical names, no free source
+     * use, or no target-named binder. The Lean theorem covers the Boolean
+     * binder kernel; exhaustive Java-constructor-to-kernel correspondence is a
+     * separate proof obligation.
+     */
+    private boolean canRenameWithoutCapture(OclIr.Expression expression, String from, String to) {
+        return from.equals(to)
+                || countVariableUses(expression, from) == 0
+                || !containsBinderNamed(expression, to);
+    }
+
+    private boolean containsBinderNamed(OclIr.Expression expression, String name) {
+        if (expression instanceof OclIr.Variable || expression instanceof OclIr.Literal) {
+            return false;
+        }
+        if (expression instanceof OclIr.SetLiteral setLiteral) {
+            return setLiteral.elements().stream().anyMatch(element -> containsBinderNamed(element, name));
+        }
+        if (expression instanceof OclIr.Not not) {
+            return containsBinderNamed(not.expression(), name);
+        }
+        if (expression instanceof OclIr.If ifExpression) {
+            return containsBinderNamed(ifExpression.condition(), name)
+                    || containsBinderNamed(ifExpression.thenBranch(), name)
+                    || containsBinderNamed(ifExpression.elseBranch(), name);
+        }
+        if (expression instanceof OclIr.Let letExpression) {
+            return name.equals(letExpression.variableName())
+                    || containsBinderNamed(letExpression.value(), name)
+                    || containsBinderNamed(letExpression.body(), name);
+        }
+        if (expression instanceof OclIr.Binary binary) {
+            return containsBinderNamed(binary.left(), name) || containsBinderNamed(binary.right(), name);
+        }
+        if (expression instanceof OclIr.AttributeAccess attributeAccess) {
+            return containsBinderNamed(attributeAccess.source(), name);
+        }
+        if (expression instanceof OclIr.NavigationAccess navigationAccess) {
+            return containsBinderNamed(navigationAccess.source(), name)
+                    || navigationAccess.qualifiers().stream()
+                    .anyMatch(qualifier -> containsBinderNamed(qualifier, name));
+        }
+        if (expression instanceof OclIr.MethodCall methodCall) {
+            return containsBinderNamed(methodCall.source(), name)
+                    || methodCall.arguments().stream()
+                    .anyMatch(argument -> containsBinderNamed(argument, name));
+        }
+        if (expression instanceof OclIr.CollectionOperation collectionOperation) {
+            return containsBinderNamed(collectionOperation.source(), name)
+                    || collectionOperation.arguments().stream()
+                    .anyMatch(argument -> containsBinderNamed(argument, name));
+        }
+        if (expression instanceof OclIr.IteratorOperation iteratorOperation) {
+            return name.equals(iteratorOperation.iteratorName())
+                    || containsBinderNamed(iteratorOperation.source(), name)
+                    || containsBinderNamed(iteratorOperation.body(), name);
+        }
+        if (expression instanceof OclIr.NavigationPredicateCheck predicateCheck) {
+            return name.equals(predicateCheck.iteratorName())
+                    || containsBinderNamed(predicateCheck.navigation(), name)
+                    || predicateCheck.predicate() != null
+                    && containsBinderNamed(predicateCheck.predicate(), name);
+        }
+        if (expression instanceof OclIr.NavigationCountComparison countComparison) {
+            return name.equals(countComparison.iteratorName())
+                    || containsBinderNamed(countComparison.navigation(), name)
+                    || countComparison.predicate() != null
+                    && containsBinderNamed(countComparison.predicate(), name);
+        }
+        if (expression instanceof OclIr.NavigationAggregation aggregation) {
+            return name.equals(aggregation.iteratorName())
+                    || containsBinderNamed(aggregation.navigation(), name)
+                    || aggregation.predicate() != null
+                    && containsBinderNamed(aggregation.predicate(), name)
+                    || containsBinderNamed(aggregation.projection(), name);
+        }
+        if (expression instanceof OclIr.NavigationUniquenessCheck uniquenessCheck) {
+            return name.equals(uniquenessCheck.iteratorName())
+                    || containsBinderNamed(uniquenessCheck.navigation(), name)
+                    || uniquenessCheck.predicate() != null
+                    && containsBinderNamed(uniquenessCheck.predicate(), name)
+                    || containsBinderNamed(uniquenessCheck.projection(), name);
+        }
+        throw new IllegalStateException("Unsupported expression for binder scan: "
+                + expression.getClass().getSimpleName());
+    }
+
     private OclIr.Expression renameVariable(OclIr.Expression expression, String from, String to) {
         if (from.equals(to)) {
             return expression;
@@ -493,6 +636,11 @@ public class OclIrOptimizer {
         }
         if (expression instanceof OclIr.Literal) {
             return expression;
+        }
+        if (expression instanceof OclIr.SetLiteral setLiteral) {
+            return new OclIr.SetLiteral(
+                    setLiteral.elements().stream().map(element -> renameVariable(element, from, to)).toList(),
+                    setLiteral.type());
         }
         if (expression instanceof OclIr.Not not) {
             return new OclIr.Not(renameVariable(not.expression(), from, to), not.type());
@@ -571,14 +719,14 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.NavigationPredicateCheck predicateCheck) {
             OclIr.Expression renamedNavigation = renameVariable(predicateCheck.navigation(), from, to);
             if (from.equals(predicateCheck.iteratorName())) {
-                return new OclIr.NavigationPredicateCheck(
+                return OclOptimizedIr.navigationPredicateCheck(
                         (OclIr.NavigationAccess) renamedNavigation,
                         predicateCheck.iteratorName(),
                         predicateCheck.predicate(),
                         predicateCheck.kind(),
                         predicateCheck.type());
             }
-            return new OclIr.NavigationPredicateCheck(
+            return OclOptimizedIr.navigationPredicateCheck(
                     (OclIr.NavigationAccess) renamedNavigation,
                     predicateCheck.iteratorName(),
                     predicateCheck.predicate() != null ? renameVariable(predicateCheck.predicate(), from, to) : null,
@@ -588,7 +736,7 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.NavigationCountComparison countComparison) {
             OclIr.Expression renamedNavigation = renameVariable(countComparison.navigation(), from, to);
             if (from.equals(countComparison.iteratorName())) {
-                return new OclIr.NavigationCountComparison(
+                return OclOptimizedIr.navigationCountComparison(
                         (OclIr.NavigationAccess) renamedNavigation,
                         countComparison.iteratorName(),
                         countComparison.predicate(),
@@ -596,7 +744,7 @@ public class OclIrOptimizer {
                         countComparison.literal(),
                         countComparison.type());
             }
-            return new OclIr.NavigationCountComparison(
+            return OclOptimizedIr.navigationCountComparison(
                     (OclIr.NavigationAccess) renamedNavigation,
                     countComparison.iteratorName(),
                     countComparison.predicate() != null ? renameVariable(countComparison.predicate(), from, to) : null,
@@ -607,7 +755,7 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.NavigationAggregation aggregation) {
             OclIr.Expression renamedNavigation = renameVariable(aggregation.navigation(), from, to);
             if (from.equals(aggregation.iteratorName())) {
-                return new OclIr.NavigationAggregation(
+                return OclOptimizedIr.navigationAggregation(
                         (OclIr.NavigationAccess) renamedNavigation,
                         aggregation.iteratorName(),
                         aggregation.predicate(),
@@ -615,7 +763,7 @@ public class OclIrOptimizer {
                         aggregation.operationName(),
                         aggregation.type());
             }
-            return new OclIr.NavigationAggregation(
+            return OclOptimizedIr.navigationAggregation(
                     (OclIr.NavigationAccess) renamedNavigation,
                     aggregation.iteratorName(),
                     aggregation.predicate() != null ? renameVariable(aggregation.predicate(), from, to) : null,
@@ -626,14 +774,14 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.NavigationUniquenessCheck uniquenessCheck) {
             OclIr.Expression renamedNavigation = renameVariable(uniquenessCheck.navigation(), from, to);
             if (from.equals(uniquenessCheck.iteratorName())) {
-                return new OclIr.NavigationUniquenessCheck(
+                return OclOptimizedIr.navigationUniquenessCheck(
                         (OclIr.NavigationAccess) renamedNavigation,
                         uniquenessCheck.iteratorName(),
                         uniquenessCheck.predicate(),
                         uniquenessCheck.projection(),
                         uniquenessCheck.type());
             }
-            return new OclIr.NavigationUniquenessCheck(
+            return OclOptimizedIr.navigationUniquenessCheck(
                     (OclIr.NavigationAccess) renamedNavigation,
                     uniquenessCheck.iteratorName(),
                     uniquenessCheck.predicate() != null ? renameVariable(uniquenessCheck.predicate(), from, to) : null,

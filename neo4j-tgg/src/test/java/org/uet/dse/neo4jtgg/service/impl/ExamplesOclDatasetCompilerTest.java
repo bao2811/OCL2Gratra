@@ -244,7 +244,7 @@ class ExamplesOclDatasetCompilerTest {
     }
 
     @Test
-    void rejectsExpectedFailSnippetsFromExamples() throws IOException {
+    void classifiesExampleSnippetsAgainstCurrentFragment() throws IOException {
         String company = readExample("examples/ocl-examples/company/company.ocl");
 
         assertTrue(company.contains("self.employee.birthDate->size() > 0"));
@@ -270,11 +270,13 @@ class ExamplesOclDatasetCompilerTest {
 
         CypherCompilationResult implicitCollect = compiler.compile(
                 "context Company inv BirthDatesPresent: self.employee.birthDate->size() > 0");
-        assertFalse(implicitCollect.isSupported());
+        // The general prototype accepts implicit collection projection. It is
+        // intentionally absent from the frozen OCL_val theorem/coverage list.
+        assertTrue(implicitCollect.isSupported(), implicitCollect.getReason());
 
         CypherCompilationResult reject = compiler.compile(
                 "context Company inv UnmarriedOnly: self.employee->reject(p | p.isMarried)->isEmpty()");
-        assertFalse(reject.isSupported());
+        assertTrue(reject.isSupported(), reject.getReason());
     }
 
     private static String readExample(String relativePath) throws IOException {

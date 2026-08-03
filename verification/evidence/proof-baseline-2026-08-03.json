@@ -1,0 +1,41 @@
+{
+  "schema": "proof-evidence.schema.v1",
+  "capturedAt": "2026-08-03T13:31:53+07:00",
+  "proofContract": "PC-2026-07-22.2",
+  "sourceRevision": "7420285ae0a6c29ffe5abdb645e9e5ee41d65f1c",
+  "gitDirtyAtCapture": true,
+  "machineContract": {
+    "registrySchemaVersion": 3,
+    "theorems": 7,
+    "proofObligations": 20,
+    "admittedConstructors": 47,
+    "implementationVocabularyTerms": 8,
+    "checker": "PASS",
+    "mutationsKilled": "6/6"
+  },
+  "lean": {
+    "version": "4.32.2",
+    "requiredTheorems": 24,
+    "kernel": "PASS",
+    "mutationsKilled": "6/6"
+  },
+  "implementation": {
+    "cleanRecompile": true,
+    "conformanceTests": 258,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "compilerMutationScore": "20/20",
+    "neo4jParserTrees": "52/52",
+    "parserArtifact": "org.neo4j:cypher-parser-factory:2026.06.0"
+  },
+  "runtime": {
+    "recordedAt": "2026-08-01T23:28:20+07:00",
+    "profile": "RP-NEO4J-2026.06-CYPHER5-CANONICAL-V1",
+    "cypherAssumptionRowsPassed": "9/9",
+    "differentialEquivalent": "47/47",
+    "mixedCases": 28,
+    "profileTautologies": 19,
+    "scope": "recorded fixture/runtime profile only; not universal Neo4j semantics"
+  }
+}

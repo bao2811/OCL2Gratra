@@ -5,11 +5,9 @@ import java.io.StringWriter;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.Session;
@@ -18,18 +16,12 @@ import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
-import org.uet.dse.neo4j.model.FullObjectSnapshot;
-import org.uet.dse.neo4j.model.LinkState;
-import org.uet.dse.neo4j.model.ObjectState;
 import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
-import org.uet.dse.neo4jtgg.model.ModelDelta;
-import org.uet.dse.neo4jtgg.model.WorkspaceSide;
 import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
-import org.uet.dse.neo4jtgg.service.impl.SnapshotDeltaComputer;
 
 /**
  * Scalability benchmark: measures OCL compile time, IR evaluation time, and
- * snapshot delta computation time at increasing model sizes.
+ * generated-Cypher execution time at increasing model sizes.
  */
 class ScalabilityBenchmarkTest {
 
@@ -139,73 +131,6 @@ class ScalabilityBenchmarkTest {
     }
 
     @Test
-    void benchmarkSnapshotDeltaAtScale() {
-        int[] scales = {100, 500, 1000, 5000, 10000};
-
-        StringBuilder report = new StringBuilder();
-        report.append("\n=== Snapshot Delta Computation Benchmark ===\n");
-        report.append(String.format("%-10s %-10s %-15s %-15s %-10s %-10s %-10s\n",
-                "Objects", "Links", "DeltaTime(ms)", "InitTime(ms)", "Added", "Modified", "Deleted"));
-
-        for (int scale : scales) {
-            FullObjectSnapshot previous = generateSnapshot(scale, 0);
-            // Current: 10% added, 10% modified, 10% deleted
-            int addCount = scale / 10;
-            int modCount = scale / 10;
-            int delCount = scale / 10;
-            FullObjectSnapshot current = generateModifiedSnapshot(previous, addCount, modCount, delCount);
-
-            // Measure initial delta (null → current)
-            long initStart = System.nanoTime();
-            ModelDelta initDelta = SnapshotDeltaComputer.compute(WorkspaceSide.SOURCE, null, current);
-            long initTime = (System.nanoTime() - initStart) / 1_000_000;
-
-            // Measure incremental delta (previous → current)
-            long deltaStart = System.nanoTime();
-            ModelDelta delta = SnapshotDeltaComputer.compute(WorkspaceSide.SOURCE, previous, current);
-            long deltaTime = (System.nanoTime() - deltaStart) / 1_000_000;
-
-            int linkCount = previous.links.size();
-            report.append(String.format("%-10d %-10d %-15d %-15d %-10d %-10d %-10d\n",
-                    scale, linkCount, deltaTime, initTime,
-                    delta.addedObjects().size(), delta.modifiedObjects().size(), delta.deletedObjects().size()));
-
-            // Validate correctness
-            assertEquals(addCount, delta.addedObjects().size());
-            assertEquals(modCount, delta.modifiedObjects().size());
-            assertEquals(delCount, delta.deletedObjects().size());
-        }
-
-        System.out.println(report);
-    }
-
-    @Test
-    void benchmarkSnapshotDeltaWithLinks() {
-        int[] scales = {100, 500, 1000, 5000, 10000};
-
-        StringBuilder report = new StringBuilder();
-        report.append("\n=== Snapshot Delta with Links Benchmark ===\n");
-        report.append(String.format("%-10s %-10s %-15s %-12s %-12s\n",
-                "Objects", "Links", "DeltaTime(ms)", "AddedLinks", "DeletedLinks"));
-
-        for (int scale : scales) {
-            int linkCount = scale * 3;
-            FullObjectSnapshot previous = generateSnapshotWithLinks(scale, linkCount);
-            FullObjectSnapshot current = generateModifiedSnapshotWithLinks(previous, scale / 10, linkCount / 10);
-
-            long start = System.nanoTime();
-            ModelDelta delta = SnapshotDeltaComputer.compute(WorkspaceSide.SOURCE, previous, current);
-            long elapsed = (System.nanoTime() - start) / 1_000_000;
-
-            report.append(String.format("%-10d %-10d %-15d %-12d %-12d\n",
-                    scale, linkCount, elapsed,
-                    delta.addedLinks().size(), delta.deletedLinks().size()));
-        }
-
-        System.out.println(report);
-    }
-
-    @Test
     void benchmarkCypherExecutionAtScale() {
         if (!ensureNeo4jConnected()) {
             System.out.println("\n=== Cypher Execution Benchmark ===\n"
@@ -250,116 +175,6 @@ class ScalabilityBenchmarkTest {
         }
 
         System.out.println(report);
-    }
-
-    private FullObjectSnapshot generateSnapshot(int objectCount, int startIndex) {
-        FullObjectSnapshot snapshot = new FullObjectSnapshot();
-        for (int i = startIndex; i < startIndex + objectCount; i++) {
-            ObjectState obj = new ObjectState();
-            obj.name = "obj" + i;
-            obj.className = (i % 5 == 0) ? "Company" : "Person";
-            obj.primitiveValues = new LinkedHashMap<>(Map.of(
-                    "name", "Entity_" + i,
-                    "age", 20 + (i % 45),
-                    "salary", 3000 + (i * 100 % 7000)
-            ));
-            obj.objectReferences = new LinkedHashMap<>();
-            snapshot.objects.put(obj.name, obj);
-        }
-        return snapshot;
-    }
-
-    private FullObjectSnapshot generateModifiedSnapshot(FullObjectSnapshot previous,
-            int addCount, int modCount, int delCount) {
-        FullObjectSnapshot current = new FullObjectSnapshot();
-        int idx = 0;
-        int modified = 0;
-        int deleted = 0;
-
-        for (Map.Entry<String, ObjectState> entry : previous.objects.entrySet()) {
-            if (deleted < delCount && idx % 10 == 9) {
-                // skip (delete) every 10th object
-                deleted++;
-            } else if (modified < modCount && idx % 10 == 5) {
-                // modify every 10th object (offset by 5)
-                ObjectState copy = new ObjectState();
-                copy.name = entry.getValue().name;
-                copy.className = entry.getValue().className;
-                copy.primitiveValues = new LinkedHashMap<>(entry.getValue().primitiveValues);
-                copy.primitiveValues.put("name", "Modified_" + idx);
-                copy.objectReferences = new LinkedHashMap<>(entry.getValue().objectReferences);
-                current.objects.put(copy.name, copy);
-                modified++;
-            } else {
-                current.objects.put(entry.getKey(), entry.getValue());
-            }
-            idx++;
-        }
-
-        // Add new objects
-        int maxId = previous.objects.size() + 1000;
-        for (int i = 0; i < addCount; i++) {
-            ObjectState obj = new ObjectState();
-            obj.name = "new_obj" + (maxId + i);
-            obj.className = "Person";
-            obj.primitiveValues = new LinkedHashMap<>(Map.of("name", "NewPerson_" + i, "age", 25));
-            obj.objectReferences = new LinkedHashMap<>();
-            current.objects.put(obj.name, obj);
-        }
-
-        return current;
-    }
-
-    private FullObjectSnapshot generateSnapshotWithLinks(int objectCount, int linkCount) {
-        FullObjectSnapshot snapshot = generateSnapshot(objectCount, 0);
-        String[] objectNames = snapshot.objects.keySet().toArray(new String[0]);
-
-        for (int i = 0; i < linkCount && i < objectNames.length - 1; i++) {
-            LinkState link = new LinkState();
-            link.assocName = "CompanyEmployee";
-            link.participants = List.of(objectNames[i % objectNames.length],
-                    objectNames[(i + 1) % objectNames.length]);
-            snapshot.links.put(link.getIdentity(), link);
-        }
-        return snapshot;
-    }
-
-    private FullObjectSnapshot generateModifiedSnapshotWithLinks(FullObjectSnapshot previous,
-            int addedObjects, int deletedLinks) {
-        FullObjectSnapshot current = new FullObjectSnapshot();
-        current.objects.putAll(previous.objects);
-        current.links.putAll(previous.links);
-
-        // Add new objects
-        int base = previous.objects.size() + 5000;
-        for (int i = 0; i < addedObjects; i++) {
-            ObjectState obj = new ObjectState();
-            obj.name = "link_new_" + (base + i);
-            obj.className = "Person";
-            obj.primitiveValues = new LinkedHashMap<>(Map.of("name", "LinkNew_" + i));
-            obj.objectReferences = new LinkedHashMap<>();
-            current.objects.put(obj.name, obj);
-        }
-
-        // Delete some links
-        int removed = 0;
-        var iterator = current.links.entrySet().iterator();
-        while (iterator.hasNext() && removed < deletedLinks) {
-            iterator.next();
-            iterator.remove();
-            removed++;
-        }
-
-        // Add new links
-        String[] names = current.objects.keySet().toArray(new String[0]);
-        for (int i = 0; i < deletedLinks && names.length > 1; i++) {
-            LinkState link = new LinkState();
-            link.assocName = "CompanyManager";
-            link.participants = List.of(names[i % names.length], names[(i + 3) % names.length]);
-            current.links.put(link.getIdentity(), link);
-        }
-
-        return current;
     }
 
     private boolean ensureNeo4jConnected() {

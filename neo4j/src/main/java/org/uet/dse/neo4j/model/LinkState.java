@@ -1,5 +1,7 @@
 package org.uet.dse.neo4j.model;
 
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+
 import java.util.*;
 
 public class LinkState {
@@ -23,8 +25,16 @@ public class LinkState {
         return Objects.equals(this.assocName, other.assocName) &&
                 Objects.equals(this.edgeLabel, other.edgeLabel) &&
                 Objects.equals(this.participants, other.participants) &&
-                Objects.equals(this.qualifierValues, other.qualifierValues) &&
+                Objects.equals(normalizedQualifiers(this.qualifierValues),
+                        normalizedQualifiers(other.qualifierValues)) &&
                 Objects.equals(this.linkObjectName, other.linkObjectName);
+    }
+
+    private static List<List<String>> normalizedQualifiers(List<List<String>> values) {
+        if (values == null || values.stream().allMatch(value -> value == null || value.isEmpty())) {
+            return List.of();
+        }
+        return values;
     }
 
     public static String buildIdentity(String assocName,
@@ -32,11 +42,24 @@ public class LinkState {
                                        List<List<String>> qualifierValues,
                                        String linkObjectName) {
         if (linkObjectName != null) return linkObjectName;
+        if (participants != null && participants.size() == 2) {
+            List<List<String>> endQualifiers = new ArrayList<>();
+            if (qualifierValues != null) {
+                qualifierValues.forEach(values -> endQualifiers.add(
+                        values == null ? List.of() : List.copyOf(values)));
+            }
+            while (endQualifiers.size() < 2) endQualifiers.add(List.of());
+            return CanonicalGraphEncoding.binaryLinkIdentity(assocName,
+                    participants.get(0), participants.get(1),
+                    endQualifiers.get(0), endQualifiers.get(1));
+        }
         StringBuilder sb = new StringBuilder(assocName != null ? assocName : "");
         for (String p : participants != null ? participants : List.<String>of()) {
             sb.append("_").append(escapeIdentityPart(p));
         }
-        if (qualifierValues != null && !qualifierValues.isEmpty()) {
+        boolean hasQualifierValue = qualifierValues != null && qualifierValues.stream()
+                .anyMatch(values -> values != null && !values.isEmpty());
+        if (hasQualifierValue) {
             sb.append("@q");
             for (int i = 0; i < qualifierValues.size(); i++) {
                 sb.append(i).append("=");

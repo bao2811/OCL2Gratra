@@ -12,5 +12,14 @@
                 toolbaritem="Open Workspace"
                 id="org.uet.dse.neo4jtgg.action.ActionOpenTggWorkspace">
         </action>
+        <action label="OCL2Cypher"
+                icon="images/neo4j-tgg.png"
+                class="org.uet.dse.neo4jtgg.action.ActionOpenResearchTool"
+                tooltip="Open the single-model OCL-to-Cypher research workflow"
+                menu="Neo4j TGG Plugin"
+                menuitem="OCL2Cypher"
+                toolbaritem="OCL Research"
+                id="org.uet.dse.neo4jtgg.action.ActionOpenResearchTool">
+        </action>
     </actions>
 </plugin>

@@ -1,0 +1,7 @@
+name = "ocl2cypher-proof"
+version = "0.1.0"
+defaultTargets = ["Ocl2CypherProof"]
+
+[[lean_lib]]
+name = "Ocl2CypherProof"
+roots = ["Ocl2CypherProof"]

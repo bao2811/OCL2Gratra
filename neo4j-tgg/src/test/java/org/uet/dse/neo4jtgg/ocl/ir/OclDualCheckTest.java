@@ -15,6 +15,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
 import org.uet.dse.neo4j.sync.helper.OclSerializer;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -33,6 +34,50 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclDualCheckTest {
+    @Test
+    void optimizedIrMatchesJavaEvaluationForCertifiedSetExtensions() {
+        String spec = """
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject adult = TestObject.object("p1", "Person").attribute("age", 30L);
+        TestObject senior = TestObject.object("p2", "Person").attribute("age", 70L);
+        TestRuntime runtime = new TestRuntime(List.of(adult, senior));
+
+        assertDualCheck(model, runtime,
+                "context Person inv ExactlyOneAgeBand: (self.age >= 18) xor (self.age >= 65)", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv SetLiteralDistinct: Set{1, 1, 2}->size() = 2", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv SetUnion: Set{1, 2}->union(Set{2, 3})->includesAll(Set{1, 2, 3})", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv SetIntersection: Set{1, 2}->intersection(Set{2, 3})->includes(2) and Set{1, 2}->intersection(Set{2, 3})->size() = 1", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv SetConversion: Set{1, 1, 2}->asSet()->size() = 2", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv UniqueProjection: Set{1, 2}->isUnique(x | x)", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv BottomSetDistinct: Set{1, null, null}->size() = 2", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv BottomMembership: Set{1, null}->includes(null)", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv BottomProjectionNotUnique: not Set{1, 2}->isUnique(x | null)", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv NumericSetJoin: Set{1, 2.0}->includes(1.0)", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv EmptySourceUnique: Set{1}->select(x | false)->isUnique(x | x)", "Person");
+        assertDualCheck(model, runtime,
+                "context Person inv NestedShadowing: Set{1, 2}->forAll(x | Set{2, 3}->exists(x | x >= 2))", "Person");
+    }
+
     @Test
     void optimizedIrMatchesJavaEvaluationForNavigationSubset() {
         String spec = """
@@ -71,6 +116,45 @@ class OclDualCheckTest {
         assertDualCheck(model, runtime, "context Family inv AdultChildren: self.children->forall(c | c.age >= 18)", "Family");
         assertDualCheck(model, runtime, "context Family inv TwoAdults: self.children->select(c | c.age >= 18)->size() >= 2", "Family");
         assertDualCheck(model, runtime, "context Person inv HasFamily: self.family->notEmpty()", "Person");
+    }
+
+    @Test
+    void optimizedIrMatchesJavaEvaluationForPreservationRewriteRules() {
+        String spec = """
+                model Demo
+                class Family
+                attributes
+                    name : String
+                end
+                class Person
+                attributes
+                    age : Integer
+                end
+                association FamilyChildren between
+                    Family[1] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        TestObject p1 = TestObject.object("p1", "Person").attribute("age", 20L);
+        TestObject p2 = TestObject.object("p2", "Person").attribute("age", 15L);
+        TestObject f1 = TestObject.object("f1", "Family").attribute("name", "Smith").link("children", p1, p2);
+        TestObject f2 = TestObject.object("f2", "Family").attribute("name", "Empty");
+        p1.link("family", f1);
+        p2.link("family", f1);
+
+        TestRuntime runtime = new TestRuntime(List.of(f1, f2, p1, p2));
+
+        assertDualCheck(model, runtime, "context Family inv RewriteNotEmpty: self.children->notEmpty()", "Family");
+        assertDualCheck(model, runtime, "context Family inv RewriteIsEmpty: self.children->isEmpty()", "Family");
+        assertDualCheck(model, runtime, "context Family inv RewriteSizePositive: self.children->size() > 0", "Family");
+        assertDualCheck(model, runtime, "context Family inv RewriteSizeZero: self.children->size() = 0", "Family");
+        assertDualCheck(model, runtime, "context Family inv RewriteForAll: self.children->forAll(c | c.age >= 18)", "Family");
+        assertDualCheck(model, runtime, "context Family inv RewriteImplies: self.name = 'Empty' implies self.children->isEmpty()", "Family");
     }
 
     @Test
@@ -313,8 +397,8 @@ class OclDualCheckTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """;
 
@@ -346,8 +430,8 @@ class OclDualCheckTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """;
 
@@ -383,8 +467,8 @@ class OclDualCheckTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """;
 
@@ -418,8 +502,8 @@ class OclDualCheckTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """;
 
@@ -452,8 +536,8 @@ class OclDualCheckTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : Shelf)
+                    Library[1] role library qualifier (shelf : Shelf)
+                    Book[*] role book
                 end
                 """;
 
@@ -487,8 +571,8 @@ class OclDualCheckTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : Shelf)
+                    Library[1] role library qualifier (shelf : Shelf)
+                    Book[*] role book
                 end
                 """;
 
@@ -512,7 +596,7 @@ class OclDualCheckTest {
     }
 
     @Test
-    void optimizedIrMatchesJavaEvaluationForNonBinaryAssociationNavigation() {
+    void rejectsNonBinaryAssociationNavigationFromCertifiedFragment() {
         String spec = """
                 model Demo
                 class Person
@@ -532,24 +616,10 @@ class OclDualCheckTest {
         MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
         assertNotNull(model, buffer.toString());
 
-        TestObject company = TestObject.object("c1", "Company");
-        TestObject animal1 = TestObject.object("a1", "Animal");
-        TestObject animal2 = TestObject.object("a2", "Animal");
-        TestObject person = TestObject.object("p1", "Person").link("pet", animal1, animal2).link("seller", company);
-        company.link("buyer", person).link("pet", animal1, animal2);
-        animal1.link("buyer", person).link("seller", company);
-        animal2.link("buyer", person).link("seller", company);
-        TestRuntime runtime = new TestRuntime(List.of(person, company, animal1, animal2));
-
-        assertDualCheck(model, runtime,
-                "context Person inv HasPets: self.pet->notEmpty()",
-                "Person");
-        assertDualCheck(model, runtime,
-                "context Person inv HasSeller: self.seller->notEmpty()",
-                "Person");
-        assertDualCheck(model, runtime,
-                "context Animal inv HasBuyer: self.buyer->notEmpty()",
-                "Animal");
+        TestRuntime runtime = new TestRuntime(List.of(TestObject.object("p1", "Person")));
+        org.junit.jupiter.api.Assertions.assertThrows(OclCodedUnsupportedOperationException.class,
+                () -> assertDualCheck(model, runtime,
+                        "context Person inv HasPets: self.pet->notEmpty()", "Person"));
     }
 
     @Test
@@ -1529,6 +1599,17 @@ class OclDualCheckTest {
             if (expression instanceof OclSemanticBinder.BoundLiteral literal) {
                 return literal.value();
             }
+            if (expression instanceof OclSemanticBinder.BoundSetLiteral setLiteral) {
+                List<Object> values = new ArrayList<>();
+                for (OclSemanticBinder.BoundExpression element : setLiteral.elements()) {
+                    Object value = evaluate(element, scope);
+                    if (values.stream().noneMatch(existing ->
+                            Objects.equals(normalizeNumber(existing), normalizeNumber(value)))) {
+                        values.add(value);
+                    }
+                }
+                return values;
+            }
             if (expression instanceof OclSemanticBinder.BoundNot not) {
                 return !toBooleanValue(evaluate(not.expression(), scope));
             }
@@ -1864,6 +1945,17 @@ class OclDualCheckTest {
             if (expression instanceof OclIr.Literal literal) {
                 return literal.value();
             }
+            if (expression instanceof OclIr.SetLiteral setLiteral) {
+                List<Object> values = new ArrayList<>();
+                for (OclIr.Expression element : setLiteral.elements()) {
+                    Object value = evaluate(element, scope);
+                    if (values.stream().noneMatch(existing ->
+                            Objects.equals(normalizeNumber(existing), normalizeNumber(value)))) {
+                        values.add(value);
+                    }
+                }
+                return values;
+            }
             if (expression instanceof OclIr.Not not) {
                 return !toBooleanValue(evaluate(not.expression(), scope));
             }
@@ -2197,6 +2289,9 @@ class OclDualCheckTest {
         if ("or".equals(operator)) {
             return toBooleanValue(left) || toBooleanValue(right);
         }
+        if ("xor".equals(operator)) {
+            return toBooleanValue(left) ^ toBooleanValue(right);
+        }
         if ("implies".equals(operator)) {
             return !toBooleanValue(left) || toBooleanValue(right);
         }
@@ -2483,6 +2578,10 @@ class OclDualCheckTest {
         private TestObject attribute(String name, Object value) {
             attributes.put(name, value);
             return this;
+        }
+
+        private TestObject attr(String name, Object value) {
+            return attribute(name, value);
         }
 
         private TestObject link(String roleName, TestObject... targets) {

@@ -34,13 +34,13 @@ public class Neo4jRepository {
         try (Session session = Neo4jDriverManager.getInstance().openSession()) {
             return session.executeRead(tx -> {
                 String cypher =
-                    "MATCH (o) WHERE id(o) = $id " +
+                    "MATCH (o) WHERE elementId(o) = $elementId " +
                         "MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue) " +
                         "WHERE val.name ENDS WITH $suffix " +
                         "RETURN val.value AS value";
 
                 Result res = tx.run(cypher, Values.parameters(
-                    "id", sourceNode.id(),
+                    "elementId", sourceNode.elementId(),
                     "suffix", "_" + attrName
                 ));
 
@@ -104,7 +104,11 @@ public class Neo4jRepository {
     private String getClassNameOfExpression(ExpressionNode node) {
 
         if (node instanceof VariableExpression) {
-            return findClassNameByObjectId(((VariableExpression) node).getVarName());
+            VariableExpression variable = (VariableExpression) node;
+            if (variable.getClassName() != null && !variable.getClassName().isBlank()) {
+                return variable.getClassName();
+            }
+            return findClassNameByObjectId(variable.getVarName());
         }
 
         return null;
@@ -123,12 +127,12 @@ public class Neo4jRepository {
         try (Session session = Neo4jDriverManager.getInstance().openSession()) {
             return session.executeRead(tx -> {
                 String cypher =
-                    "MATCH (o) WHERE id(o) = $id " +
+                    "MATCH (o) WHERE elementId(o) = $elementId " +
                         "MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue) " +
                         "WHERE val.name ENDS WITH $attrName " +
                         "RETURN val.value AS value";
 
-                Result res = tx.run(cypher, Values.parameters("id", ownerNode.id(), "attrName", "_" + attrName));
+                Result res = tx.run(cypher, Values.parameters("elementId", ownerNode.elementId(), "attrName", "_" + attrName));
                 if (res.hasNext()) {
                     var v = res.next().get("value");
                     return v.asObject();
@@ -143,7 +147,7 @@ public class Neo4jRepository {
             return session.executeRead(tx -> {
 
                 String cypher =
-                    "MATCH (s) WHERE id(s) = $id " +
+                    "MATCH (s) WHERE elementId(s) = $elementId " +
                         "MATCH (s)-[r]-(t) " +
                         "WHERE type(r) STARTS WITH 'Link' " +
                         "AND ( " +
@@ -154,7 +158,7 @@ public class Neo4jRepository {
                         "RETURN t";
 
                 Result res = tx.run(cypher, Values.parameters(
-                    "id", startNode.id(),
+                    "elementId", startNode.elementId(),
                     "relType", relationshipType
                 ));
 

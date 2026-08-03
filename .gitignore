@@ -122,3 +122,9 @@ target/
 DAKH/
 md/
 *.html
+
+# Local assembled runtime used only for verification runs
+/_runtime_clean/
+
+# Downloaded local Lean toolchain and release archive
+/_build_lib/

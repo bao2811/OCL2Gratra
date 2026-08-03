@@ -94,6 +94,12 @@
                 <version>3.8.1</version>
                 <configuration>
                     <release>17</release>
+                    <excludes>
+                        <!-- Legacy evaluator/incremental compiler code targets an older USE parser API.
+                             The active OCL path uses org.uet.dse.neo4j.oclite and neo4j-tgg. -->
+                        <exclude>org/uet/dse/neo4j/ocl/**</exclude>
+                        <exclude>org/uet/dse/neo4j/incrementalUpdate/**</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
 

@@ -79,6 +79,17 @@ public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
     }
 
     @Override
+    public ASTNode visitSetLiteralExpr(OCLParser.SetLiteralExprContext ctx) {
+        List<ASTExpression> elements = new ArrayList<>();
+        if (ctx.argList() != null) {
+            for (OCLParser.ExpressionContext element : ctx.argList().expression()) {
+                elements.add((ASTExpression) visit(element));
+            }
+        }
+        return new ASTSetLiteral(elements);
+    }
+
+    @Override
     public ASTNode visitIfExp(OCLParser.IfExpContext ctx) {
         return new ASTIf(
                 (ASTExpression) visit(ctx.condition),

@@ -23,6 +23,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclCypherRendererTest {
     @Test
+    void validationSemanticsTreatsOnlyTrueAsSatisfied() {
+        assertEquals("coalesce(p, false)", OclValidationSemantics.validationTruth("p"));
+        assertEquals("NOT coalesce(p, false)", OclValidationSemantics.violationPredicate("p"));
+        assertEquals("NOT coalesce(null, false)", OclValidationSemantics.violationPredicate("null"));
+        assertEquals("(NOT coalesce(p, false))", OclValidationSemantics.not("p"));
+        assertEquals("(coalesce(a, false) AND coalesce(b, false))", OclValidationSemantics.and("a", "b"));
+        assertEquals("(coalesce(a, false) OR coalesce(b, false))", OclValidationSemantics.or("a", "b"));
+        assertEquals("((NOT coalesce(a, false)) OR coalesce(b, false))", OclValidationSemantics.implies("a", "b"));
+    }
+
+    @Test
+    void rendersUndefinedInvariantPredicateAsValidationViolation() {
+        OclCypherPlan.InvariantPlan plan = new OclCypherPlan.InvariantPlan(
+                "Person",
+                "UndefinedIsViolation",
+                new OclCypherPlan.LiteralPlan(null, org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Boolean")));
+
+        OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
+
+        assertTrue(rendered.cypher().contains("WHERE NOT coalesce(null, false)"));
+        assertTrue(rendered.cypher().contains("RETURN DISTINCT self.use_id AS useId"));
+    }
+
+    @Test
     void rendersNavigationExistsUsingBoundDirectionInsteadOfLooseUndirectedMatch() {
         String spec = """
                 model Demo
@@ -53,6 +77,7 @@ class OclCypherRendererTest {
 
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
         assertTrue(rendered.cypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(rendered.cypher().contains("AND coalesce("));
         assertFalse(rendered.cypher().contains("MATCH (self)-[r]-(c)"));
     }
 
@@ -81,7 +106,7 @@ class OclCypherRendererTest {
         OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(invariantQuery);
 
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
-        assertTrue(rendered.cypher().contains("CASE WHEN"));
+        assertTrue(rendered.cypher().contains("CASE WHEN coalesce("));
         assertTrue(rendered.cypher().contains("THEN"));
         assertTrue(rendered.cypher().contains("ELSE"));
     }
@@ -113,6 +138,43 @@ class OclCypherRendererTest {
         assertFalse(rendered.cypher().contains("threshold"));
         assertTrue(rendered.cypher().contains("reduce("));
         assertTrue(rendered.parameters().containsValue(18L));
+    }
+
+    @Test
+    void rendersOptimizedIteratorChainWithScopedTargetAlias() {
+        String spec = """
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[*] role family
+                    Person[*] role children
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+
+        ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
+                new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
+                        "context Family inv ScopedIteratorAlias: self.children->select(a | a.age >= 18)->exists(b | b.name = 'Lisa')")))).oclFile());
+
+        OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
+        OclIr.InvariantQuery invariantQuery = new OclIrOptimizer().optimizeInvariant(new OclIrBuilder().buildInvariant(bound));
+        OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(invariantQuery);
+
+        OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
+        assertTrue(rendered.cypher().contains("EXISTS { MATCH (self)-[r]->(b)"), rendered.cypher());
+        assertTrue(rendered.cypher().contains("WITH b.objectKey AS attrOwner"), rendered.cypher());
+        assertTrue(rendered.cypher().contains("(attrOwner"), rendered.cypher());
+        assertFalse(rendered.cypher().contains("WITH a.objectKey AS attrOwner"), rendered.cypher());
     }
 
     @Test

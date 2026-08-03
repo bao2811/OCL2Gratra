@@ -2,6 +2,7 @@ package org.uet.dse.neo4jtgg.service.impl;
 
 import org.neo4j.driver.Record;
 import org.neo4j.driver.Session;
+import org.neo4j.driver.Value;
 import org.neo4j.driver.types.Node;
 import org.tzi.use.uml.mm.MModel;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
@@ -39,6 +40,11 @@ import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
 import org.uet.dse.neo4jtgg.model.WorkspaceSide;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCompilationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnostic;
+import org.uet.dse.neo4jtgg.ocl.OclBottomSeparationChecker;
+import org.uet.dse.neo4jtgg.ocl.OclBottomToken;
+import org.uet.dse.neo4jtgg.ocl.OclExecutionPremiseChecker;
+import org.uet.dse.neo4jtgg.ocl.OclScalarClosureChecker;
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
 import org.uet.dse.neo4jtgg.service.OclValidationService;
 
 import java.util.ArrayList;
@@ -107,7 +113,8 @@ public class DefaultOclValidationService implements OclValidationService {
 
             DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
             long compileStartedAt = System.nanoTime();
-            OclFileCompilationResult compilationResult = compiler.compileFile(astFile);
+            OclFileCompilationResult compilationResult =
+                    compiler.compileFileWithCertifiedContextInvariants(astFile);
             long compileTimeMs = elapsedMillis(compileStartedAt);
 
             List<OclRuleValidationResult> ruleResults = new ArrayList<>();
@@ -121,6 +128,12 @@ public class DefaultOclValidationService implements OclValidationService {
                     collectBatchedContextRules(rules, compiledRules);
             int compiledIndex = 0;
             try (Session sharedSession = Neo4jDriverManager.getInstance().openSession()) {
+                OclBottomSeparationChecker.requireGraphSeparated(
+                        sharedSession, CanonicalGraphEncoding.modelKey(model.name()));
+                OclScalarClosureChecker.requireGraphClosed(
+                        sharedSession, CanonicalGraphEncoding.modelKey(model.name()));
+                requireCertifiedContextPremises(
+                        sharedSession, model.name(), compiler, rules, compiledRules);
                 for (List<OclContextBatchQueryExecutor.BatchRule> batchRules : batchRulesByClass.values()) {
                     OclContextBatchQueryExecutor.BatchExecutionResult batchExecutionResult =
                             OclContextBatchQueryExecutor.execute(sharedSession, batchRules);
@@ -145,9 +158,11 @@ public class DefaultOclValidationService implements OclValidationService {
                         OclRuleCompilationResult compiledRule = compiledRules.get(compiledIndex++);
                         CypherCompilationResult compilation = compiledRule.getCompilation();
                         if (compilation.isSupported()) {
-                            OclRuleValidationResult ruleResult = batchedContextResults.getOrDefault(
-                                    ruleIndex,
-                                    validateContextWithCypher(sharedSession, rule, astContext, compilation));
+                            OclRuleValidationResult ruleResult = batchedContextResults.get(ruleIndex);
+                            if (ruleResult == null) {
+                                ruleResult = validateContextWithCypher(
+                                        sharedSession, rule, astContext, compilation);
+                            }
                             long batchExecutionTime = batchedContextExecutionTimes.getOrDefault(ruleIndex, 0L);
                             if (dualCheck) {
                                 ruleResult = attachDualCheck(model, rule, astContext, compilation, ruleResult);
@@ -214,7 +229,18 @@ public class DefaultOclValidationService implements OclValidationService {
                     }
 
                     if (rule.expression() != null && rule.ownerKind() == OclRuleOwnerKind.CLASS && rule.className() == null) {
-                        OclRuleValidationResult ruleResult = fallbackExpressionEvaluation(model, rule);
+                        OclRuleCompilationResult compiledRule = compiledRules.get(compiledIndex++);
+                        CypherCompilationResult compilation = compiledRule.getCompilation();
+                        OclRuleValidationResult ruleResult;
+                        if (compilation.isSupported()) {
+                            ruleResult = validateCompiledExpression(sharedSession, rule, compilation);
+                            ruleResult = withRuleTiming(ruleResult, 0L, compiledRule.getCompilationTimeMs(), 0L);
+                        } else {
+                            ruleResult = withRuleTiming(
+                                    fallbackExpressionEvaluation(model, rule, compilation.getCypher(),
+                                            compilation.getDiagnostics()),
+                                    0L, compiledRule.getCompilationTimeMs(), 0L);
+                        }
                         ruleResults.add(ruleResult);
                         executionTimeMs += ruleResult.getExecutionTimeMs();
                         fallbackTimeMs += ruleResult.getFallbackTimeMs();
@@ -318,12 +344,19 @@ public class DefaultOclValidationService implements OclValidationService {
         }
 
         try {
+            try (Session premiseSession = Neo4jDriverManager.getInstance().openSession()) {
+                OclBottomSeparationChecker.requireGraphSeparated(
+                        premiseSession, CanonicalGraphEncoding.modelKey(model.name()));
+                OclScalarClosureChecker.requireGraphClosed(
+                        premiseSession, CanonicalGraphEncoding.modelKey(model.name()));
+            }
             long parseStartedAt = System.nanoTime();
             ASTFile astFile = OclDocumentParser.parse(oclText);
             long parseTimeMs = elapsedMillis(parseStartedAt);
             DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
             long compileStartedAt = System.nanoTime();
-            OclFileCompilationResult compilationResult = compiler.compileFile(astFile);
+            OclFileCompilationResult compilationResult =
+                    compiler.compileFileWithCertifiedContextInvariants(astFile);
             long compileTimeMs = elapsedMillis(compileStartedAt);
             long responseStartedAt = System.nanoTime();
 
@@ -368,6 +401,10 @@ public class DefaultOclValidationService implements OclValidationService {
                     continue;
                 }
                 if (compilation.isSupported()) {
+                    try (Session premiseSession = Neo4jDriverManager.getInstance().openSession()) {
+                        requireCertifiedContextPremise(
+                                premiseSession, model.name(), compiler, astContext, compiledRule);
+                    }
                     OclRuleValidationResult ruleResult = validateContextWithCypher(rule, astContext, compilation);
                     if (dualCheck) {
                         ruleResult = attachDualCheck(model, rule, astContext, compilation, ruleResult);
@@ -443,6 +480,64 @@ public class DefaultOclValidationService implements OclValidationService {
                 inferRequiredInputs(rule));
     }
 
+    private void requireCertifiedContextPremises(Session session,
+                                                 String modelName,
+                                                 DefaultOclToCypherCompiler compiler,
+                                                 List<OclRuleDescriptor> rules,
+                                                 List<OclRuleCompilationResult> compiledRules) {
+        if (rules.size() != compiledRules.size()) {
+            throw new IllegalStateException("Certified premise gate cannot align parsed and compiled rules");
+        }
+        for (int index = 0; index < rules.size(); index++) {
+            OclRuleDescriptor rule = rules.get(index);
+            if (rule.ast() instanceof ASTContext contextInvariant) {
+                requireCertifiedContextPremise(
+                        session, modelName, compiler, contextInvariant, compiledRules.get(index));
+            }
+        }
+    }
+
+    private void requireCertifiedContextPremise(Session session,
+                                                String modelName,
+                                                DefaultOclToCypherCompiler compiler,
+                                                ASTContext contextInvariant,
+                                                OclRuleCompilationResult compiledRule) {
+        if (!compiledRule.isSupported()) {
+            return;
+        }
+        var certified = compiler.compileInvariantInstrumented(contextInvariant);
+        CypherCompilationResult compilation = compiledRule.getCompilation();
+        if (!certified.cypher().equals(compilation.getCypher())
+                || !certified.parameters().equals(compilation.getParameters())) {
+            throw new IllegalStateException(
+                    "Certified context compilation drifted between file and instrumented entry points");
+        }
+        OclExecutionPremiseChecker.requireGeneratedBottomSeparated(certified.parameters());
+        OclExecutionPremiseChecker.requireGraphScalarClosed(
+                session, modelName, certified.validationAlgebra());
+    }
+
+    private OclRuleValidationResult validateCompiledExpression(Session neo4jSession,
+                                                               OclRuleDescriptor rule,
+                                                               CypherCompilationResult compilation) {
+        long executionStartedAt = System.nanoTime();
+        OclBottomToken.requireWellFormedGeneratedParameters(compilation.getParameters());
+        List<Record> records = neo4jSession.run(compilation.getCypher(), compilation.getParameters()).list();
+        Object result = null;
+        if (!records.isEmpty() && records.get(0).containsKey("value")) {
+            Value value = records.get(0).get("value");
+            result = value.isNull() ? null : value.asObject();
+        }
+        boolean success = result instanceof Boolean ok ? ok : result != null;
+        String summary = "Evaluation result: " + result;
+        return new OclRuleValidationResult(rule.ownerKind(), rule.ruleKind(), rule.className(),
+                rule.operationName(), rule.attributeName(), rule.ruleName(), success, true, false,
+                OclExecutionMode.COMPILED, summary, compilation.getCypher(), Map.of(),
+                compilation.getDiagnostics(), 0L, 0L, 0L, elapsedMillis(executionStartedAt), 0L,
+                new OclResultLocation(rule.className(), rule.ruleName(), null, null, null, null, null, null, List.of()),
+                inferRequiredInputs(rule));
+    }
+
     private OclRuleValidationResult fallbackContextEvaluation(MModel model,
                                                               OclRuleDescriptor rule,
                                                               ASTContext astContext,
@@ -450,7 +545,7 @@ public class DefaultOclValidationService implements OclValidationService {
                                                               boolean compilerSupported,
                                                               List<OclDiagnostic> diagnostics) {
         String modelName = model.name();
-        ExpressionBinder binder = new ExpressionBinder(modelName);
+        ExpressionBinder binder = new ExpressionBinder(modelName, Map.of("self", astContext.className));
         Map<String, String> violations = new LinkedHashMap<>();
         long executionStartedAt = System.nanoTime();
         ExpressionNode expressionNode = binder.bind(astContext.expression);
@@ -478,7 +573,10 @@ public class DefaultOclValidationService implements OclValidationService {
                 inferRequiredInputs(rule));
     }
 
-    private OclRuleValidationResult fallbackExpressionEvaluation(MModel model, OclRuleDescriptor rule) {
+    private OclRuleValidationResult fallbackExpressionEvaluation(MModel model,
+                                                                 OclRuleDescriptor rule,
+                                                                 String generatedCypher,
+                                                                 List<OclDiagnostic> diagnostics) {
         String modelName = model.name();
         ExpressionBinder binder = new ExpressionBinder(modelName);
         long executionStartedAt = System.nanoTime();
@@ -489,7 +587,7 @@ public class DefaultOclValidationService implements OclValidationService {
         long fallbackTimeMs = elapsedMillis(executionStartedAt);
         return new OclRuleValidationResult(rule.ownerKind(), rule.ruleKind(), rule.className(),
                 rule.operationName(), rule.attributeName(), rule.ruleName(), success, false, true,
-                OclExecutionMode.UNSUPPORTED, summary, "", Map.of(), List.of(),
+                OclExecutionMode.UNSUPPORTED, summary, generatedCypher, Map.of(), diagnostics,
                 0L, 0L, 0L, fallbackTimeMs, fallbackTimeMs,
                 new OclResultLocation(rule.className(), rule.ruleName(), null, null, null, null, null, null, List.of()),
                 inferRequiredInputs(rule));
@@ -541,7 +639,7 @@ public class DefaultOclValidationService implements OclValidationService {
                                                                 Map<String, Object> runtimeParameters) {
         String modelName = model.name();
         List<String> localVariables = new ArrayList<>(runtimeParameters != null ? runtimeParameters.keySet() : List.of());
-        ExpressionBinder binder = new ExpressionBinder(modelName, localVariables);
+        ExpressionBinder binder = new ExpressionBinder(modelName, localVariables, Map.of("self", rule.className()));
         Map<String, String> violations = new LinkedHashMap<>();
         long executionStartedAt = System.nanoTime();
         ExpressionNode expressionNode = binder.bind(rule.expression());
@@ -707,6 +805,11 @@ public class DefaultOclValidationService implements OclValidationService {
 
     private Map<String, Object> mergeQueryParameters(Map<String, Object> compilationParameters,
                                                      Map<String, Object> runtimeParameters) {
+        OclBottomToken.requireWellFormedGeneratedParameters(compilationParameters);
+        OclBottomToken.requireNoExternalToken(runtimeParameters);
+        if (runtimeParameters != null) {
+            OclScalarClosureChecker.requireValuesClosed(runtimeParameters.values(), "runtime parameter");
+        }
         Map<String, Object> merged = new LinkedHashMap<>();
         if (compilationParameters != null) {
             merged.putAll(compilationParameters);

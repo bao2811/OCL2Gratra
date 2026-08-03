@@ -1,16 +1,10 @@
 package org.uet.dse.neo4j.gui;
 
-import org.tzi.use.api.UseSystemApi;
 import org.tzi.use.gui.main.MainWindow;
-import org.tzi.use.gui.util.TextComponentWriter;
 import org.tzi.use.main.Session;
 import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
-import org.tzi.use.uml.sys.MSystem;
-import org.tzi.use.util.TeeWriter;
-import org.uet.dse.neo4j.incrementalUpdate.FakeUSECompiler;
-import org.uet.dse.neo4j.incrementalUpdate.UseFileService;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.sync.model.ModelSyncCoordinator;
 import org.uet.dse.neo4j.sync.model.sukunaDomainExpansion.FukumaMizushi;
@@ -21,12 +15,12 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.util.ArrayList;
 
 public class UseFileBrowserDialog extends JDialog {
     private final JTextField txtFilePath;
     private final JTextArea txtContent;
-    private final UseFileService fileService;
     private File selectedFile;
     private final PrintWriter logWriter;
     private final Session session;
@@ -36,7 +30,6 @@ public class UseFileBrowserDialog extends JDialog {
       this.session = session;
       this.logWriter = logWriter;
       this.mainWindow = parent;
-      this.fileService = new UseFileService();
 
         setSize(800, 600);
         setLayout(new BorderLayout(10, 10));
@@ -105,7 +98,7 @@ public class UseFileBrowserDialog extends JDialog {
         }
 
         try {
-            String content = fileService.readFileContent(selectedFile);
+            String content = Files.readString(selectedFile.toPath());
 
 
             MModel incrementalModel = null;
@@ -165,7 +158,7 @@ public class UseFileBrowserDialog extends JDialog {
           }
 
             try {
-                incrementalModel = FakeUSECompiler.compileSpecification(content, model.name(), logWriter, new ModelFactory(), fukumaMizushi);
+                incrementalModel = USECompiler.compileSpecification(content, model.name(), logWriter, new ModelFactory());
 
               ModelSyncCoordinator modelSyncCoordinator = new ModelSyncCoordinator(session, mainWindow);
               modelSyncCoordinator.syncForwardIncrementalCase(incrementalModel);

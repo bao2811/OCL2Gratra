@@ -2,26 +2,64 @@ package org.uet.dse.neo4jtgg.ocl.ir;
 
 import org.uet.dse.neo4j.sync.helper.OclSerializer;
 import org.uet.dse.neo4jtgg.ocl.OclTypeBinding;
+import org.uet.dse.neo4jtgg.ocl.OclBottomToken;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+import org.uet.dse.neo4j.encoding.CanonicalGraphVocabulary;
 import org.tzi.use.uml.ocl.type.CollectionType;
 import org.tzi.use.uml.ocl.type.Type;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * Model-to-text transformation from the abstract Cypher Query Model to Cypher
+ * concrete syntax.
+ *
+ * <p>This renderer should not rediscover OCL semantics. Semantic decisions are
+ * made by the binder, IR builder, optimizer, and planner. This class lowers
+ * {@link OclCypherPlan} query-shape elements to executable Cypher text and a
+ * parameter map for the graph schema used by the plugin.</p>
+ *
+ * <pre>
+ * T_Text : M_CypherQuery -> CypherText
+ * </pre>
+ */
 public class OclCypherRenderer {
+    private final String modelName;
+
+    public OclCypherRenderer() {
+        this(null);
+    }
+
+    public OclCypherRenderer(String modelName) {
+        this.modelName = modelName;
+    }
+
     public RenderedInvariant renderInvariant(OclCypherPlan.InvariantPlan invariantPlan) {
         RenderState state = new RenderState();
         state.enterVariable("self", OclTypeBinding.node(invariantPlan.contextClassName()));
         RenderedExpression predicate = renderExpression(invariantPlan.predicate(), state);
-        String classParam = state.newParam(invariantPlan.contextClassName());
-        String cypher = "MATCH (self)-[:ObjectInstanceOf]->(cls {name: $" + classParam + "})\n" +
-                "WHERE NOT coalesce(" + predicate.cypher() + ", false)\n" +
-                "RETURN self.use_id AS useId";
-        return new RenderedInvariant(cypher, state.parameters());
+        String classParam = state.newParam(classKey(invariantPlan.contextClassName()));
+        String cypher = "MATCH (self:Object)-[:" + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
+                + "]->(cls {classKey: $" + classParam + "})\n" +
+                "WHERE " + OclValidationSemantics.violationPredicate(predicate.cypher()) + "\n" +
+                "RETURN DISTINCT self.use_id AS useId";
+        Map<String, Object> parameters = state.parameters();
+        OclBottomToken.requireWellFormedGeneratedParameters(parameters);
+        return new RenderedInvariant(cypher, parameters);
+    }
+
+    public RenderedTopLevelExpression renderTopLevelExpression(OclCypherPlan.ExpressionPlan expressionPlan) {
+        RenderState state = new RenderState();
+        RenderedExpression expression = renderExpression(expressionPlan, state);
+        Map<String, Object> parameters = state.parameters();
+        OclBottomToken.requireWellFormedGeneratedParameters(parameters);
+        return new RenderedTopLevelExpression("RETURN " + expression.cypher() + " AS value", parameters);
     }
 
     private RenderedExpression renderExpression(OclCypherPlan.ExpressionPlan expression, RenderState state) {
@@ -43,14 +81,22 @@ public class OclCypherRenderer {
         }
         if (expression instanceof OclCypherPlan.NotPlan not) {
             RenderedExpression inner = renderExpression(not.expression(), state);
-            return new RenderedExpression("(NOT " + inner.cypher() + ")", not.type());
+            return new RenderedExpression(OclValidationSemantics.not(inner.cypher()), not.type());
+        }
+        if (expression instanceof OclCypherPlan.SetLiteralPlan setLiteral) {
+            List<String> renderedElements = setLiteral.elements().stream()
+                    .map(element -> renderSetValue(renderExpression(element, state).cypher(), state))
+                    .toList();
+            return new RenderedExpression(
+                    renderUniqueCollection("[" + String.join(", ", renderedElements) + "]", state),
+                    setLiteral.type());
         }
         if (expression instanceof OclCypherPlan.IfPlan ifPlan) {
             RenderedExpression condition = renderExpression(ifPlan.condition(), state);
             RenderedExpression thenBranch = renderExpression(ifPlan.thenBranch(), state);
             RenderedExpression elseBranch = renderExpression(ifPlan.elseBranch(), state);
             return new RenderedExpression(
-                    "(CASE WHEN " + condition.cypher() + " THEN " + thenBranch.cypher() +
+                    "(CASE WHEN " + OclValidationSemantics.validationTruth(condition.cypher()) + " THEN " + thenBranch.cypher() +
                             " ELSE " + elseBranch.cypher() + " END)",
                     ifPlan.type());
         }
@@ -73,15 +119,25 @@ public class OclCypherRenderer {
                 case "<>" -> "<>";
                 case "and" -> "AND";
                 case "or" -> "OR";
+                case "xor" -> "XOR";
                 case "implies" -> "IMPLIES";
                 case ">", "<", ">=", "<=", "+", "-", "*", "/" -> binary.operator();
                 default -> throw new OclCodedUnsupportedOperationException(
                         OclDiagnosticCode.UNSUPPORTED_OPERATOR,
                         "Unsupported operator: " + binary.operator());
             };
-            String rendered = "IMPLIES".equals(operator)
-                    ? "((NOT " + left.cypher() + ") OR " + right.cypher() + ")"
-                    : "(" + left.cypher() + " " + operator + " " + right.cypher() + ")";
+            String rendered = binary.left().type().isCollection()
+                    && binary.right().type().isCollection()
+                    && ("=".equals(operator) || "<>".equals(operator))
+                    ? renderFiniteSetComparison(operator, left.cypher(), right.cypher(), state)
+                    : "IMPLIES".equals(operator)
+                    ? OclValidationSemantics.implies(left.cypher(), right.cypher())
+                    : switch (operator) {
+                        case "AND" -> OclValidationSemantics.and(left.cypher(), right.cypher());
+                        case "OR" -> OclValidationSemantics.or(left.cypher(), right.cypher());
+                        case "XOR" -> OclValidationSemantics.xor(left.cypher(), right.cypher());
+                        default -> "(" + left.cypher() + " " + operator + " " + right.cypher() + ")";
+                    };
             return new RenderedExpression(rendered, binary.type());
         }
         if (expression instanceof OclCypherPlan.AttributeAccessPlan attributeAccess) {
@@ -108,15 +164,17 @@ public class OclCypherRenderer {
             state.enterVariable(iteratorOperation.iteratorName(), source.type().elementType());
             RenderedExpression body = renderExpression(iteratorOperation.body(), state);
             state.exitVariable();
+            String predicate = OclValidationSemantics.validationTruth(body.cypher());
+            String negatedPredicate = OclValidationSemantics.not(body.cypher());
 
             String rendered = switch (iteratorOperation.operationName().toLowerCase()) {
-                case "select" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + "]";
-                case "reject" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE NOT (" + body.cypher() + ")]";
-                case "exists" -> "any(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + ")";
-                case "forall" -> "all(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + ")";
-                case "one" -> "single(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + ")";
-                case "any" -> "head([" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + " | " + iteratorOperation.iteratorName() + "])";
-                case "collect" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " | " + body.cypher() + "]";
+                case "select" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + "]";
+                case "reject" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + negatedPredicate + "]";
+                case "exists" -> "any(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + ")";
+                case "forall" -> "all(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + ")";
+                case "one" -> "single(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + ")";
+                case "any" -> "head([" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + " | " + iteratorOperation.iteratorName() + "])";
+                case "collect" -> renderCollect(source, iteratorOperation.iteratorName(), body.cypher(), state);
                 case "isunique" -> renderIteratorIsUnique(iteratorOperation.iteratorName(), source.cypher(), body.cypher(), state);
                 case "sortedby" -> renderIteratorSortedBy(iteratorOperation.iteratorName(), source.cypher(), body.cypher(), state);
                 default -> throw new OclCodedUnsupportedOperationException(
@@ -156,12 +214,14 @@ public class OclCypherRenderer {
             state.enterVariable(iteratorOperation.iteratorName(), source.type().elementType());
             RenderedExpression body = renderExpression(iteratorOperation.body(), state);
             state.exitVariable();
+            String predicate = OclValidationSemantics.validationTruth(body.cypher());
+            String negatedPredicate = OclValidationSemantics.not(body.cypher());
             String rendered = switch (operation) {
-                case "select" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + "]";
-                case "reject" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE NOT (" + body.cypher() + ")]";
-                case "collect" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " | " + body.cypher() + "]";
-                case "any" -> "head([" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + " | " + iteratorOperation.iteratorName() + "])";
-                case "one" -> "single(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + body.cypher() + ")";
+                case "select" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + "]";
+                case "reject" -> "[" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + negatedPredicate + "]";
+                case "collect" -> renderCollect(source, iteratorOperation.iteratorName(), body.cypher(), state);
+                case "any" -> "head([" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + " | " + iteratorOperation.iteratorName() + "])";
+                case "one" -> "single(" + iteratorOperation.iteratorName() + " IN " + source.cypher() + " WHERE " + predicate + ")";
                 case "isunique" -> renderIteratorIsUnique(iteratorOperation.iteratorName(), source.cypher(), body.cypher(), state);
                 case "sortedby" -> renderIteratorSortedBy(iteratorOperation.iteratorName(), source.cypher(), body.cypher(), state);
                 default -> throw new OclCodedUnsupportedOperationException(
@@ -171,7 +231,7 @@ public class OclCypherRenderer {
             return new RenderedExpression(rendered, iteratorOperation.type());
         }
 
-        OclCypherPlan.NavigationMatchPlan matchPlan = new OclCypherPlan.NavigationMatchPlan(
+        OclCypherPlan.NavigationMatchPlan matchPlan = OclCypherQueryModel.navigationMatch(
                 navigationAccess.source(),
                 iteratorOperation.iteratorName(),
                 navigationAccess,
@@ -191,8 +251,12 @@ public class OclCypherRenderer {
 
     private RenderedExpression renderMethodCall(OclCypherPlan.MethodCallPlan methodCall, RenderedExpression source, RenderState state) {
         if ("allInstances".equalsIgnoreCase(methodCall.methodName())) {
-            String classParam = state.newParam(source.type().typeName());
-            String cypher = "[(obj)-[:ObjectInstanceOf]->(cls {name: $" + classParam + "}) | obj]";
+            String classParam = state.newParam(classKey(source.type().typeName()));
+            String objectAlias = "obj" + state.newVariableSuffix();
+            String classAlias = "cls" + state.newVariableSuffix();
+            String cypher = "COLLECT { MATCH (" + objectAlias + ")-[:"
+                    + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF + "]->(" + classAlias
+                    + " {classKey: $" + classParam + "}) RETURN DISTINCT " + objectAlias + " }";
             return new RenderedExpression(cypher, methodCall.type());
         }
         if ("split".equalsIgnoreCase(methodCall.methodName())) {
@@ -258,16 +322,10 @@ public class OclCypherRenderer {
             return new RenderedExpression("toString(" + source.cypher() + ")", methodCall.type());
         }
         if ("oclIsTypeOf".equalsIgnoreCase(methodCall.methodName())) {
-            if (methodCall.arguments().size() != 1) {
-                throw new OclCodedUnsupportedOperationException(
-                        OclDiagnosticCode.INVALID_METHOD_ARGUMENT,
-                        "oclIsTypeOf() requires a type argument.");
-            }
-            RenderedExpression typeArg = renderExpression(methodCall.arguments().get(0), state);
-            String classParam = state.newParam(typeArg.type().typeName());
-            return new RenderedExpression(
-                    "EXISTS { MATCH (" + source.cypher() + ")-[:ObjectInstanceOf]->(cls {name: $" + classParam + "}) }",
-                    methodCall.type());
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.OCL_IS_TYPE_OF_OUTSIDE_CERTIFIED_FRAGMENT,
+                    "oclIsTypeOf() cannot be rendered by the certified pipeline without a proved "
+                            + "direct runtime-class accessor.");
         }
         if ("oclIsKindOf".equalsIgnoreCase(methodCall.methodName())) {
             if (methodCall.arguments().size() != 1) {
@@ -276,8 +334,8 @@ public class OclCypherRenderer {
                         "oclIsKindOf() requires a type argument.");
             }
             RenderedExpression typeArg = renderExpression(methodCall.arguments().get(0), state);
-            String classParam = state.newParam(typeArg.type().typeName());
-            return new RenderedExpression(renderIsKindOfCheck(source.cypher(), classParam), methodCall.type());
+            String classParam = state.newParam(classKey(typeArg.type().typeName()));
+            return new RenderedExpression(renderGuardedIsKindOfCheck(source.cypher(), classParam, state), methodCall.type());
         }
         if ("oclAsType".equalsIgnoreCase(methodCall.methodName())) {
             if (methodCall.arguments().size() != 1) {
@@ -286,10 +344,8 @@ public class OclCypherRenderer {
                         "oclAsType() requires a type argument.");
             }
             RenderedExpression typeArg = renderExpression(methodCall.arguments().get(0), state);
-            String classParam = state.newParam(typeArg.type().typeName());
-            return new RenderedExpression(
-                    "CASE WHEN " + renderIsKindOfCheck(source.cypher(), classParam) + " THEN " + source.cypher() + " ELSE null END",
-                    methodCall.type());
+            String classParam = state.newParam(classKey(typeArg.type().typeName()));
+            return new RenderedExpression(renderGuardedCast(source.cypher(), classParam, state), methodCall.type());
         }
         throw new OclCodedUnsupportedOperationException(
                 OclDiagnosticCode.UNSUPPORTED_METHOD_CALL,
@@ -299,39 +355,40 @@ public class OclCypherRenderer {
     private RenderedExpression renderAttributeAccess(OclCypherPlan.AttributeAccessPlan attributeAccess,
                                                      RenderedExpression source,
                                                      RenderState state) {
-        String suffixParam = state.newParam("_" + attributeAccess.attributeName());
-        if (!source.type().isCollection() && isSimpleIdentifier(source.cypher())) {
-            return renderAttributeValueAccess(attributeAccess, source.cypher(), suffixParam, state);
-        }
-        String itemAlias = "attrOwner" + state.newVariableSuffix();
-        RenderedExpression mappedValue = renderAttributeValueAccess(attributeAccess, itemAlias, suffixParam, state);
-
+        String attributeParam = state.newParam(attributeKey(attributeAccess));
         if (source.type().isCollection()) {
-            String cypher = "[" + itemAlias + " IN " + source.cypher() + " | " + mappedValue.cypher() + "]";
+            String itemAlias = "attrOwner" + state.newVariableSuffix();
+            String receiverAlias = "attrRecv" + state.newVariableSuffix();
+            RenderedExpression mappedValue = renderAttributeValueAccess(
+                    attributeAccess, receiverAlias, attributeParam, state);
+            String cypher = "[" + itemAlias + " IN " + source.cypher() + " | "
+                    + renderGuardedEntityValue(itemAlias, receiverAlias, mappedValue.cypher(), state) + "]";
             return new RenderedExpression(cypher, attributeAccess.type());
         }
 
-        String cypher = "head([" + itemAlias + " IN " + renderSingletonNodeList(source.cypher()) + " | " + mappedValue.cypher() + "])";
+        String itemAlias = "attrOwner" + state.newVariableSuffix();
+        RenderedExpression mappedValue = renderAttributeValueAccess(attributeAccess, itemAlias, attributeParam, state);
+        String cypher = renderGuardedEntityValue(source.cypher(), itemAlias, mappedValue.cypher(), state);
         return new RenderedExpression(cypher, attributeAccess.type());
     }
 
     private RenderedExpression renderAttributeValueAccess(OclCypherPlan.AttributeAccessPlan attributeAccess,
                                                           String sourceAlias,
-                                                          String suffixParam,
+                                                          String attributeParam,
                                                           RenderState state) {
         if (attributeAccess.type().isNode()) {
-            String references = referenceAttributeLookup(sourceAlias, suffixParam);
+            String references = referenceAttributeLookup(sourceAlias, attributeParam);
             return new RenderedExpression("head(" + references + ")", attributeAccess.type());
         }
         if (attributeAccess.type().isCollection() && attributeAccess.type().elementType().isNode()) {
-            return new RenderedExpression(referenceAttributeLookup(sourceAlias, suffixParam), attributeAccess.type());
+            return new RenderedExpression(referenceAttributeLookup(sourceAlias, attributeParam), attributeAccess.type());
         }
         if (attributeAccess.type().isCollection() && attributeAccess.type().elementType().isCollection()) {
             return new RenderedExpression(
-                    nestedCollectionAttributeLookup(sourceAlias, suffixParam, attributeAccess.attributeType(), state),
+                    nestedCollectionAttributeLookup(sourceAlias, attributeParam, attributeAccess.attributeType(), state),
                     attributeAccess.type());
         }
-        String raw = attributeLookup(sourceAlias, suffixParam);
+        String raw = attributeLookup(sourceAlias, attributeParam);
         String normalized = attributeAccess.type().isCollection()
                 ? normalizeCollectionAttributeValue(raw, attributeAccess.attributeType(), state)
                 : normalizeAttributeValue(raw, attributeAccess.attributeType());
@@ -378,7 +435,8 @@ public class OclCypherRenderer {
                 RenderedExpression candidate = renderExpression(collectionOperation.arguments().get(0), state);
                 String alias = "item" + state.newVariableSuffix();
                 yield new RenderedExpression("size([" + alias + " IN " + source.cypher() +
-                        " WHERE " + alias + " = " + candidate.cypher() + "])", collectionOperation.type());
+                        " WHERE " + renderSetEquality(alias, candidate.cypher(), state) + "])",
+                        collectionOperation.type());
             }
             case "isEmpty" -> new RenderedExpression("size(" + source.cypher() + ") = 0", collectionOperation.type());
             case "notEmpty" -> new RenderedExpression("size(" + source.cypher() + ") > 0", collectionOperation.type());
@@ -409,7 +467,8 @@ public class OclCypherRenderer {
                 RenderedExpression candidate = renderExpression(collectionOperation.arguments().get(0), state);
                 String alias = "item" + state.newVariableSuffix();
                 yield new RenderedExpression("any(" + alias + " IN " + source.cypher() +
-                        " WHERE " + alias + " = " + candidate.cypher() + ")", collectionOperation.type());
+                        " WHERE " + renderSetEquality(alias, candidate.cypher(), state) + ")",
+                        collectionOperation.type());
             }
             case "excludes" -> {
                 if (collectionOperation.arguments().size() != 1) {
@@ -420,7 +479,8 @@ public class OclCypherRenderer {
                 RenderedExpression candidate = renderExpression(collectionOperation.arguments().get(0), state);
                 String alias = "item" + state.newVariableSuffix();
                 yield new RenderedExpression("none(" + alias + " IN " + source.cypher() +
-                        " WHERE " + alias + " = " + candidate.cypher() + ")", collectionOperation.type());
+                        " WHERE " + renderSetEquality(alias, candidate.cypher(), state) + ")",
+                        collectionOperation.type());
             }
             case "includesAll" -> {
                 if (collectionOperation.arguments().size() != 1) {
@@ -433,7 +493,8 @@ public class OclCypherRenderer {
                 String innerAlias = "item" + state.newVariableSuffix();
                 yield new RenderedExpression("all(" + outerAlias + " IN " + candidates.cypher() +
                         " WHERE any(" + innerAlias + " IN " + source.cypher() +
-                        " WHERE " + innerAlias + " = " + outerAlias + "))", collectionOperation.type());
+                        " WHERE " + renderSetEquality(innerAlias, outerAlias, state) + "))",
+                        collectionOperation.type());
             }
             case "excludesAll" -> {
                 if (collectionOperation.arguments().size() != 1) {
@@ -446,7 +507,8 @@ public class OclCypherRenderer {
                 String innerAlias = "item" + state.newVariableSuffix();
                 yield new RenderedExpression("none(" + outerAlias + " IN " + candidates.cypher() +
                         " WHERE any(" + innerAlias + " IN " + source.cypher() +
-                        " WHERE " + innerAlias + " = " + outerAlias + "))", collectionOperation.type());
+                        " WHERE " + renderSetEquality(innerAlias, outerAlias, state) + "))",
+                        collectionOperation.type());
             }
             case "including" -> {
                 if (collectionOperation.arguments().size() != 1) {
@@ -470,7 +532,8 @@ public class OclCypherRenderer {
                 RenderedExpression candidate = renderExpression(collectionOperation.arguments().get(0), state);
                 String alias = "item" + state.newVariableSuffix();
                 yield new RenderedExpression("[" + alias + " IN " + source.cypher() +
-                        " WHERE NOT (" + alias + " = " + candidate.cypher() + ")]", collectionOperation.type());
+                        " WHERE NOT " + renderSetEquality(alias, candidate.cypher(), state) + "]",
+                        collectionOperation.type());
             }
             case "append" -> {
                 if (collectionOperation.arguments().size() != 1) {
@@ -553,7 +616,7 @@ public class OclCypherRenderer {
                 if (collectionOperation.type().isUniqueCollection()) {
                     String filtered = "[" + itemAlias + " IN " + source.cypher() +
                             " WHERE any(" + candidateAlias + " IN " + candidates.cypher() +
-                            " WHERE " + candidateAlias + " = " + itemAlias + ")]";
+                            " WHERE " + renderSetEquality(candidateAlias, itemAlias, state) + ")]";
                     cypher = renderUniqueCollection(filtered, state);
                 } else {
                     String accAlias = "acc" + state.newVariableSuffix();
@@ -561,11 +624,11 @@ public class OclCypherRenderer {
                     String itemsExpr = accAlias + ".items";
                     String remainingExpr = accAlias + ".remaining";
                     String matchingIndex = "head([idx IN range(0, size(" + remainingExpr + ") - 1) WHERE " +
-                            remainingExpr + "[idx] = " + itemAlias + "])";
+                            renderSetEquality(remainingExpr + "[idx]", itemAlias, state) + "])";
                     cypher = "reduce(" + accAlias + " = {items: [], remaining: " + candidates.cypher() + "}, " +
                             itemAlias + " IN " + source.cypher() + " | CASE WHEN any(" + existingAlias + " IN " +
-                            remainingExpr + " WHERE " + existingAlias + " = " + itemAlias + ") THEN " +
-                            "{items: " + itemsExpr + " + [" + itemAlias + "], remaining: " +
+                            remainingExpr + " WHERE " + renderSetEquality(existingAlias, itemAlias, state) + ") THEN " +
+                            "{items: " + itemsExpr + " + [" + renderSetValue(itemAlias, state) + "], remaining: " +
                             remainingExpr + "[0.." + matchingIndex + "] + " +
                             remainingExpr + "[" + matchingIndex + " + 1..]} ELSE " + accAlias + " END).items";
                 }
@@ -695,41 +758,49 @@ public class OclCypherRenderer {
                                            OclCypherPlan.NavigationAccessPlan navigationAccess,
                                            RenderState state) {
         org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex.NavigationInfo navigationInfo = navigationAccess.navigation();
-        String associationParam = state.newParam(navigationInfo.associationName());
+        String associationParam = state.newParam(associationKey(navigationInfo.associationName()));
         String sourceRoleParam = state.newParam(navigationInfo.sourceRoleName());
         String targetRoleParam = state.newParam(navigationInfo.targetRoleName());
-        String qualifierPredicate = renderQualifierPredicate(navigationAccess, state);
+        String relationshipAlias = state.newRelationshipAlias();
+        String qualifierPredicate = renderQualifierPredicate(navigationAccess, relationshipAlias, state);
         return switch (navigationInfo.direction()) {
-            case OUTGOING -> "(" + sourceAlias + ")-[r]->(" + targetAlias + ") WHERE type(r) STARTS WITH 'Link' " +
-                    "AND r.name = $" + associationParam +
-                    " AND r.sourceRole = $" + sourceRoleParam +
-                    " AND r.targetRole = $" + targetRoleParam +
+            case OUTGOING -> "(" + sourceAlias + ")-[" + relationshipAlias + "]->(" + targetAlias
+                    + ") WHERE type(" + relationshipAlias + ") STARTS WITH 'Link' " +
+                    "AND " + relationshipAlias + ".associationKey = $" + associationParam +
+                    " AND " + relationshipAlias + ".sourceRole = $" + sourceRoleParam +
+                    " AND " + relationshipAlias + ".targetRole = $" + targetRoleParam +
                     qualifierPredicate;
-            case INCOMING -> "(" + sourceAlias + ")<-[r]-(" + targetAlias + ") WHERE type(r) STARTS WITH 'Link' " +
-                    "AND r.name = $" + associationParam +
-                    " AND r.sourceRole = $" + targetRoleParam +
-                    " AND r.targetRole = $" + sourceRoleParam +
+            case INCOMING -> "(" + sourceAlias + ")<-[" + relationshipAlias + "]-(" + targetAlias
+                    + ") WHERE type(" + relationshipAlias + ") STARTS WITH 'Link' " +
+                    "AND " + relationshipAlias + ".associationKey = $" + associationParam +
+                    " AND " + relationshipAlias + ".sourceRole = $" + targetRoleParam +
+                    " AND " + relationshipAlias + ".targetRole = $" + sourceRoleParam +
                     qualifierPredicate;
-            case UNDIRECTED -> "(" + sourceAlias + ")-[r]-(" + targetAlias + ") WHERE type(r) STARTS WITH 'Link' " +
-                    "AND r.name = $" + associationParam +
-                    " AND ((r.sourceRole = $" + sourceRoleParam + " AND r.targetRole = $" + targetRoleParam + ")" +
-                    " OR (r.sourceRole = $" + targetRoleParam + " AND r.targetRole = $" + sourceRoleParam + "))" +
+            case UNDIRECTED -> "(" + sourceAlias + ")-[" + relationshipAlias + "]-(" + targetAlias
+                    + ") WHERE type(" + relationshipAlias + ") STARTS WITH 'Link' " +
+                    "AND " + relationshipAlias + ".associationKey = $" + associationParam +
+                    " AND ((" + relationshipAlias + ".sourceRole = $" + sourceRoleParam + " AND "
+                    + relationshipAlias + ".targetRole = $" + targetRoleParam + ")" +
+                    " OR (" + relationshipAlias + ".sourceRole = $" + targetRoleParam + " AND "
+                    + relationshipAlias + ".targetRole = $" + sourceRoleParam + "))" +
                     qualifierPredicate;
         };
     }
 
-    private String renderQualifierPredicate(OclCypherPlan.NavigationAccessPlan navigationAccess, RenderState state) {
+    private String renderQualifierPredicate(OclCypherPlan.NavigationAccessPlan navigationAccess,
+                                            String relationshipAlias, RenderState state) {
         if (navigationAccess.qualifiers().isEmpty()) {
             return "";
         }
         String propertyName = switch (navigationAccess.navigation().direction()) {
-            case OUTGOING, UNDIRECTED -> "targetQualifiers";
-            case INCOMING -> "sourceQualifiers";
+            case OUTGOING, UNDIRECTED -> "sourceQualifiers";
+            case INCOMING -> "targetQualifiers";
         };
         StringBuilder predicate = new StringBuilder();
         for (int i = 0; i < navigationAccess.qualifiers().size(); i++) {
             OclCypherPlan.ExpressionPlan qualifier = navigationAccess.qualifiers().get(i);
-            predicate.append(" AND coalesce(r.").append(propertyName).append("[").append(i).append("], '') = ")
+            predicate.append(" AND coalesce(").append(relationshipAlias).append(".")
+                    .append(propertyName).append("[").append(i).append("], '') = ")
                     .append(renderSerializedQualifierValue(qualifier, state));
         }
         return predicate.toString();
@@ -788,13 +859,14 @@ public class OclCypherRenderer {
         state.exitVariable();
         return switch (matchPlan.predicateMode()) {
             case NONE -> "";
-            case NORMAL -> " AND " + body.cypher();
-            case NEGATED -> " AND NOT (" + body.cypher() + ")";
+            case NORMAL -> " AND " + OclValidationSemantics.validationTruth(body.cypher());
+            case NEGATED -> " AND " + OclValidationSemantics.not(body.cypher());
         };
     }
 
     private String normalizeAttributeValue(String raw, org.tzi.use.uml.ocl.type.Type type) {
-        String stripped = "replace(coalesce(" + raw + ", ''), \"'\", \"\")";
+        String stripped = "CASE WHEN " + raw + " IS NULL OR " + raw + " = 'Undefined' " +
+                "THEN null ELSE replace(" + raw + ", \"'\", \"\") END";
         if (type.isTypeOfInteger()) {
             return "toInteger(" + stripped + ")";
         }
@@ -826,7 +898,7 @@ public class OclCypherRenderer {
         return "CASE WHEN " + emptyCheck + " THEN [] ELSE [" + itemAlias + " IN " + splitExpr + " | " + itemValue + "] END";
     }
 
-    private String nestedCollectionAttributeLookup(String sourceAlias, String suffixParam, Type type, RenderState state) {
+    private String nestedCollectionAttributeLookup(String sourceAlias, String attributeParam, Type type, RenderState state) {
         if (!(type instanceof CollectionType outerCollectionType)
                 || !outerCollectionType.elemType().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
             throw new OclCodedUnsupportedOperationException(
@@ -835,7 +907,7 @@ public class OclCypherRenderer {
         }
         String nestedAlias = "nestedAttr" + state.newVariableSuffix();
         String outerPattern = "(" + sourceAlias + ")-[:ObjectHasAttribute]->(val:AttributeValue) " +
-                "WHERE val.name ENDS WITH $" + suffixParam + " " +
+                "WHERE val.attributeKey = $" + attributeParam + " " +
                 "MATCH (val)-[outer:HasNestedCollectionValue]->(" + nestedAlias + ":NestedCollectionValue)";
         return "COLLECT { " + outerPattern +
                 " RETURN " + renderNestedCollectionNode(nestedAlias, outerCollectionType.elemType(), state) +
@@ -862,15 +934,15 @@ public class OclCypherRenderer {
                 " | " + itemValue + "] END";
     }
 
-    private String attributeLookup(String sourceAlias, String suffixParam) {
+    private String attributeLookup(String sourceAlias, String attributeParam) {
         return "head([(" + sourceAlias + ")-[:ObjectHasAttribute]->(val:AttributeValue) " +
-                "WHERE val.name ENDS WITH $" + suffixParam + " | val.value])";
+                "WHERE val.attributeKey = $" + attributeParam + " | val.value])";
     }
 
-    private String referenceAttributeLookup(String sourceAlias, String suffixParam) {
+    private String referenceAttributeLookup(String sourceAlias, String attributeParam) {
         return "COLLECT { " +
                 "MATCH (" + sourceAlias + ")-[:ObjectHasAttribute]->(val:AttributeValue) " +
-                "WHERE val.name ENDS WITH $" + suffixParam + " " +
+                "WHERE val.attributeKey = $" + attributeParam + " " +
                 "MATCH (val)-[r:objectReference|HasReferenceValue]->(target) " +
                 "RETURN target ORDER BY r.index " +
                 "}";
@@ -885,10 +957,54 @@ public class OclCypherRenderer {
         return "size(" + projected + ") = size(" + renderUniqueCollection(projected, state) + ")";
     }
 
-    private String renderIsKindOfCheck(String sourceCypher, String classParam) {
-        return "EXISTS { MATCH (" + sourceCypher + ")-[:ObjectInstanceOf]->(cls) WHERE cls.name = $" + classParam +
-                " OR cls.name IN [(" + sourceCypher + ")-[:ObjectInstanceOf]->(c)-[:IsSubclassOf*0..]->(parent {name: $" +
-                classParam + "}) | c.name] }";
+    private String renderGuardedIsKindOfCheck(String sourceCypher, String classParam, RenderState state) {
+        String receiverAlias = "typeRecv" + state.newVariableSuffix();
+        String receiverKeyAlias = receiverAlias + "Key";
+        String classAlias = "typeCls" + state.newVariableSuffix();
+        return "EXISTS { WITH " + sourceCypher + ".objectKey AS " + receiverKeyAlias
+                + " WHERE " + receiverKeyAlias + " IS NOT NULL"
+                + " MATCH (" + receiverAlias + ":Object {objectKey: " + receiverKeyAlias + "})-[:"
+                + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
+                + "]->(" + classAlias + " {classKey: $" + classParam + "}) RETURN " + receiverAlias + " }";
+    }
+
+    private String renderGuardedCast(String sourceCypher, String classParam, RenderState state) {
+        String receiverAlias = "castRecv" + state.newVariableSuffix();
+        String receiverKeyAlias = receiverAlias + "Key";
+        String classAlias = "castCls" + state.newVariableSuffix();
+        return "head(COLLECT { WITH " + sourceCypher + ".objectKey AS " + receiverKeyAlias
+                + " WHERE " + receiverKeyAlias + " IS NOT NULL"
+                + " MATCH (" + receiverAlias + ":Object {objectKey: " + receiverKeyAlias + "})-[:"
+                + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
+                + "]->(" + classAlias + " {classKey: $" + classParam + "}) RETURN " + receiverAlias + " AS value })";
+    }
+
+    private String renderGuardedEntityValue(String sourceCypher, String receiverAlias,
+                                            String entityValueCypher, RenderState state) {
+        String receiverKeyAlias = receiverAlias + "Key";
+        return "head(COLLECT { WITH " + sourceCypher + ".objectKey AS " + receiverKeyAlias
+                + " WHERE " + receiverKeyAlias + " IS NOT NULL"
+                + " MATCH (" + receiverAlias + ":Object {objectKey: " + receiverKeyAlias + "})"
+                + " RETURN " + entityValueCypher + " AS value })";
+    }
+
+    private String classKey(String className) {
+        return modelName == null || modelName.isBlank()
+                ? className
+                : CanonicalGraphEncoding.classKey(modelName, className);
+    }
+
+    private String attributeKey(OclCypherPlan.AttributeAccessPlan access) {
+        String owner = access.attribute().owner().name();
+        return modelName == null || modelName.isBlank()
+                ? owner + "::" + access.attributeName()
+                : CanonicalGraphEncoding.attributeKey(modelName, owner, access.attributeName());
+    }
+
+    private String associationKey(String associationName) {
+        return modelName == null || modelName.isBlank()
+                ? associationName
+                : CanonicalGraphEncoding.associationKey(modelName, associationName);
     }
 
     private String renderIteratorSortedBy(String iteratorName, String sourceCypher, String bodyCypher, RenderState state) {
@@ -925,12 +1041,48 @@ public class OclCypherRenderer {
     private String renderUniqueCollection(String sourceCypher, RenderState state) {
         String itemAlias = "item" + state.newVariableSuffix();
         String accAlias = "acc" + state.newVariableSuffix();
+        String representedItem = renderSetValue(itemAlias, state);
         return "reduce(" + accAlias + " = [], " + itemAlias + " IN " + sourceCypher +
-                " | CASE WHEN any(existing IN " + accAlias + " WHERE existing = " + itemAlias + ")" +
-                " THEN " + accAlias + " ELSE " + accAlias + " + " + itemAlias + " END)";
+                " | CASE WHEN any(existing IN " + accAlias + " WHERE " +
+                renderSetEquality("existing", itemAlias, state) + ")" +
+                " THEN " + accAlias + " ELSE " + accAlias + " + " + representedItem + " END)";
+    }
+
+    private String renderCollect(RenderedExpression source, String iteratorAlias, String bodyCypher,
+                                 RenderState state) {
+        String projection = "[" + iteratorAlias + " IN " + source.cypher() + " | " + bodyCypher + "]";
+        return source.type().isUniqueCollection() ? renderUniqueCollection(projection, state) : projection;
+    }
+
+    /** Converts scalar Cypher null into the theorem's non-null set-bottom representation. */
+    private String renderSetValue(String valueCypher, RenderState state) {
+        return "coalesce(" + valueCypher + ", $" + state.bottomTokenParam() + ")";
+    }
+
+    /** Total equality for values occurring in a finite-set position. */
+    private String renderSetEquality(String leftCypher, String rightCypher, RenderState state) {
+        return "coalesce(" + renderSetValue(leftCypher, state) + " = " +
+                renderSetValue(rightCypher, state) + ", false)";
+    }
+
+    /** Extensional, order-independent equality for the certified finite-set fragment. */
+    private String renderFiniteSetComparison(String operator, String leftCypher, String rightCypher,
+                                             RenderState state) {
+        String leftAlias = "setLeft" + state.newVariableSuffix();
+        String rightAlias = "setRight" + state.newVariableSuffix();
+        String left = "coalesce(" + leftCypher + ", [])";
+        String right = "coalesce(" + rightCypher + ", [])";
+        String equality = "(all(" + leftAlias + " IN " + left + " WHERE any(" + rightAlias + " IN " + right +
+                " WHERE " + renderSetEquality(leftAlias, rightAlias, state) + ")) AND all(" + rightAlias +
+                " IN " + right + " WHERE any(" + leftAlias + " IN " + left + " WHERE " +
+                renderSetEquality(leftAlias, rightAlias, state) + ")))";
+        return "<>".equals(operator) ? "(NOT " + equality + ")" : equality;
     }
 
     public record RenderedInvariant(String cypher, Map<String, Object> parameters) {
+    }
+
+    public record RenderedTopLevelExpression(String cypher, Map<String, Object> parameters) {
     }
 
     private record RenderedExpression(String cypher, OclTypeBinding type) {
@@ -942,6 +1094,8 @@ public class OclCypherRenderer {
         private final Deque<Map<String, String>> expressionBindings = new ArrayDeque<>();
         private int parameterCounter = 0;
         private int variableCounter = 0;
+        private int relationshipCounter = 0;
+        private String bottomTokenParam;
 
         private RenderState() {
             scopes.push(new LinkedHashMap<>());
@@ -956,6 +1110,18 @@ public class OclCypherRenderer {
 
         private String newVariableSuffix() {
             return String.valueOf(++variableCounter);
+        }
+
+        private String newRelationshipAlias() {
+            relationshipCounter++;
+            return relationshipCounter == 1 ? "r" : "r" + relationshipCounter;
+        }
+
+        private String bottomTokenParam() {
+            if (bottomTokenParam == null) {
+                bottomTokenParam = newParam(OclBottomToken.value());
+            }
+            return bottomTokenParam;
         }
 
         private void enterVariable(String name, OclTypeBinding binding) {

@@ -108,7 +108,7 @@ public class ExecutionContext {
       case "isEmpty":
         return collection.isEmpty();
 
-      case "isNotEmpty":
+      case "notEmpty":
         return !collection.isEmpty();
 
       case "includes":

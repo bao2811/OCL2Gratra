@@ -10,15 +10,54 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: "21"
-          distribution: "adopt"
+          distribution: "temurin"
           cache: maven
+      - name: Check machine verification contract
+        shell: pwsh
+        run: |
+          ./verification/scripts/check-verification-contract.ps1 `
+            -RequireGitTracked
+          ./verification/scripts/check-verification-contract-mutations.ps1
+      - name: Check Lean mechanized proof
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: verification/lean
+          build: true
+          test: false
+          use-mathlib-cache: false
+          leanchecker: true
+          nanoda: true
+          nanoda-allow-sorry: false
+      - name: Check mechanization contract and mutations
+        shell: pwsh
+        run: |
+          ./verification/scripts/check-mechanized-proof.ps1
+          ./verification/scripts/check-mechanized-proof-mutations.ps1
       - name: Build with Maven
-        run: mvn --batch-mode --update-snapshots clean verify
+        run: mvn --batch-mode --update-snapshots clean install
+      - name: Check proof and implementation conformance
+        shell: pwsh
+        run: ./verification/scripts/check-implementation-conformance.ps1
+      - name: Write machine verification report
+        shell: pwsh
+        run: |
+          ./verification/scripts/write-proof-report.ps1 `
+            -GateResult PASS `
+            -OutputPath "${{ runner.temp }}/proof-verification/proof-report.json"
+      - name: Upload machine verification artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proof-contract-PC-2026-07-22.2
+          path: |
+            ${{ runner.temp }}/proof-verification
+            verification/contract/proof-contract-registry.json
+            verification/evidence/*.tsv
+          if-no-files-found: error
       - name: Upload build result
         run: mkdir staging && cp use-assembly/target/*.zip staging
       - uses: actions/upload-artifact@v4

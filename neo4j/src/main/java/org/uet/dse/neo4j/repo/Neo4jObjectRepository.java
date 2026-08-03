@@ -3,18 +3,88 @@ package org.uet.dse.neo4j.repo;
 import org.neo4j.driver.*;
 import org.uet.dse.neo4j.repo.query.Neo4jObjectQuery;
 import org.uet.dse.neo4j.sync.helper.OclSerializer;
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
 
 import java.util.*;
 
 public class Neo4jObjectRepository {
+
+  public boolean checkClassesExist(TransactionContext tx, String modelName,
+                                   Collection<String> classNames) {
+    if (classNames.isEmpty()) return true;
+    List<String> classKeys = classNames.stream()
+        .map(name -> CanonicalGraphEncoding.classKey(modelName, name)).distinct().toList();
+    long count = tx.run(
+        "MATCH (cls:UmlClass) WHERE cls.classKey IN $classKeys "
+            + "RETURN count(DISTINCT cls.classKey) AS count",
+        Map.of("classKeys", classKeys)).single().get("count").asLong();
+    return count == classKeys.size();
+  }
+
+  public void upsertObjectNodesBatch(TransactionContext tx, String modelName, String className,
+                                     List<Map<String, Object>> rows) {
+    if (rows.isEmpty()) return;
+    tx.run(Neo4jObjectQuery.upsertObjectNodesBatchInModel(className),
+        Map.of("modelName", modelName, "rows", rows));
+  }
+
+  public void setScalarAttributeValuesBatch(TransactionContext tx, String modelName,
+                                            List<Map<String, Object>> rows) {
+    if (rows.isEmpty()) return;
+    tx.run(Neo4jObjectQuery.UPSERT_SCALAR_ATTRIBUTE_VALUES_BATCH,
+        Map.of("modelName", modelName, "rows", rows));
+  }
+
+  public void deleteLinksBatch(TransactionContext tx, String modelName, Collection<String> identities) {
+    if (identities.isEmpty()) return;
+    List<String> keys = identities.stream().map(id -> modelName + "::" + id).toList();
+    tx.run("MATCH (:Object {modelKey:$modelName})"
+            + "-[r:LinkAssociateWith|LinkAggregates|LinkComposeOf]->"
+            + "(:Object {modelKey:$modelName}) WHERE r.linkKey IN $keys DELETE r",
+        Map.of("modelName", modelName, "keys", keys));
+  }
+
+  public void deleteObjectsDeeplyBatch(TransactionContext tx, String modelName,
+                                        Collection<String> objectNames) {
+    if (objectNames.isEmpty()) return;
+    List<String> objectKeys = objectNames.stream()
+        .map(name -> CanonicalGraphEncoding.objectKey(modelName, name)).toList();
+    tx.run("MATCH (o:Object {modelKey:$modelName}) WHERE o.objectKey IN $objectKeys "
+            + "OPTIONAL MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue) "
+            + "OPTIONAL MATCH (val)-[:HasNestedCollectionValue*0..5]->(nested) "
+            + "WITH collect(DISTINCT o)+collect(DISTINCT val)+collect(DISTINCT nested) AS nodes "
+            + "UNWIND nodes AS node WITH DISTINCT node WHERE node IS NOT NULL DETACH DELETE node",
+        Map.of("modelName", modelName, "objectKeys", objectKeys));
+  }
+
+  public void upsertBinaryLinksBatch(TransactionContext tx, String modelName, String label,
+                                     List<Map<String, Object>> rows) {
+    if (rows.isEmpty()) return;
+    tx.run(Neo4jObjectQuery.upsertBinaryLinksBatchInModel(label),
+        Map.of("modelName", modelName, "rows", rows));
+  }
 
   public void upsertObjectNode(TransactionContext tx, String objName, String className) {
     tx.run(Neo4jObjectQuery.upsertObjectNode(className), Values.parameters("clsName", className, "objName", objName));
   }
 
   public void upsertObjectNode(TransactionContext tx, String modelName, String objName, String className) {
+    upsertObjectNode(tx, modelName, objName, className, List.of(className));
+  }
+
+  public void upsertObjectNode(TransactionContext tx, String modelName, String objName, String className,
+                               Collection<String> conformingClassNames) {
+    List<String> classKeys = conformingClassNames.stream()
+        .map(name -> CanonicalGraphEncoding.classKey(modelName, name))
+        .distinct()
+        .toList();
     tx.run(Neo4jObjectQuery.upsertObjectNodeInModel(className),
-        Values.parameters("modelName", modelName, "clsName", className, "objName", objName));
+        Values.parameters(
+            "modelName", modelName,
+            "objName", objName,
+            "objectKey", CanonicalGraphEncoding.objectKey(modelName, objName),
+            "runtimeClassKey", CanonicalGraphEncoding.classKey(modelName, className),
+            "classKeys", classKeys));
   }
 
   public void deleteObjectDeeply(TransactionContext tx, String objName) {
@@ -74,6 +144,9 @@ public class Neo4jObjectRepository {
     Map<String, Object> parameters = new HashMap<>();
     if (modelName != null) {
       parameters.put("modelName", modelName);
+      parameters.put("attributeKey", CanonicalGraphEncoding.attributeKey(modelName, ownerClassName, attrName));
+      parameters.put("slotKey", CanonicalGraphEncoding.attributeSlotKey(
+          modelName, objName, ownerClassName, attrName));
     }
     parameters.put("objName", objName);
     parameters.put("attrDefId", attrDefId);
@@ -223,6 +296,24 @@ public class Neo4jObjectRepository {
     tx.run(Neo4jObjectQuery.upsertBinaryLink(label), Map.of(
         "id1", srcObj,
         "id2", tgtObj,
+        "name", assocName,
+        "sRole", sRole,
+        "tRole", tRole,
+        "sQualifiers", sourceQualifiers != null ? sourceQualifiers : List.of(),
+        "tQualifiers", targetQualifiers != null ? targetQualifiers : List.of()));
+  }
+
+  public void upsertBinaryLink(TransactionContext tx, String modelName, String srcObj, String tgtObj,
+                               String assocName, String label, String sRole, String tRole,
+                               List<String> sourceQualifiers, List<String> targetQualifiers) {
+    tx.run(Neo4jObjectQuery.upsertBinaryLinkInModel(label), Map.of(
+        "modelName", modelName,
+        "objectKey1", CanonicalGraphEncoding.objectKey(modelName, srcObj),
+        "objectKey2", CanonicalGraphEncoding.objectKey(modelName, tgtObj),
+        "associationKey", CanonicalGraphEncoding.associationKey(modelName, assocName),
+        "linkKey", CanonicalGraphEncoding.binaryLinkKey(modelName, assocName, srcObj, tgtObj,
+            sourceQualifiers != null ? sourceQualifiers : List.of(),
+            targetQualifiers != null ? targetQualifiers : List.of()),
         "name", assocName,
         "sRole", sRole,
         "tRole", tRole,

@@ -5,47 +5,73 @@ import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
 import java.util.List;
 
+/**
+ * Model-to-model transformation from {@link OclOptimizedIr} to the abstract
+ * Cypher Query Model.
+ *
+ * <p>The planner chooses query shapes such as {@code EXISTS}, {@code NOT
+ * EXISTS}, and {@code COUNT { ... }} without emitting textual Cypher. This
+ * keeps backend decisions separate from concrete syntax generation and makes
+ * the IR-to-Cypher preservation argument explicit.</p>
+ *
+ * <pre>
+ * T_CQ : M_OptimizedIR -> M_CypherQuery
+ * </pre>
+ */
 public class OclCypherPlanner {
     public OclCypherPlan.InvariantPlan planInvariant(OclIr.InvariantQuery invariantQuery) {
-        return new OclCypherPlan.InvariantPlan(
+        return OclCypherQueryModel.invariant(
                 invariantQuery.contextClassName(),
                 invariantQuery.invariantName(),
-                planExpression(invariantQuery.predicate()));
+                planExpression(OclOptimizedIr.requireOptimized(invariantQuery.predicate())));
+    }
+
+    public OclCypherPlan.ExpressionPlan planExpression(OclIr.OptimizedExpression expression) {
+        return planOptimizedExpression(expression);
     }
 
     public OclCypherPlan.ExpressionPlan planExpression(OclIr.Expression expression) {
+        return planExpression(OclOptimizedIr.requireOptimized(expression));
+    }
+
+    private OclCypherPlan.ExpressionPlan planOptimizedExpression(OclIr.Expression expression) {
         if (expression instanceof OclIr.Variable variable) {
-            return new OclCypherPlan.VariablePlan(variable.name(), variable.type());
+            return OclCypherQueryModel.variable(variable.name(), variable.type());
         }
         if (expression instanceof OclIr.Literal literal) {
-            return new OclCypherPlan.LiteralPlan(literal.value(), literal.type());
+            return OclCypherQueryModel.literal(literal.value(), literal.type());
+        }
+        if (expression instanceof OclIr.SetLiteral setLiteral) {
+            return OclCypherQueryModel.setLiteral(
+                    setLiteral.elements().stream().map(this::planExpression).toList(),
+                    setLiteral.type());
         }
         if (expression instanceof OclIr.Not not) {
-            return new OclCypherPlan.NotPlan(planExpression(not.expression()), not.type());
+            return OclCypherQueryModel.not(planExpression(not.expression()), not.type());
         }
         if (expression instanceof OclIr.If ifExpression) {
-            return new OclCypherPlan.IfPlan(
+            return OclCypherQueryModel.ifExpression(
                     planExpression(ifExpression.condition()),
                     planExpression(ifExpression.thenBranch()),
                     planExpression(ifExpression.elseBranch()),
                     ifExpression.type());
         }
         if (expression instanceof OclIr.Let letExpression) {
-            return new OclCypherPlan.LetPlan(
+            return OclCypherQueryModel.let(
                     letExpression.variableName(),
                     planExpression(letExpression.value()),
                     planExpression(letExpression.body()),
                     letExpression.type());
         }
         if (expression instanceof OclIr.Binary binary) {
-            return new OclCypherPlan.BinaryPlan(
+            return OclCypherQueryModel.binary(
                     binary.operator(),
                     planExpression(binary.left()),
                     planExpression(binary.right()),
                     binary.type());
         }
         if (expression instanceof OclIr.AttributeAccess attributeAccess) {
-            return new OclCypherPlan.AttributeAccessPlan(
+            return OclCypherQueryModel.attributeAccess(
                     planExpression(attributeAccess.source()),
                     attributeAccess.attributeName(),
                     attributeAccess.attributeType(),
@@ -53,28 +79,28 @@ public class OclCypherPlanner {
                     attributeAccess.attribute());
         }
         if (expression instanceof OclIr.NavigationAccess navigationAccess) {
-            return new OclCypherPlan.NavigationAccessPlan(
+            return OclCypherQueryModel.navigationAccess(
                     planExpression(navigationAccess.source()),
                     navigationAccess.navigation(),
                     navigationAccess.qualifiers().stream().map(this::planExpression).toList(),
                     navigationAccess.type());
         }
         if (expression instanceof OclIr.MethodCall methodCall) {
-            return new OclCypherPlan.MethodCallPlan(
+            return OclCypherQueryModel.methodCall(
                     planExpression(methodCall.source()),
                     methodCall.methodName(),
                     methodCall.arguments().stream().map(this::planExpression).toList(),
                     methodCall.type());
         }
         if (expression instanceof OclIr.CollectionOperation collectionOperation) {
-            return new OclCypherPlan.CollectionOperationPlan(
+            return OclCypherQueryModel.collectionOperation(
                     planExpression(collectionOperation.source()),
                     collectionOperation.operationName(),
                     collectionOperation.arguments().stream().map(this::planExpression).toList(),
                     collectionOperation.type());
         }
         if (expression instanceof OclIr.IteratorOperation iteratorOperation) {
-            return new OclCypherPlan.IteratorOperationPlan(
+            return OclCypherQueryModel.iteratorOperation(
                     planExpression(iteratorOperation.source()),
                     iteratorOperation.operationName(),
                     iteratorOperation.iteratorName(),
@@ -90,8 +116,8 @@ public class OclCypherPlanner {
                             ? OclCypherPlan.PredicateMode.NEGATED
                             : OclCypherPlan.PredicateMode.NORMAL);
             return switch (predicateCheck.kind()) {
-                case EXISTS -> new OclCypherPlan.ExistsSubqueryPlan(matchPlan, predicateCheck.type());
-                case NOT_EXISTS, FORALL -> new OclCypherPlan.NotExistsSubqueryPlan(matchPlan, predicateCheck.type());
+                case EXISTS -> OclCypherQueryModel.existsSubquery(matchPlan, predicateCheck.type());
+                case NOT_EXISTS, FORALL -> OclCypherQueryModel.notExistsSubquery(matchPlan, predicateCheck.type());
             };
         }
         if (expression instanceof OclIr.NavigationCountComparison countComparison) {
@@ -108,7 +134,7 @@ public class OclCypherPlanner {
                     aggregation.iteratorName(),
                     aggregation.predicate() != null ? planExpression(aggregation.predicate()) : null,
                     OclCypherPlan.PredicateMode.NORMAL);
-            return new OclCypherPlan.NavigationAggregationPlan(
+            return OclCypherQueryModel.navigationAggregation(
                     matchPlan,
                     planExpression(aggregation.projection()),
                     aggregation.operationName(),
@@ -120,7 +146,7 @@ public class OclCypherPlanner {
                     uniquenessCheck.iteratorName(),
                     uniquenessCheck.predicate() != null ? planExpression(uniquenessCheck.predicate()) : null,
                     OclCypherPlan.PredicateMode.NORMAL);
-            return new OclCypherPlan.NavigationUniquenessPlan(
+            return OclCypherQueryModel.navigationUniqueness(
                     matchPlan,
                     planExpression(uniquenessCheck.projection()),
                     uniquenessCheck.type());
@@ -142,7 +168,7 @@ public class OclCypherPlanner {
                                                                         OclCypherPlan.ExpressionPlan predicatePlan,
                                                                         OclCypherPlan.PredicateMode predicateMode) {
         String targetAlias = iteratorName != null ? iteratorName : "nav";
-        return new OclCypherPlan.NavigationMatchPlan(
+        return OclCypherQueryModel.navigationMatch(
                 navigationAccessPlan.source(),
                 targetAlias,
                 navigationAccessPlan,
@@ -157,23 +183,23 @@ public class OclCypherPlanner {
                                                              org.uet.dse.neo4jtgg.ocl.OclTypeBinding type) {
         return switch (operator) {
             case ">" -> literal == 0
-                    ? new OclCypherPlan.ExistsSubqueryPlan(matchPlan, type)
-                    : new OclCypherPlan.CountSubqueryComparisonPlan(matchPlan, operator, literal, type);
+                    ? OclCypherQueryModel.existsSubquery(matchPlan, type)
+                    : OclCypherQueryModel.countSubqueryComparison(matchPlan, operator, literal, type);
             case ">=" -> literal == 1
-                    ? new OclCypherPlan.ExistsSubqueryPlan(matchPlan, type)
-                    : new OclCypherPlan.CountSubqueryComparisonPlan(matchPlan, operator, literal, type);
+                    ? OclCypherQueryModel.existsSubquery(matchPlan, type)
+                    : OclCypherQueryModel.countSubqueryComparison(matchPlan, operator, literal, type);
             case "=" -> literal == 0
-                    ? new OclCypherPlan.NotExistsSubqueryPlan(matchPlan, type)
-                    : new OclCypherPlan.CountSubqueryComparisonPlan(matchPlan, operator, literal, type);
+                    ? OclCypherQueryModel.notExistsSubquery(matchPlan, type)
+                    : OclCypherQueryModel.countSubqueryComparison(matchPlan, operator, literal, type);
             case "<>" -> literal == 0
-                    ? new OclCypherPlan.ExistsSubqueryPlan(matchPlan, type)
-                    : new OclCypherPlan.CountSubqueryComparisonPlan(matchPlan, operator, literal, type);
+                    ? OclCypherQueryModel.existsSubquery(matchPlan, type)
+                    : OclCypherQueryModel.countSubqueryComparison(matchPlan, operator, literal, type);
             case "<" -> literal == 1
-                    ? new OclCypherPlan.NotExistsSubqueryPlan(matchPlan, type)
-                    : new OclCypherPlan.CountSubqueryComparisonPlan(matchPlan, operator, literal, type);
+                    ? OclCypherQueryModel.notExistsSubquery(matchPlan, type)
+                    : OclCypherQueryModel.countSubqueryComparison(matchPlan, operator, literal, type);
             case "<=" -> literal == 0
-                    ? new OclCypherPlan.NotExistsSubqueryPlan(matchPlan, type)
-                    : new OclCypherPlan.CountSubqueryComparisonPlan(matchPlan, operator, literal, type);
+                    ? OclCypherQueryModel.notExistsSubquery(matchPlan, type)
+                    : OclCypherQueryModel.countSubqueryComparison(matchPlan, operator, literal, type);
             default -> throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.UNSUPPORTED_COUNT_OPERATOR,
                     "Unsupported count operator: " + operator);

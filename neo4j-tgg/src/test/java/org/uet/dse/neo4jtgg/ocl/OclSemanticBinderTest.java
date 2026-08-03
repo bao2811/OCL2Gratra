@@ -537,6 +537,139 @@ class OclSemanticBinderTest {
     }
 
     @Test
+    void rejectsIfExpressionWithNonBooleanCondition() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                """, "context Person inv BadIfCondition: if self.name then self.age else 0 endif > 0"));
+
+        assertTrue(failure.getMessage().contains("if condition must be Boolean"));
+    }
+
+    @Test
+    void rejectsIfExpressionWithIncompatibleBranches() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                """, "context Person inv BadIfBranches: (if self.age >= 18 then self.name else self.age endif).isDefined()"));
+
+        assertTrue(failure.getMessage().contains("if branches must have compatible types"));
+    }
+
+    @Test
+    void rejectsNotWithNonBooleanOperand() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    name : String
+                end
+                """, "context Person inv BadNot: not self.name"));
+
+        assertTrue(failure.getMessage().contains("requires Boolean scalar"));
+    }
+
+    @Test
+    void rejectsBooleanBinaryOperatorWithNonBooleanOperand() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                """, "context Person inv BadAnd: self.name = 'Lisa' and self.age"));
+
+        assertTrue(failure.getMessage().contains("requires Boolean scalar"));
+    }
+
+    @Test
+    void rejectsArithmeticOperatorWithNonNumericOperand() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    name : String
+                end
+                """, "context Person inv BadPlus: self.name + 1 > 0"));
+
+        assertTrue(failure.getMessage().contains("requires Integer or Real scalar"));
+    }
+
+    @Test
+    void rejectsOrderingOperatorWithNonNumericOperand() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    name : String
+                end
+                """, "context Person inv BadOrdering: self.name > 'A'"));
+
+        assertTrue(failure.getMessage().contains("requires Integer or Real scalar"));
+    }
+
+    @Test
+    void rejectsEqualityOperatorWithIncompatibleOperands() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                    name : String
+                end
+                """, "context Person inv BadEquality: self.name = self.age"));
+
+        assertTrue(failure.getMessage().contains("requires compatible operand types"));
+    }
+
+    @Test
+    void rejectsPredicateIteratorWithNonBooleanBody() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[1] role family
+                    Person[*] role children
+                end
+                """, "context Family inv BadExistsBody: self.children->exists(c | c.name)"));
+
+        assertTrue(failure.getMessage().contains("requires Boolean scalar"));
+    }
+
+    @Test
+    void rejectsSelectIteratorWithNonBooleanBody() {
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Family
+                end
+                class Person
+                attributes
+                    name : String
+                end
+                association FamilyChildren between
+                    Family[1] role family
+                    Person[*] role children
+                end
+                """, "context Family inv BadSelectBody: self.children->select(c | c.name)->notEmpty()"));
+
+        assertTrue(failure.getMessage().contains("requires Boolean scalar"));
+    }
+
+    @Test
     void bindsLetExpressionIntoScopedVariable() {
         OclSemanticBinder.BoundContextInvariant bound = bind("""
                 model Demo
@@ -939,8 +1072,8 @@ class OclSemanticBinderTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """, "context Library inv ShelfLookup: self.book['A1']->notEmpty()");
 
@@ -962,8 +1095,8 @@ class OclSemanticBinderTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """, "context Library inv ShelfLookup: let shelf = self.defaultShelf in self.book[shelf]->notEmpty()");
 
@@ -986,8 +1119,8 @@ class OclSemanticBinderTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book
                 end
                 """, "context Library inv ShelfLookup: self.book[self.defaultShelf.concat('')]->notEmpty()");
 
@@ -1009,8 +1142,8 @@ class OclSemanticBinderTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : Shelf)
+                    Library[1] role library qualifier (shelf : Shelf)
+                    Book[*] role book
                 end
                 """, "context Library inv ShelfLookup: self.book[Shelf::A1]->notEmpty()");
 
@@ -1033,8 +1166,8 @@ class OclSemanticBinderTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : Shelf)
+                    Library[1] role library qualifier (shelf : Shelf)
+                    Book[*] role book
                 end
                 """, "context Library inv ShelfLookup: self.book[self.defaultShelf]->notEmpty()");
 

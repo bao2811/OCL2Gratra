@@ -36,6 +36,15 @@
             <version>5.7.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Test-only bridge to the exact Neo4j Cypher 5 parser used by the
+             machine-verification grammar/AST acceptance checks.  The
+             production compiler still renders Cypher text directly. -->
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>cypher-parser-factory</artifactId>
+            <version>2026.06.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

@@ -11,14 +11,28 @@ import java.util.*;
 public class ExpressionBinder {
     private String modelName;
     private final Deque<Set<String>> scopeStack = new ArrayDeque<>();
+    private final Map<String, String> variableClassNames = new HashMap<>();
     private Neo4jRepository neo4jRepository;
     public ExpressionBinder(String modelName) {
         this(modelName, List.of());
     }
 
     public ExpressionBinder(String modelName, Collection<String> predefinedLocalVariables) {
+        this(modelName, predefinedLocalVariables, Map.of());
+    }
+
+    public ExpressionBinder(String modelName, Map<String, String> predefinedVariableClassNames) {
+        this(modelName, List.of(), predefinedVariableClassNames);
+    }
+
+    public ExpressionBinder(String modelName,
+                            Collection<String> predefinedLocalVariables,
+                            Map<String, String> predefinedVariableClassNames) {
         this.neo4jRepository = new Neo4jRepository(modelName);
         this.modelName = modelName;
+        if (predefinedVariableClassNames != null) {
+            this.variableClassNames.putAll(predefinedVariableClassNames);
+        }
         Set<String> initialScope = new HashSet<>();
         if (predefinedLocalVariables != null) {
             initialScope.addAll(predefinedLocalVariables);
@@ -59,10 +73,14 @@ public class ExpressionBinder {
             String varName = ((ASTVar) node).name;
 
             if (varName.equals("self") || isLocalVar(varName)) {
-                return new VariableExpression(varName);
+                VariableExpression variable = new VariableExpression(varName);
+                variable.setClassName(variableClassNames.get(varName));
+                return variable;
             }
             if (isLocalVar(varName)) {
-                return new VariableExpression(varName);
+                VariableExpression variable = new VariableExpression(varName);
+                variable.setClassName(variableClassNames.get(varName));
+                return variable;
             }
 
             if (neo4jRepository.checkClassExistsInDb(varName)) {

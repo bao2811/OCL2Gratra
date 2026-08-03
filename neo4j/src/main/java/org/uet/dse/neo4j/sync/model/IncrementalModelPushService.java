@@ -113,7 +113,7 @@ public class IncrementalModelPushService extends CoreModelPushService implements
         } else if (assoc instanceof MAssociationClass) {
           repo.createAssociationClassStructure((MAssociationClass) assoc, modelApi.getModel().name());
         } else {
-          repo.createAssociationEdge(assoc);
+          repo.createAssociationEdge(assoc, modelApi.getModel().name());
         }
       }
     }

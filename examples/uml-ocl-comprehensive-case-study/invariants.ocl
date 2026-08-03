@@ -1,0 +1,93 @@
+context Person inv Adult:
+  self.age >= 18
+
+context Person inv WorkingAge:
+  self.age <= 65
+
+context Person inv NonBlankName:
+  self.name <> ''
+
+context Person inv HighRating:
+  self.rating >= 4.0
+
+context Person inv ActiveOrAdult:
+  self.active or self.age >= 18
+
+context Person inv ActiveXorAdult:
+  self.active xor self.age >= 18
+
+context Person inv ArithmeticBoundary:
+  self.age + 1 > 18 and self.age * 2 / 2 = self.age
+
+context Person inv LetAdult:
+  let threshold = 18 in self.age >= threshold
+
+context Person inv SetAgeEqualsEighteen:
+  Set{self.age} = Set{18}
+
+context Person inv NumericSetMembership:
+  Set{self.age}->union(Set{18.0})->includes(18)
+
+context Person inv SeniorKind:
+  if self.age >= 65 then self.oclIsKindOf(Manager) else true endif
+
+context Person inv ManagerCastLevel:
+  self.oclAsType(Manager).level > 0
+
+context Person inv HasDepartment:
+  self.department->notEmpty()
+
+context Employee inv PositiveSalary:
+  self.salary > 0.0
+
+context Employee inv ManagerCastFromEmployee:
+  self.oclAsType(Manager).level > 0
+
+context Manager inv SeniorLevel:
+  self.level >= 3
+
+context Organization inv HasDepartments:
+  self.department->notEmpty()
+
+context Organization inv HasManagedDepartment:
+  self.department->exists(d | d.manager->notEmpty())
+
+context Organization inv SeesBothManagers:
+  Manager.allInstances()->size() = 2
+
+context Department inv HasStaff:
+  self.staff->notEmpty()
+
+context Department inv AllStaffAdults:
+  self.staff->forAll(p | p.age >= 18)
+
+context Department inv UniqueStaffNames:
+  self.staff->isUnique(p | p.name)
+
+context Department inv HasMinimumWitness:
+  self.staff->exists(p | self.staff->forAll(q | q.age >= p.age))
+
+context Department inv ShadowedSelection:
+  self.staff->exists(p | self.staff->select(p | p.age >= 18)->includes(p))
+
+context Department inv DistinctProjectionCardinality:
+  self.staff->collect(p | p.name)->size() = self.staff->size()
+
+context Department inv AdultPartitionEquality:
+  self.staff->select(p | p.age < 18)
+    ->union(self.staff->reject(p | p.age < 18)) = self.staff
+
+context Department inv AgeIntersection:
+  self.staff->collect(p | p.age)->intersection(Set{18,30})->notEmpty()
+
+context Department inv DisjointAgePartitions:
+  self.staff->select(p | p.age < 18)
+    ->excludesAll(self.staff->select(p | p.age >= 18))
+
+context Department inv ActiveBranchHasStaff:
+  (if self.active then self.staff
+   else self.staff->select(p | p.age < 0) endif)->notEmpty()
+
+context Department inv ManagerPolicy:
+  if self.active then self.manager->notEmpty()
+  else self.manager->isEmpty() endif

@@ -53,7 +53,52 @@ public final class ScenarioSupport {
 
     public static void resetDatabase() {
         try (Session session = Neo4jDriverManager.getInstance().openSession()) {
-            session.run("MATCH (n) DETACH DELETE n").consume();
+            while (true) {
+                long deleted = session.run("""
+                        MATCH (n)
+                        WITH n LIMIT 500
+                        DETACH DELETE n
+                        RETURN count(n) AS deleted
+                        """).single().get("deleted").asLong();
+                if (deleted == 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    public static void ensureBenchmarkIndexes() {
+        ensureBenchmarkCoreIndexes();
+        ensureBenchmarkValidationIndexes();
+    }
+
+    public static void ensureBenchmarkCoreIndexes() {
+        try (Session session = Neo4jDriverManager.getInstance().openSession()) {
+            session.run("CREATE INDEX benchmark_manage_model_name IF NOT EXISTS FOR (n:ManageModel) ON (n.name)").consume();
+            session.run("CREATE INDEX benchmark_meta_node_name IF NOT EXISTS FOR (n:MetaNode) ON (n.name)").consume();
+            session.run("CREATE INDEX benchmark_class_name IF NOT EXISTS FOR (n:Class) ON (n.name)").consume();
+            session.run("CREATE INDEX benchmark_attribute_name IF NOT EXISTS FOR (n:Attribute) ON (n.name)").consume();
+            session.run("CREATE INDEX benchmark_object_use_id IF NOT EXISTS FOR (n:Object) ON (n.use_id)").consume();
+        }
+    }
+
+    public static void ensureBenchmarkValidationIndexes() {
+        try (Session session = Neo4jDriverManager.getInstance().openSession()) {
+            session.run("CREATE INDEX benchmark_attribute_value_name IF NOT EXISTS FOR (n:AttributeValue) ON (n.name)").consume();
+            tryCreateRelationshipIndex(session,
+                    "CREATE INDEX benchmark_link_name IF NOT EXISTS FOR ()-[r]-() ON (r.name)");
+            tryCreateRelationshipIndex(session,
+                    "CREATE INDEX benchmark_link_source_role IF NOT EXISTS FOR ()-[r]-() ON (r.sourceRole)");
+            tryCreateRelationshipIndex(session,
+                    "CREATE INDEX benchmark_link_target_role IF NOT EXISTS FOR ()-[r]-() ON (r.targetRole)");
+        }
+    }
+
+    private static void tryCreateRelationshipIndex(Session session, String cypher) {
+        try {
+            session.run(cypher).consume();
+        } catch (RuntimeException ignored) {
+            // Relationship property indexes are an optimization only; older Neo4j versions may reject them.
         }
     }
 

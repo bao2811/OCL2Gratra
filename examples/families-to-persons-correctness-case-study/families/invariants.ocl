@@ -1,0 +1,35 @@
+context FamilyRegister inv ExactlyTwoFamilies:
+  self.families->size() = 2
+
+context Family inv Named:
+  self.name <> ''
+
+context Family inv HasFather:
+  self.father->notEmpty()
+
+context Family inv HasMother:
+  self.mother->notEmpty()
+
+context Family inv AtLeastThreeMembers:
+  self.father->union(self.mother)
+    ->union(self.sons)->union(self.daughters)->size() >= 3
+
+context Family inv UniqueMemberNames:
+  let members = self.father->union(self.mother)
+    ->union(self.sons)->union(self.daughters)
+  in members->isUnique(m | m.name)
+
+context Family inv MembersNamed:
+  let members = self.father->union(self.mother)
+    ->union(self.sons)->union(self.daughters)
+  in members->forAll(m | m.name <> '')
+
+context FamilyMember inv Named:
+  self.name <> ''
+
+context Family inv SimpsonFather:
+  self.name = 'Simpson' implies
+    self.father->exists(p | p.name = 'Homer')
+
+context Family inv FlandersHasTwoSons:
+  self.name = 'Flanders' implies self.sons->size() = 2

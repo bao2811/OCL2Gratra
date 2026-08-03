@@ -1,0 +1,87 @@
+-- Boundary-oriented M1 fixture with empty, singleton, and multi-valued navigation.
+!new Organization('org_main')
+!new Organization('org_empty')
+!set org_main.name := 'Main'
+!set org_empty.name := 'Empty'
+
+!new Department('engineering')
+!new Department('lab')
+!new Department('empty_dept')
+!set engineering.code := 'ENG'
+!set engineering.budget := 100000.0
+!set engineering.active := true
+!set lab.code := 'LAB'
+!set lab.budget := 0.0
+!set lab.active := false
+!set empty_dept.code := 'EMPTY'
+!set empty_dept.budget := 10.0
+!set empty_dept.active := true
+
+!new Person('minor')
+!set minor.name := 'Alex'
+!set minor.age := 17
+!set minor.rating := 4.5
+!set minor.active := true
+
+!new Employee('boundary')
+!set boundary.name := 'Alex'
+!set boundary.age := 18
+!set boundary.rating := 4.0
+!set boundary.active := true
+!set boundary.salary := 1000.0
+
+!new Employee('adult')
+!set adult.name := 'Bea'
+!set adult.age := 30
+!set adult.rating := 3.5
+!set adult.active := false
+!set adult.salary := 5000.0
+
+!new Manager('senior')
+!set senior.name := 'Cy'
+!set senior.age := 70
+!set senior.rating := 5.0
+!set senior.active := true
+!set senior.salary := -1.0
+!set senior.level := 2
+
+!new Manager('lead')
+!set lead.name := 'Dee'
+!set lead.age := 45
+!set lead.rating := 4.8
+!set lead.active := true
+!set lead.salary := 7000.0
+!set lead.level := 4
+
+!new Employee('old_employee')
+!set old_employee.name := 'Eve'
+!set old_employee.age := 68
+!set old_employee.rating := 2.5
+!set old_employee.active := true
+!set old_employee.salary := 2000.0
+
+!new Person('blank')
+!set blank.name := ''
+!set blank.age := 16
+!set blank.rating := 1.0
+!set blank.active := false
+
+!new Person('orphan')
+!set orphan.name := 'Dana'
+!set orphan.age := 40
+!set orphan.rating := 3.0
+!set orphan.active := true
+
+!insert (org_main,engineering) into OrganizationDepartments
+!insert (org_main,lab) into OrganizationDepartments
+!insert (org_main,empty_dept) into OrganizationDepartments
+
+!insert (engineering,minor) into DepartmentStaff
+!insert (engineering,boundary) into DepartmentStaff
+!insert (engineering,adult) into DepartmentStaff
+!insert (engineering,senior) into DepartmentStaff
+!insert (engineering,lead) into DepartmentStaff
+!insert (engineering,old_employee) into DepartmentStaff
+!insert (lab,adult) into DepartmentStaff
+
+!insert (engineering,senior) into DepartmentManagement
