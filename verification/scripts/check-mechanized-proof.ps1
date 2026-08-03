@@ -24,7 +24,7 @@ $registry = (Read-Utf8 $RegistryPath) | ConvertFrom-Json
 $registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $proofPath = Join-Path $MechanizedPath 'Ocl2CypherProof.lean'
 $toolchainPath = Join-Path $MechanizedPath 'lean-toolchain'
-$lakefilePath = Join-Path $MechanizedPath 'lakefile.toml'
+$lakefilePath = Join-Path $MechanizedPath 'lakefile.lean'
 $proof = Read-Utf8 $proofPath
 $toolchain = (Read-Utf8 $toolchainPath).Trim()
 [void](Read-Utf8 $lakefilePath)

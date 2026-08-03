@@ -207,7 +207,7 @@
     "checkerPath": "verification/scripts/check-mechanized-proof.ps1",
     "mutationCheckerPath": "verification/scripts/check-mechanized-proof-mutations.ps1",
     "projectPaths": [
-      "verification/lean/lakefile.toml",
+      "verification/lean/lakefile.lean",
       "verification/lean/lean-toolchain",
       "verification/lean/lake-manifest.json"
     ],

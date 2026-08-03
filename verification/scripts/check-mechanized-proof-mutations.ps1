@@ -39,7 +39,7 @@ function New-Case([string]$Name) {
     $casePath = Join-Path $mutationRoot $Name
     $mechanizedCase = Join-Path $casePath 'mechanized'
     [void][System.IO.Directory]::CreateDirectory($mechanizedCase)
-    foreach ($name in @('Ocl2CypherProof.lean','lean-toolchain','lakefile.toml','lake-manifest.json')) {
+    foreach ($name in @('Ocl2CypherProof.lean','lean-toolchain','lakefile.lean','lake-manifest.json')) {
         Copy-Item -LiteralPath (Join-Path $MechanizedPath $name) -Destination (Join-Path $mechanizedCase $name)
     }
     return [pscustomobject]@{

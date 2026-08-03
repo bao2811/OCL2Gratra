@@ -345,7 +345,7 @@ if ($null -eq $registry.mechanization) {
         }
     }
     Test-ExactSequence @($registry.mechanization.projectPaths) @(
-        'verification/lean/lakefile.toml',
+        'verification/lean/lakefile.lean',
         'verification/lean/lean-toolchain',
         'verification/lean/lake-manifest.json'
     ) 'Registry mechanization project files'

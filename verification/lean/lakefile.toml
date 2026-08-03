@@ -1,9 +1,0 @@
-# Keep the Lake package name identical to the root Lean library. The bundled
-# leanchecker resolves package oleans by this name.
-name = "Ocl2CypherProof"
-version = "0.1.0"
-defaultTargets = ["Ocl2CypherProof"]
-
-[[lean_lib]]
-name = "Ocl2CypherProof"
-roots = ["Ocl2CypherProof"]
