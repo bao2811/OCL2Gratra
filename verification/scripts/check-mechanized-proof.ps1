@@ -19,9 +19,20 @@ function Read-Utf8([string]$Path) {
     return [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path), [System.Text.Encoding]::UTF8)
 }
 
+function Get-Utf8LfSha256([string]$Path) {
+    $canonical = (Read-Utf8 $Path).Replace("`r`n", "`n").Replace("`r", "`n")
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($canonical))
+        return ([System.BitConverter]::ToString($digest)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $registry = (Read-Utf8 $RegistryPath) | ConvertFrom-Json
-$registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$registryHash = Get-Utf8LfSha256 $RegistryPath
 $proofPath = Join-Path $MechanizedPath 'Ocl2CypherProof.lean'
 $toolchainPath = Join-Path $MechanizedPath 'lean-toolchain'
 $lakefilePath = Join-Path $MechanizedPath 'lakefile.lean'

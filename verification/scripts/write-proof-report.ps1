@@ -24,12 +24,27 @@ function Read-Json([string]$Path) {
     ) | ConvertFrom-Json
 }
 
+function Get-Utf8LfSha256([string]$Path) {
+    $text = [System.IO.File]::ReadAllText(
+        (Resolve-Path -LiteralPath $Path),
+        [System.Text.Encoding]::UTF8
+    )
+    $canonical = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($canonical))
+        return ([System.BitConverter]::ToString($digest)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 $registry = Read-Json $RegistryPath
 if ([string]::IsNullOrWhiteSpace($EvidencePath)) {
     $EvidencePath = Join-Path $workspace ([string]$registry.artifactPolicy.baselineEvidencePath)
 }
 $evidence = Read-Json $EvidencePath
-$registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$registryHash = Get-Utf8LfSha256 $RegistryPath
 if ([string]$evidence.schema -cne 'proof-evidence.schema.v1') {
     throw "Baseline evidence schema drift: $($evidence.schema)"
 }

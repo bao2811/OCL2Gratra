@@ -18,6 +18,17 @@ function Read-Text([string]$Path) {
     return [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
 }
 
+function Get-Utf8LfSha256([string]$Path) {
+    $canonical = (Read-Text $Path).Replace("`r`n", "`n").Replace("`r", "`n")
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($canonical))
+        return ([System.BitConverter]::ToString($digest)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 function Write-Text([string]$Path, [string]$Value) {
     [System.IO.File]::WriteAllText($Path, $Value, $utf8NoBom)
 }
@@ -93,7 +104,7 @@ try {
 
     $case = New-Case 'stale-registry'
     $text = Read-Text $case.Proof
-    $registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $registryHash = Get-Utf8LfSha256 $RegistryPath
     Write-Text $case.Proof ($text.Replace($registryHash, (('0' * 64) -join '')))
     Assert-Killed 'stale proof registry hash' $case 'Lean proof has stale registry SHA-256'
 

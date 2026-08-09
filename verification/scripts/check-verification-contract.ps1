@@ -25,6 +25,17 @@ function Read-Utf8([string]$Path) {
     )
 }
 
+function Get-Utf8LfSha256([string]$Path) {
+    $canonical = (Read-Utf8 $Path).Replace("`r`n", "`n").Replace("`r", "`n")
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($canonical))
+        return ([System.BitConverter]::ToString($digest)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 function Test-ExactSequence([object[]]$Actual, [object[]]$Expected, [string]$Label) {
     $actualValues = @($Actual | ForEach-Object { [string]$_ })
     $expectedValues = @($Expected | ForEach-Object { [string]$_ })
@@ -109,7 +120,7 @@ try {
     Write-Error $_
     exit 1
 }
-$registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$registryHash = Get-Utf8LfSha256 $RegistryPath
 
 if ([int]$registry.registrySchemaVersion -ne 4) {
     Add-CheckError "Registry: expected schema version 4, actual '$($registry.registrySchemaVersion)'"
