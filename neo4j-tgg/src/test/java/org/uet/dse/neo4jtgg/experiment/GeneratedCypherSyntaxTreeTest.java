@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class GeneratedCypherSyntaxTreeTest {
     @Test
     void normalizesGeneratedQueryAndNestedExpressionSubqueries() {
-        String query = "MATCH (self:Object)-[:ObjectInstanceOf]->(cls {classKey:$p1}) "
+        String query = "MATCH (self:Object)-[:ObjectInstanceOf]->(cls:UmlClass {classKey:$p1}) "
                 + "WHERE EXISTS { MATCH (self)-[r]->(target:Object) WHERE r.associationKey = $p2 } "
                 + "AND COUNT { UNWIND [1, 2] AS x RETURN DISTINCT x AS value } >= 1 "
                 + "RETURN DISTINCT self.use_id AS useId";

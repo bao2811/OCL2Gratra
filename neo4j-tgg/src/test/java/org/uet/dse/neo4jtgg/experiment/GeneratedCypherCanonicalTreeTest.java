@@ -40,7 +40,7 @@ class GeneratedCypherCanonicalTreeTest {
         var renamed = tree("MATCH (object:Object {classKey:$p1}) RETURN object AS result");
         assertEquals(expected.document(), renamed.document());
         assertNotEquals(expected.document(),
-                tree("MATCH (object:Class {classKey:$p1}) RETURN object AS result").document());
+                tree("MATCH (object:UmlClass {classKey:$p1}) RETURN object AS result").document());
         assertNotEquals(expected.document(),
                 tree("MATCH (object:Object {name:$p1}) RETURN object AS result").document());
     }

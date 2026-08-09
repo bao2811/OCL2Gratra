@@ -71,7 +71,7 @@ class BottomSafeReceiverRealNeo4jTest {
         String attributeKey = CanonicalGraphEncoding.attributeKey(modelName, "Person", "age");
         String p0Key = CanonicalGraphEncoding.objectKey(modelName, "p0");
         String p2Key = CanonicalGraphEncoding.objectKey(modelName, "p2");
-        session.run("CREATE (c:Class {modelKey:$modelKey,classKey:$classKey}) "
+        session.run("CREATE (c:UmlClass {modelKey:$modelKey,classKey:$classKey}) "
                         + "CREATE (p0:Object {modelKey:$modelKey,objectKey:$p0Key,use_id:'p0'})-[:ObjectInstanceOf]->(c) "
                         + "CREATE (p2:Object {modelKey:$modelKey,objectKey:$p2Key,use_id:'p2'})-[:ObjectInstanceOf]->(c) "
                         + "CREATE (a0:AttributeValue {modelKey:$modelKey,attributeKey:$attributeKey,value:'0'}) "

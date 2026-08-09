@@ -30,6 +30,24 @@ if ([string]::IsNullOrWhiteSpace($EvidencePath)) {
 }
 $evidence = Read-Json $EvidencePath
 $registryHash = (Get-FileHash -LiteralPath $RegistryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ([string]$evidence.schema -cne 'proof-evidence.schema.v1') {
+    throw "Baseline evidence schema drift: $($evidence.schema)"
+}
+if ([string]$evidence.proofContract -cne [string]$registry.version) {
+    throw "Baseline evidence contract drift: expected $($registry.version), actual $($evidence.proofContract)"
+}
+if ($GateResult -eq 'PASS' -and [bool]$evidence.gitDirtyAtCapture) {
+    throw 'A PASS report requires baseline evidence captured from a clean Git worktree'
+}
+if ([int]$evidence.machineContract.registrySchemaVersion -ne [int]$registry.registrySchemaVersion -or
+    [int]$evidence.machineContract.theorems -ne @($registry.theorems).Count -or
+    [int]$evidence.machineContract.proofObligations -ne @($registry.proofObligations).Count -or
+    [int]$evidence.machineContract.admittedConstructors -ne @($registry.constructorCoverage.features).Count -or
+    [int]$evidence.machineContract.planConstructors -ne @($registry.planConstructorCoverage.constructors).Count -or
+    [int]$evidence.machineContract.javaIrConstructors -ne @($registry.javaIrRefinementCoverage.constructors).Count -or
+    [int]$evidence.lean.requiredTheorems -ne @($registry.mechanization.requiredTheorems).Count) {
+    throw 'Baseline evidence counters do not match the current proof registry'
+}
 $blockingClassifications = @($registry.claimPolicy.blockingClassifications | ForEach-Object { [string]$_ })
 $blockingStatuses = @($registry.claimPolicy.blockingStatuses | ForEach-Object { [string]$_ })
 $blocking = @($registry.proofObligations | Where-Object {
@@ -43,6 +61,13 @@ try {
     $revision = @(& git rev-parse HEAD 2>$null)
     if ($LASTEXITCODE -eq 0 -and $revision.Count -gt 0) {
         $sourceRevision = ([string]$revision[0]).Trim()
+    }
+    if ([string]$evidence.sourceRevision -notmatch '^[0-9a-f]{40}$') {
+        throw "Baseline evidence sourceRevision is invalid: $($evidence.sourceRevision)"
+    }
+    & git merge-base --is-ancestor ([string]$evidence.sourceRevision) HEAD
+    if ($LASTEXITCODE -ne 0) {
+        throw "Baseline evidence revision is not reachable from HEAD: $($evidence.sourceRevision)"
     }
 } finally {
     Pop-Location
@@ -108,6 +133,8 @@ $report = [ordered]@{
     publication = [ordered]@{
         paperPublication = [string]$registry.artifactPolicy.paperPublication
         includedInMachineGate = $false
+        sourceFormat = 'local-ignored-tex'
+        ciArtifactIsCorrectnessEvidence = $false
     }
 }
 

@@ -117,8 +117,8 @@ if ([int]$registry.registrySchemaVersion -ne 4) {
 Test-ExactSequence @($registry.assumptions.id) @('A1','A2','A3','A4','A5','A6','A7','A8','A9') 'Registry assumptions'
 Test-ExactSequence @($registry.scopeLemmas.id) @('M1','M2','M3','M3a','M4','M5') 'Registry scope lemmas'
 Test-ExactSequence @($registry.theorems.id) @('PC-T0','PC-T1','PC-T2','PC-T3','PC-T4','PC-T5','PC-T6') 'Registry theorems'
-Test-ExactSequence @($registry.semanticFunctions.id) @(1..28 | ForEach-Object { 'SF-{0:d2}' -f $_ }) 'Registry semantic functions'
-Test-ExactSequence @($registry.proofObligations.id) @(1..21 | ForEach-Object { 'PO-{0:d2}' -f $_ }) 'Registry proof obligations'
+Test-ExactSequence @($registry.semanticFunctions.id) @(1..29 | ForEach-Object { 'SF-{0:d2}' -f $_ }) 'Registry semantic functions'
+Test-ExactSequence @($registry.proofObligations.id) @(1..24 | ForEach-Object { 'PO-{0:d2}' -f $_ }) 'Registry proof obligations'
 Test-ExactSequence @($registry.implementationVocabulary.term) @(
     'ObjectInstanceOf','InstanceOf','classKey','attributeKey','associationKey',
     'sourceQualifiers','targetQualifiers','__oclBottom'
@@ -294,6 +294,34 @@ if ($null -eq $javaIrMatrixPath -or -not (Test-Path -LiteralPath $javaIrMatrixPa
     }
 }
 
+$boundVaMatrixRelative = ([string]$registry.boundVaRefinementCoverage.matrixPath).Replace('\','/')
+[void]$trackedPaths.Add($boundVaMatrixRelative)
+$boundVaMatrixPath = Resolve-WorkspacePath $boundVaMatrixRelative 'Bound-VA refinement matrix'
+if ($null -eq $boundVaMatrixPath -or -not (Test-Path -LiteralPath $boundVaMatrixPath -PathType Leaf)) {
+    Add-CheckError "Bound-VA refinement matrix is missing: $boundVaMatrixRelative"
+} else {
+    $boundVaRows = @((Read-Utf8 $boundVaMatrixPath) | ConvertFrom-Csv)
+    Test-ExactSequence @($boundVaRows.bound_constructor) @($registry.boundVaRefinementCoverage.boundConstructors) `
+        'Bound-VA refinement bound-constructor registry/matrix'
+    $matrixVaConstructors = @($boundVaRows | ForEach-Object {
+        @(([string]$_.va_constructors).Split('|'))
+    })
+    Test-ExactSequence $matrixVaConstructors @($registry.boundVaRefinementCoverage.vaConstructors) `
+        'Bound-VA refinement VA-constructor registry/matrix'
+    $actualColumns = if ($boundVaRows.Count -gt 0) {
+        @($boundVaRows[0].PSObject.Properties.Name)
+    } else { @() }
+    Test-ExactSequence $actualColumns @($registry.boundVaRefinementCoverage.requiredColumns) `
+        'Bound-VA refinement matrix columns'
+    foreach ($row in $boundVaRows) {
+        foreach ($column in @($registry.boundVaRefinementCoverage.requiredColumns)) {
+            if ([string]::IsNullOrWhiteSpace([string]$row.$column)) {
+                Add-CheckError "Bound-VA refinement row '$($row.bound_constructor)' has empty column '$column'"
+            }
+        }
+    }
+}
+
 foreach ($vocabulary in @($registry.implementationVocabulary)) {
     $relativePath = ([string]$vocabulary.path).Replace('\','/')
     [void]$trackedPaths.Add($relativePath)
@@ -313,13 +341,15 @@ foreach ($vocabulary in @($registry.implementationVocabulary)) {
 
 $expectedMechanizationTheorems = @(
     'image_reflects_membership','image_preserves_subset','exists_over_image','forall_over_image',
+    'lift1_source_bound','lift1_bound_validation','lift1_present','lift1_absent','lift1_consumer_agreement',
     'encodeValue_injective','implies_rewrite','forall_rewrite','notEmpty_rewrite',
     'normalize_preserves_eval','normalize_reaches_redex_free','implies_root_strictly_decreases',
     'all_rewrite_semantics','normalize_reaches_normal_form','normalize_idempotent',
     'root_rewrite_strictly_decreases','typed_rewrite_preserves_type',
     'scoped_rename_preserves_binder_boundary','named_to_scoped_semantic_correspondence',
     'java_capture_guard_sound','java_guarded_rename_preserves_scoped_semantics',
-    'structural_preservation','java_ir_eval_refinement','theorem6_forward','theorem6_backward','theorem6_at_object'
+    'structural_preservation','java_ir_eval_refinement','bound_va_abstraction','pa_comp',
+    'theorem6_forward','theorem6_backward','theorem6_at_object'
 )
 if ($null -eq $registry.mechanization) {
     Add-CheckError 'Registry: missing mechanization contract'
@@ -331,7 +361,8 @@ if ($null -eq $registry.mechanization) {
     }
     Test-ExactSequence @($registry.mechanization.requiredTheorems) $expectedMechanizationTheorems 'Registry mechanization theorems'
     Test-ExactSequence @($registry.mechanization.coverage | ForEach-Object { "$($_.id):$($_.status)" }) @(
-        'MK-FINITE-SET:mechanized','MK-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:mechanized','MK-T6:mechanized'
+        'MK-FINITE-SET:mechanized','MK-LIFT1:mechanized','MK-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:mechanized',
+        'MK-BOUND-VA:mechanized','MK-PA-COMP:mechanized','MK-T6:mechanized'
     ) 'Registry mechanization coverage'
     if (@($registry.mechanization.openScope).Count -eq 0) {
         Add-CheckError 'Mechanization contract must state its open scope'
@@ -444,7 +475,7 @@ if ($null -eq $registry.artifactPolicy -or
     [string]$registry.artifactPolicy.kind -cne 'machine-verification' -or
     [string]$registry.artifactPolicy.reportSchema -cne 'proof-report.schema.v1' -or
     [string]$registry.artifactPolicy.paperPublication -cne 'external-local-only') {
-    Add-CheckError 'Artifact policy must separate machine verification from local paper publication'
+    Add-CheckError 'Artifact policy must keep local paper sources outside GitHub machine correctness evidence'
 } else {
     $reportGenerator = ([string]$registry.artifactPolicy.reportGeneratorPath).Replace('\','/')
     [void]$trackedPaths.Add($reportGenerator)
@@ -501,4 +532,4 @@ if (-not [string]::IsNullOrWhiteSpace($ReportPath)) {
 }
 
 $trackedStatus = if ($RequireGitTracked) { 'checked' } else { 'skipped' }
-Write-Host "Machine verification contract PASS: contract=$($registry.version), schema=$($registry.registrySchemaVersion), theorems=$(@($registry.theorems).Count), obligations=$(@($registry.proofObligations).Count), constructors=$(@($registry.constructorCoverage.features).Count), planConstructors=$(@($registry.planConstructorCoverage.constructors).Count), javaIrConstructors=$(@($registry.javaIrRefinementCoverage.constructors).Count), vocabulary=$(@($registry.implementationVocabulary).Count), tracked=$trackedStatus."
+Write-Host "Machine verification contract PASS: contract=$($registry.version), schema=$($registry.registrySchemaVersion), theorems=$(@($registry.theorems).Count), obligations=$(@($registry.proofObligations).Count), constructors=$(@($registry.constructorCoverage.features).Count), planConstructors=$(@($registry.planConstructorCoverage.constructors).Count), javaIrConstructors=$(@($registry.javaIrRefinementCoverage.constructors).Count), boundConstructors=$(@($registry.boundVaRefinementCoverage.boundConstructors).Count), semanticIrConstructors=$(@($registry.boundVaRefinementCoverage.vaConstructors).Count), vocabulary=$(@($registry.implementationVocabulary).Count), tracked=$trackedStatus."

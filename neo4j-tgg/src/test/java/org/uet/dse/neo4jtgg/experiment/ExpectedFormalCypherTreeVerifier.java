@@ -48,7 +48,7 @@ final class ExpectedFormalCypherTreeVerifier {
         OclCypherRenderer.RenderedInvariant rendered = renderer.renderInvariant(invariant);
         ObservedTree observed = ObservedTree.parse(rendered.cypher());
         require(observed, invariant, "invariant wrapper", ast(AstKind.SINGLE_QUERY, AstKind.MATCH, AstKind.RETURN),
-                token("WHERE"), token("DISTINCT"), token("ObjectInstanceOf"), token("classKey"),
+                token("WHERE"), token("DISTINCT"), token("ObjectInstanceOf"), token("UmlClass"), token("classKey"),
                 token("use_id"), token("useId"), token("NOT"), token("coalesce"));
         return verifyExpression(invariant.predicate(), renderer);
     }
@@ -131,8 +131,8 @@ final class ExpectedFormalCypherTreeVerifier {
             return "if";
         }
         if (plan instanceof OclCypherPlan.LetPlan) {
-            expected.add(ast(AstKind.REDUCE_EXPRESSION));
-            expected.add(token("reduce"));
+            expected.add(ast(AstKind.LIST_COMPREHENSION, AstKind.FUNCTION_INVOCATION));
+            expected.add(token("head"));
             expected.add(token("IN"));
             expected.add(token("|"));
             return "let";
@@ -144,6 +144,23 @@ final class ExpectedFormalCypherTreeVerifier {
                 case "or" -> { expected.add(token("OR")); expected.add(token("coalesce")); }
                 case "xor" -> { expected.add(token("AND")); expected.add(token("OR")); expected.add(token("NOT")); }
                 case "implies" -> { expected.add(token("OR")); expected.add(token("NOT")); }
+                case "=" -> {
+                    expected.add(ast(AstKind.CASE_EXPRESSION));
+                    expected.add(sequence("CASE", "WHEN"));
+                    expected.add(token("IS"));
+                    expected.add(token("NULL"));
+                    expected.add(token("="));
+                    expected.add(token("coalesce"));
+                }
+                case "<>" -> {
+                    expected.add(ast(AstKind.CASE_EXPRESSION));
+                    expected.add(sequence("CASE", "WHEN"));
+                    expected.add(token("IS"));
+                    expected.add(token("NULL"));
+                    expected.add(token("="));
+                    expected.add(token("coalesce"));
+                    expected.add(token("NOT"));
+                }
                 default -> expected.add(token(value.operator()));
             }
             return value.operator();
@@ -222,7 +239,8 @@ final class ExpectedFormalCypherTreeVerifier {
         switch (operation) {
             case "allinstances" -> {
                 expected.add(ast(AstKind.COLLECT_EXPRESSION, AstKind.MATCH, AstKind.RETURN));
-                expected.add(token("ObjectInstanceOf")); expected.add(token("classKey")); expected.add(token("DISTINCT"));
+                expected.add(token("ObjectInstanceOf")); expected.add(token("UmlClass"));
+                expected.add(token("classKey")); expected.add(token("DISTINCT"));
                 expected.add(parameterSuffix("::class::" + value.source().type().typeName(), parameters));
             }
             case "split" -> function(expected, "split");
@@ -238,11 +256,13 @@ final class ExpectedFormalCypherTreeVerifier {
             case "tostring" -> function(expected, "toString");
             case "ocliskindof" -> {
                 expected.add(ast(AstKind.EXISTS_EXPRESSION, AstKind.WITH, AstKind.MATCH));
-                expected.add(token("objectKey")); expected.add(token("ObjectInstanceOf")); expected.add(token("classKey"));
+                expected.add(token("objectKey")); expected.add(token("ObjectInstanceOf"));
+                expected.add(token("UmlClass")); expected.add(token("classKey"));
             }
             case "oclastype" -> {
                 expected.add(ast(AstKind.COLLECT_EXPRESSION, AstKind.WITH, AstKind.MATCH, AstKind.RETURN));
-                expected.add(token("objectKey")); expected.add(token("ObjectInstanceOf")); expected.add(token("classKey"));
+                expected.add(token("objectKey")); expected.add(token("ObjectInstanceOf"));
+                expected.add(token("UmlClass")); expected.add(token("classKey"));
             }
             default -> throw new AssertionError("No formal method lowering rule for " + value.methodName());
         }

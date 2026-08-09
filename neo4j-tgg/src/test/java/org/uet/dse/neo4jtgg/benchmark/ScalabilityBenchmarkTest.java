@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.TransactionConfig;
@@ -16,12 +17,15 @@ import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
+import org.uet.dse.neo4jtgg.experiment.InstrumentedCompilationResult;
 import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
 import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 /**
- * Scalability benchmark: measures OCL compile time, IR evaluation time, and
- * generated-Cypher execution time at increasing model sizes.
+ * Legacy microbenchmark container. Certified compilation timing is retained,
+ * but the old real-graph branch is disabled because its unscoped cleanup and
+ * pre-canonical graph vocabulary are not research evidence. Use
+ * {@code ResearchScaleRealNeo4jTest} for the key-scoped canonical campaign.
  */
 class ScalabilityBenchmarkTest {
 
@@ -60,11 +64,11 @@ class ScalabilityBenchmarkTest {
         "context Company inv HasSenior: self.employee->exists(p | p.age > 50)",
         "context Company inv SeniorSelect: self.employee->select(p | p.age > 50)->notEmpty()",
         "context Company inv EmployeeCount: self.employee->size() >= 1",
-        "context Company inv NamedManager: self.manager.firstName.isDefined()",
+        "context Company inv CompanyNameNonEmpty: self.name <> ''",
         "context Person inv HasEmployer: self.employer->notEmpty()",
         "context Person inv AdultWorker: self.age >= 18 implies self.employer->notEmpty()",
         "context Company inv HighSalaryExists: self.employee->exists(e | e.salary > 5000)",
-        "context Company inv AllNamed: self.employee->forAll(e | e.firstName.isDefined())"
+        "context Company inv AllSalariesNonNegative: self.employee->forAll(e | e.salary >= 0)"
     };
 
     private static final String[] OCL_EXECUTION_EXPRESSIONS = {
@@ -76,7 +80,7 @@ class ScalabilityBenchmarkTest {
         "context Person inv HasEmployer: self.employer->notEmpty()",
         "context Person inv AdultWorker: self.age >= 18 implies self.employer->notEmpty()",
         "context Company inv HighSalaryExists: self.employee->exists(e | e.salary > 5000)",
-        "context Company inv AllNamed: self.employee->forAll(e | e.firstName.isDefined())"
+        "context Company inv AllSalariesNonNegative: self.employee->forAll(e | e.salary >= 0)"
     };
 
     @Test
@@ -90,7 +94,7 @@ class ScalabilityBenchmarkTest {
 
         // Warm up
         for (String ocl : OCL_EXPRESSIONS) {
-            compiler.compile(ocl);
+            compiler.compileInvariantInstrumented(ocl);
         }
 
         StringBuilder report = new StringBuilder();
@@ -99,16 +103,16 @@ class ScalabilityBenchmarkTest {
 
         for (String ocl : OCL_EXPRESSIONS) {
             long start = System.nanoTime();
-            CypherCompilationResult result = null;
+            InstrumentedCompilationResult result = null;
             int iterations = 100;
             for (int i = 0; i < iterations; i++) {
-                result = compiler.compile(ocl);
+                result = compiler.compileInvariantInstrumented(ocl);
             }
             long elapsed = (System.nanoTime() - start) / 1_000_000;
             double avg = (double) elapsed / iterations;
 
             String shortOcl = ocl.length() > 58 ? ocl.substring(0, 55) + "..." : ocl;
-            report.append(String.format("%-60s %10.2f %10s\n", shortOcl, avg, result.isSupported()));
+            report.append(String.format("%-60s %10.2f %10s\n", shortOcl, avg, result != null));
         }
 
         // Batch compilation benchmark
@@ -118,7 +122,7 @@ class ScalabilityBenchmarkTest {
             long start = System.nanoTime();
             for (int b = 0; b < batchSize; b++) {
                 for (String ocl : OCL_EXPRESSIONS) {
-                    compiler.compile(ocl);
+                    compiler.compileInvariantInstrumented(ocl);
                 }
             }
             long elapsed = (System.nanoTime() - start) / 1_000_000;
@@ -131,6 +135,7 @@ class ScalabilityBenchmarkTest {
     }
 
     @Test
+    @Disabled("Legacy unscoped/non-canonical graph benchmark; use ResearchScaleRealNeo4jTest")
     void benchmarkCypherExecutionAtScale() {
         if (!ensureNeo4jConnected()) {
             System.out.println("\n=== Cypher Execution Benchmark ===\n"
@@ -249,7 +254,7 @@ class ScalabilityBenchmarkTest {
         int companyCount = Math.max(1, objectCount / 5);
         int personCount = Math.max(1, objectCount - companyCount);
 
-        session.run("UNWIND $classes AS cls MERGE (:Class {name: cls})",
+        session.run("UNWIND $classes AS cls MERGE (:UmlClass {classKey: cls})",
                 Map.of("classes", List.of("Company", "Person"))).consume();
 
         List<Map<String, Object>> objects = new ArrayList<>(objectCount);
@@ -262,7 +267,7 @@ class ScalabilityBenchmarkTest {
 
         session.run("UNWIND $rows AS row "
                 + "MERGE (o {use_id: row.id}) "
-                + "MERGE (cls {name: row.cls}) "
+                + "MERGE (cls:UmlClass {classKey: row.cls}) "
                 + "MERGE (o)-[:ObjectInstanceOf]->(cls)",
                 Map.of("rows", objects)).consume();
 

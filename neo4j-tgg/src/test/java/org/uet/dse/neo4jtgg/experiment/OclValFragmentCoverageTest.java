@@ -10,6 +10,7 @@ import org.tzi.use.uml.mm.MClass;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.tzi.use.uml.ocl.expr.Expression;
+import org.tzi.use.uml.ocl.type.Type;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
 import org.uet.dse.neo4jtgg.ocl.OclTypeBinding;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
@@ -112,14 +113,22 @@ class OclValFragmentCoverageTest {
                 as(OclIr.CollectionOperation.class, navigation.validationAlgebra().predicate());
         as(OclIr.NavigationAccess.class, navVa.source());
 
-        InstrumentedCompilationResult singletonNavigation = compile("navigation reverse");
-        OclSemanticBinder.BoundProperty singletonAccess = as(
+        InstrumentedCompilationResult reverseNavigation = compile("navigation reverse");
+        OclSemanticBinder.BoundProperty reverseAccess = as(
                 OclSemanticBinder.BoundProperty.class,
                 as(OclSemanticBinder.BoundCollectionOperation.class,
-                        singletonNavigation.bound().expression()).source());
-        assertFalse(singletonAccess.isAttribute());
-        assertEquals(OclTypeBinding.CollectionKind.SET, singletonAccess.type().collectionKind(),
-                "Certified 1-valued navigation must use the theorem's singleton-Set lifting");
+                        reverseNavigation.bound().expression()).source());
+        assertFalse(reverseAccess.isAttribute());
+        assertTrue(reverseAccess.navigation().targetSingleValued());
+        assertFalse(reverseAccess.type().isCollection(),
+                "Binding must retain USE's scalar navigation type");
+        assertEquals("Company", reverseAccess.type().typeName());
+        OclSemanticBinder.BoundCollectionOperation reverseNotEmpty = as(
+                OclSemanticBinder.BoundCollectionOperation.class,
+                reverseNavigation.bound().expression());
+        assertEquals(OclTypeBinding.CollectionKind.SET,
+                reverseNotEmpty.sourceCollectionType().collectionKind(),
+                "The singleton/empty Set view belongs to the collection-operation boundary");
 
         InstrumentedCompilationResult collect = compile("collect scalar");
         OclSemanticBinder.BoundCollectionOperation includes = as(
@@ -130,6 +139,87 @@ class OclValFragmentCoverageTest {
         assertEquals(OclTypeBinding.CollectionKind.SET, collectIterator.type().collectionKind());
         assertTrue(as(OclSemanticBinder.BoundProperty.class,
                 collectIterator.body()).isAttribute());
+    }
+
+    @Test
+    void nativeUseAndBoundTreeAgreeOnToOneTypeBeforeCollectionView() throws Exception {
+        MClass person = fixtureModel.getClass("Person");
+        Symtable variables = new Symtable();
+        variables.add("self", person, null);
+        StringWriter diagnostics = new StringWriter();
+        Expression useNavigation = OCLCompiler.compileExpression(
+                fixtureModel, "self.employer", "to-one-type.ocl",
+                new PrintWriter(diagnostics, true), variables, person, false);
+        assertNotNull(useNavigation, diagnostics.toString());
+        assertFalse(useNavigation.type().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID));
+        assertEquals("Company", useNavigation.type().shortName());
+
+        InstrumentedCompilationResult compiled = compile("navigation reverse");
+        OclSemanticBinder.BoundCollectionOperation notEmpty = as(
+                OclSemanticBinder.BoundCollectionOperation.class,
+                compiled.bound().expression());
+        OclSemanticBinder.BoundProperty boundNavigation = as(
+                OclSemanticBinder.BoundProperty.class, notEmpty.source());
+        assertEquals("Company", boundNavigation.type().typeName());
+        assertFalse(boundNavigation.type().isCollection());
+        assertEquals(OclTypeBinding.CollectionKind.SET,
+                notEmpty.sourceCollectionType().collectionKind());
+    }
+
+    @Test
+    void toOneCollectionViewSurvivesBoundIrPlanAndDirectTextRendering() {
+        List<String> cases = List.of(
+                "context Person inv LiftAsSet: self.employer->asSet()->size() <= 1",
+                "context Person inv LiftSelect: "
+                        + "let selected = self.employer->asSet()->select(c | c.name <> '') "
+                        + "in selected = selected",
+                "context Person inv LiftSize: "
+                        + "let n = self.employer->size() in n <= 1 and n >= 0");
+
+        for (String source : cases) {
+            InstrumentedCompilationResult compiled = compiler.compileInvariantInstrumented(source);
+            assertTrue(compiled.cypher().contains("CASE WHEN head("), source + "\n" + compiled.cypher());
+            assertTrue(compiled.cypher().contains("THEN [] ELSE [head("), source + "\n" + compiled.cypher());
+            assertFalse(compiled.cypher().contains("size(head("), source + "\n" + compiled.cypher());
+            assertFalse(compiled.cypher().contains(" IN head("), source + "\n" + compiled.cypher());
+            PipelineRefinementVerifier.verify(compiled);
+            GeneratedCypherContractVerifier.verify(compiled, compiled.cypher(), compiled.parameters());
+        }
+    }
+
+    @Test
+    void nullLiteralHasInternalVoidTypeButInvariantRemainsBooleanInUseAndBoundTrees() throws Exception {
+        List<String> cases = List.of(
+                "context Person inv NullEqualsNull: null = null",
+                "context Person inv DefinedDiffersFromNull: 'defined' <> null");
+
+        for (String source : cases) {
+            InstrumentedCompilationResult compiled = compiler.compileInvariantInstrumented(source);
+            OclSemanticBinder.BoundBinary root = as(
+                    OclSemanticBinder.BoundBinary.class, compiled.bound().expression());
+            OclSemanticBinder.BoundLiteral nullLiteral = root.left() instanceof OclSemanticBinder.BoundLiteral
+                    && ((OclSemanticBinder.BoundLiteral) root.left()).value() == null
+                    ? (OclSemanticBinder.BoundLiteral) root.left()
+                    : as(OclSemanticBinder.BoundLiteral.class, root.right());
+
+            assertEquals("Void", nullLiteral.type().typeName(), source);
+            assertFalse(nullLiteral.type().isCollection(), source);
+            assertEquals("Boolean", root.type().typeName(), source);
+
+            var invariant = compiler.parseContextInvariants(source).get(0);
+            MClass contextClass = fixtureModel.getClass(invariant.className);
+            Symtable variables = new Symtable();
+            variables.add("self", contextClass, null);
+            StringWriter diagnostics = new StringWriter();
+            Expression useExpression = OCLCompiler.compileExpression(
+                    fixtureModel, expressionSource(source), invariant.invName + ".ocl",
+                    new PrintWriter(diagnostics, true), variables, contextClass, false);
+            assertNotNull(useExpression, diagnostics.toString());
+            assertTrue(useExpression.type().isTypeOfBoolean(), source);
+
+            PipelineRefinementVerifier.verify(compiled);
+            GeneratedCypherContractVerifier.verify(compiled, compiled.cypher(), compiled.parameters());
+        }
     }
 
     static List<CoverageCase> admittedCases() {

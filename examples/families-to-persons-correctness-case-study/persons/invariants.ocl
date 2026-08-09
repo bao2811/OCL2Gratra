@@ -8,7 +8,8 @@ context Person inv ConcreteGender:
   self.oclIsKindOf(Male) or self.oclIsKindOf(Female)
 
 context PersonRegister inv ContainsAllPersons:
-  self.persons->includesAll(Person.allInstances())
+  self.label = 'complete' implies
+    self.persons->includesAll(Person.allInstances())
 
 context PersonRegister inv UniqueNames:
   self.persons->isUnique(p | p.name)

@@ -72,6 +72,14 @@ class OclCypherPlanFormalTreeAgreementTest {
 
         OclCypherPlan.NotExistsSubqueryPlan notExists = find(results, OclCypherPlan.NotExistsSubqueryPlan.class);
         assertMutationRejected(renderer, notExists, text -> text.replaceFirst("NOT EXISTS", "EXISTS"));
+
+        OclCypherPlan.MethodCallPlan allInstances = results.stream()
+                .map(OclCypherPlan.InvariantPlan::predicate)
+                .map(plan -> find(plan, OclCypherPlan.MethodCallPlan.class))
+                .filter(java.util.Objects::nonNull)
+                .filter(plan -> "allInstances".equalsIgnoreCase(plan.methodName()))
+                .findFirst().orElseThrow();
+        assertMutationRejected(renderer, allInstances, text -> text.replace(":UmlClass", ":Class"));
     }
 
     private void assertMutationRejected(OclCypherRenderer renderer,
@@ -152,7 +160,7 @@ class OclCypherPlanFormalTreeAgreementTest {
         return null;
     }
 
-    private MModel model() {
+    static MModel model() {
         String specification = """
                 model OclValCoverage
                 class Company

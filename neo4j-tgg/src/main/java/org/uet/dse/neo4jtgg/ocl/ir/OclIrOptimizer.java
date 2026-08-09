@@ -138,6 +138,7 @@ public class OclIrOptimizer {
             OclIr.Expression optimized = optimizeCollectionOperation(collectionOperation.operationName(), optimizedSource, collectionOperation.type());
             return optimized != null ? optimized : new OclIr.CollectionOperation(
                     optimizedSource,
+                    collectionOperation.sourceCollectionType(),
                     collectionOperation.operationName(),
                     collectionOperation.arguments().stream().map(argument -> optimizeExpression(argument, bindings)).toList(),
                     collectionOperation.type());
@@ -150,7 +151,8 @@ public class OclIrOptimizer {
             OclIr.Expression optimized = optimizeIterator(iteratorOperation.operationName(), optimizedSource,
                     iteratorOperation.iteratorName(), optimizedBody, iteratorOperation.type());
             return optimized != null ? optimized : new OclIr.IteratorOperation(
-                    optimizedSource, iteratorOperation.operationName(), iteratorOperation.iteratorName(), optimizedBody, iteratorOperation.type());
+                    optimizedSource, iteratorOperation.sourceCollectionType(), iteratorOperation.operationName(),
+                    iteratorOperation.iteratorName(), optimizedBody, iteratorOperation.type());
         }
         return expression;
     }
@@ -430,6 +432,7 @@ public class OclIrOptimizer {
         }
         OclIr.Expression nestedNotEmpty = new OclIr.CollectionOperation(
                 iteratorOperation.body(),
+                iteratorOperation.body().type(),
                 "notEmpty",
                 List.of(),
                 OclTypeBinding.scalar("Boolean"));
@@ -695,6 +698,7 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.CollectionOperation collectionOperation) {
             return new OclIr.CollectionOperation(
                     renameVariable(collectionOperation.source(), from, to),
+                    collectionOperation.sourceCollectionType(),
                     collectionOperation.operationName(),
                     collectionOperation.arguments().stream().map(argument -> renameVariable(argument, from, to)).toList(),
                     collectionOperation.type());
@@ -704,6 +708,7 @@ public class OclIrOptimizer {
             if (from.equals(iteratorOperation.iteratorName())) {
                 return new OclIr.IteratorOperation(
                         renamedSource,
+                        iteratorOperation.sourceCollectionType(),
                         iteratorOperation.operationName(),
                         iteratorOperation.iteratorName(),
                         iteratorOperation.body(),
@@ -711,6 +716,7 @@ public class OclIrOptimizer {
             }
             return new OclIr.IteratorOperation(
                     renamedSource,
+                    iteratorOperation.sourceCollectionType(),
                     iteratorOperation.operationName(),
                     iteratorOperation.iteratorName(),
                     renameVariable(iteratorOperation.body(), from, to),

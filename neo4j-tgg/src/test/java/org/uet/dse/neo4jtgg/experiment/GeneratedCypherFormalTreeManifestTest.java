@@ -4,14 +4,18 @@ import org.junit.jupiter.api.Test;
 import org.uet.dse.neo4jtgg.ocl.ir.OclCypherRenderer;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,16 +27,30 @@ class GeneratedCypherFormalTreeManifestTest {
 
     @Test
     void everyCheckedQueryExactlyMatchesItsCheckedInCanonicalFullTree() throws IOException {
-        Map<String, String> expected = readManifest();
         OclCypherPlanFormalTreeAgreementTest corpus = new OclCypherPlanFormalTreeAgreementTest();
         Map<String, String> actual = new LinkedHashMap<>();
         for (OclCypherPlanFormalTreeAgreementTest.NamedPlan item : corpus.namedCompilationCorpus()) {
             String cypher = new OclCypherRenderer("OclValCoverage").renderInvariant(item.plan()).cypher();
             actual.put(item.name(), GeneratedCypherCanonicalTree.parse(cypher).text());
         }
+        boolean update = Boolean.getBoolean("ocl.formal.trees.update");
+        if (update) writeManifest(actual);
+        Map<String, String> expected = update ? Map.copyOf(actual) : readManifest();
         assertEquals(52, expected.size(), "Unexpected checked-in formal-tree count");
         assertEquals(expected.keySet(), actual.keySet(), "Formal-tree manifest and executable corpus differ");
         actual.forEach((name, tree) -> assertEquals(expected.get(name), tree, name));
+    }
+
+    private static void writeManifest(Map<String, String> trees) throws IOException {
+        StringBuilder output = new StringBuilder();
+        for (Map.Entry<String, String> entry : trees.entrySet()) {
+            output.append(Base64.getEncoder().encodeToString(
+                            entry.getKey().getBytes(StandardCharsets.UTF_8)))
+                    .append('\t').append(deflate(entry.getValue())).append('\n');
+        }
+        Path path = Path.of("src", "test", "resources", "org", "uet", "dse", "neo4jtgg",
+                "experiment", "formal-cypher-trees.tsv");
+        Files.writeString(path, output.toString(), StandardCharsets.UTF_8);
     }
 
     private static Map<String, String> readManifest() throws IOException {
@@ -57,5 +75,13 @@ class GeneratedCypherFormalTreeManifestTest {
         try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(compressed))) {
             return new String(gzip.readAllBytes(), StandardCharsets.UTF_8);
         }
+    }
+
+    private static String deflate(String value) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(bytes)) {
+            gzip.write(value.getBytes(StandardCharsets.UTF_8));
+        }
+        return Base64.getEncoder().encodeToString(bytes.toByteArray());
     }
 }

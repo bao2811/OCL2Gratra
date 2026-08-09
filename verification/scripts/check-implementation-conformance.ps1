@@ -1,5 +1,7 @@
 param(
-    [switch]$Offline
+    [switch]$Offline,
+    [switch]$RequireCleanRuntimeEvidence,
+    [string]$MavenRepository = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,6 +49,13 @@ $tests = @(
     'OclCypherPlanFormalTreeAgreementTest',
     'OclCypherPlanConstructorEvidenceMatrixTest',
     'OclIrJavaRefinementCoverageTest',
+    'OclIrPlanPayloadRefinementTest',
+    'BoundVaProductionRefinementCoverageTest',
+    'OclVoidContextMatrixTest',
+    'AdapterAdequacyCertificateTest',
+    'AdapterAdequacyEvidenceMatrixTest',
+    'FamiliesToPersonsCaseStudyTest',
+    'OclCypherRendererTest',
     'Cypher5ValRuntimeEvidenceManifestTest',
     'OclRewritePreservationTest',
     'OclDualCheckTest'
@@ -56,6 +65,12 @@ Push-Location $workspace
 try {
     $mavenArgs = @()
     if ($Offline) { $mavenArgs += '-o' }
+    if (-not [string]::IsNullOrWhiteSpace($MavenRepository)) {
+        $mavenArgs += "-Dmaven.repo.local=$MavenRepository"
+    }
+    if ($RequireCleanRuntimeEvidence) {
+        $mavenArgs += '-Dverification.requireCleanEvidence=true'
+    }
     $mavenArgs += @(
         '-pl', 'neo4j-tgg',
         "-Dtest=$tests",

@@ -3,6 +3,7 @@ package org.uet.dse.neo4jtgg.experiment;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.Result;
+import org.neo4j.driver.QueryRunner;
 import org.neo4j.driver.Session;
 import org.tzi.use.api.UseModelApi;
 import org.tzi.use.api.UseSystemApi;
@@ -239,6 +240,12 @@ class RepresentationEvaluationRealNeo4jTest {
     }
 
     static RepresentationAdequacyEvaluator.Snapshot graphSnapshot(String modelKey) {
+        try (Session session = Neo4jDriverManager.getInstance().openSession()) {
+            return graphSnapshot(modelKey, session);
+        }
+    }
+
+    static RepresentationAdequacyEvaluator.Snapshot graphSnapshot(String modelKey, QueryRunner session) {
         Map<String, Integer> objects = new LinkedHashMap<>();
         List<RepresentationAdequacyEvaluator.ObjectObservation> objectObservations = new ArrayList<>();
         Set<RepresentationAdequacyEvaluator.TypeFact> types = new LinkedHashSet<>();
@@ -249,7 +256,7 @@ class RepresentationEvaluationRealNeo4jTest {
         Set<RepresentationAdequacyEvaluator.AllInstancesFact> allInstances = new LinkedHashSet<>();
         Map<String, Set<String>> keys = new LinkedHashMap<>();
         long linkRows = 0;
-        try (Session session = Neo4jDriverManager.getInstance().openSession()) {
+        {
             session.run("MATCH (o:Object {modelKey:$modelKey}) "
                             + "RETURN elementId(o) AS token, o.use_id AS id, o.objectKey AS objectKey",
                     Map.of("modelKey", modelKey)).forEachRemaining(record -> {
@@ -354,7 +361,7 @@ class RepresentationEvaluationRealNeo4jTest {
         }
     }
 
-    private static void collectKeyOwners(Session session, String query, String modelKey,
+    private static void collectKeyOwners(QueryRunner session, String query, String modelKey,
                                          Map<String, Set<String>> target) {
         session.run(query, Map.of("modelKey", modelKey)).forEachRemaining(record -> {
             String key = record.get("key").asString();

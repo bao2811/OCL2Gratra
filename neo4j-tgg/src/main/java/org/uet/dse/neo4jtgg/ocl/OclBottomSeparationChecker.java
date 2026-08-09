@@ -1,6 +1,6 @@
 package org.uet.dse.neo4jtgg.ocl;
 
-import org.neo4j.driver.Session;
+import org.neo4j.driver.QueryRunner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +33,7 @@ public final class OclBottomSeparationChecker {
      * structurally disjoint from the tagged-map token; this scan protects the
      * reserved marker namespace on nodes and relationships.
      */
-    public static Result checkGraph(Session session, String modelKey) {
+    public static Result checkGraph(QueryRunner session, String modelKey) {
         if (session == null || modelKey == null || modelKey.isBlank()) {
             return new Result(Status.OUT_OF_SCOPE,
                     List.of("A live session and non-blank modelKey are required"));
@@ -61,7 +61,7 @@ public final class OclBottomSeparationChecker {
         return new Result(violations.isEmpty() ? Status.PASS : Status.FAIL, violations);
     }
 
-    public static void requireGraphSeparated(Session session, String modelKey) {
+    public static void requireGraphSeparated(QueryRunner session, String modelKey) {
         Result result = checkGraph(session, modelKey);
         if (!result.passed()) {
             throw new IllegalStateException("BottomSeparated=" + result.status() + ": "

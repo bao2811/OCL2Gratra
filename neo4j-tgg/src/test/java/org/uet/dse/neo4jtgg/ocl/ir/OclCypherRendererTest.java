@@ -23,6 +23,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclCypherRendererTest {
     @Test
+    void rendersCanonicalBottomEqualityInsteadOfCypherNullEquality() {
+        var bottom = new OclCypherPlan.LiteralPlan(
+                null, org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Void"));
+        var value = new OclCypherPlan.LiteralPlan(
+                "defined", org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("String"));
+        var booleanType = org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Boolean");
+
+        var bottomEqualsBottom = new OclCypherRenderer().renderTopLevelExpression(
+                new OclCypherPlan.BinaryPlan("=", bottom, bottom, booleanType));
+        var valueNotEqualsBottom = new OclCypherRenderer().renderTopLevelExpression(
+                new OclCypherPlan.BinaryPlan("<>", value, bottom, booleanType));
+
+        assertTrue(bottomEqualsBottom.cypher().contains("null IS NULL AND null IS NULL"));
+        assertTrue(bottomEqualsBottom.cypher().contains("THEN true"));
+        assertTrue(valueNotEqualsBottom.cypher().contains("THEN false"));
+        assertFalse(bottomEqualsBottom.cypher().contains("RETURN (null = null)"));
+    }
+
+    @Test
     void validationSemanticsTreatsOnlyTrueAsSatisfied() {
         assertEquals("coalesce(p, false)", OclValidationSemantics.validationTruth("p"));
         assertEquals("NOT coalesce(p, false)", OclValidationSemantics.violationPredicate("p"));
@@ -136,7 +155,8 @@ class OclCypherRendererTest {
 
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
         assertFalse(rendered.cypher().contains("threshold"));
-        assertTrue(rendered.cypher().contains("reduce("));
+        assertTrue(rendered.cypher().contains("head([_let"));
+        assertFalse(rendered.cypher().contains("reduce(_let"));
         assertTrue(rendered.parameters().containsValue(18L));
     }
 

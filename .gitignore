@@ -123,6 +123,9 @@ DAKH/
 md/
 *.html
 
+# Paper sources and generated publication artifacts must remain local.
+/verification/publication/
+
 # Local assembled runtime used only for verification runs
 /_runtime_clean/
 

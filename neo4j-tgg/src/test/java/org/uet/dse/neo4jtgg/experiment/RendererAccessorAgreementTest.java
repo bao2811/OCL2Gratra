@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
+import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
+import org.uet.dse.neo4jtgg.ocl.OclTypeBinding;
 import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 import java.io.PrintWriter;
@@ -11,6 +13,8 @@ import java.io.StringWriter;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Constructor-by-constructor executable evidence for PA9. */
 class RendererAccessorAgreementTest {
@@ -31,6 +35,16 @@ class RendererAccessorAgreementTest {
         for (String invariant : invariants) {
             InstrumentedCompilationResult result = compiler.compileInvariantInstrumented(invariant);
             GeneratedCypherContractVerifier.verify(result, result.cypher(), result.parameters());
+            if (invariant.contains("QualifiedReverse")) {
+                OclSemanticBinder.BoundCollectionOperation operation =
+                        (OclSemanticBinder.BoundCollectionOperation) result.bound().expression();
+                OclSemanticBinder.BoundProperty navigation =
+                        (OclSemanticBinder.BoundProperty) operation.source();
+                assertTrue(navigation.navigation().targetSingleValued());
+                assertTrue(navigation.navigation().resultBinding().isCollection());
+                assertEquals(OclTypeBinding.CollectionKind.SET, navigation.type().collectionKind());
+                assertEquals(navigation.type(), operation.sourceCollectionType());
+            }
         }
     }
 

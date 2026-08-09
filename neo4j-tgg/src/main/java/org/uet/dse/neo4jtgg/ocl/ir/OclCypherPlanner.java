@@ -95,6 +95,7 @@ public class OclCypherPlanner {
         if (expression instanceof OclIr.CollectionOperation collectionOperation) {
             return OclCypherQueryModel.collectionOperation(
                     planExpression(collectionOperation.source()),
+                    collectionOperation.sourceCollectionType(),
                     collectionOperation.operationName(),
                     collectionOperation.arguments().stream().map(this::planExpression).toList(),
                     collectionOperation.type());
@@ -102,6 +103,7 @@ public class OclCypherPlanner {
         if (expression instanceof OclIr.IteratorOperation iteratorOperation) {
             return OclCypherQueryModel.iteratorOperation(
                     planExpression(iteratorOperation.source()),
+                    iteratorOperation.sourceCollectionType(),
                     iteratorOperation.operationName(),
                     iteratorOperation.iteratorName(),
                     planExpression(iteratorOperation.body()),

@@ -77,6 +77,13 @@ class RawCypherAstTotalityTest {
     }
 
     @Test
+    void rawAstUsesTheCanonicalUmlClassLabel() {
+        assertEquals("UmlClass", RawCypherAst.Label.UML_CLASS.text());
+        assertTrue(Arrays.stream(RawCypherAst.Label.values())
+                .noneMatch(label -> label.text().equals("Class")));
+    }
+
+    @Test
     void freshNamesAreDeterministicAndCannotCaptureReservedAliases() {
         RawCypherAst.FreshNames first = new RawCypherAst.FreshNames(Set.of(x));
         RawCypherAst.FreshNames second = new RawCypherAst.FreshNames(Set.of(x));

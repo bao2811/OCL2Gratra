@@ -1,6 +1,6 @@
 package org.uet.dse.neo4jtgg.ocl;
 
-import org.neo4j.driver.Session;
+import org.neo4j.driver.QueryRunner;
 import org.tzi.use.uml.mm.MAttribute;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
 
@@ -47,7 +47,7 @@ public final class OclScalarClosureChecker {
         return inspection.result();
     }
 
-    public static Result checkGraph(Session session, String modelKey) {
+    public static Result checkGraph(QueryRunner session, String modelKey) {
         if (session == null || modelKey == null || modelKey.isBlank()) {
             return new Result(Status.OUT_OF_SCOPE,
                     List.of("A live session and non-blank modelKey are required"));
@@ -73,7 +73,7 @@ public final class OclScalarClosureChecker {
         requirePass(checkValues(values, location), "ScalarClosed");
     }
 
-    public static void requireGraphClosed(Session session, String modelKey) {
+    public static void requireGraphClosed(QueryRunner session, String modelKey) {
         requirePass(checkGraph(session, modelKey), "ScalarClosed");
     }
 

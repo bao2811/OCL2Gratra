@@ -30,7 +30,7 @@ public final class RawCypherAst {
     }
 
     public enum Label {
-        OBJECT("Object"), CLASS("Class"), ATTRIBUTE_VALUE("AttributeValue");
+        OBJECT("Object"), UML_CLASS("UmlClass"), ATTRIBUTE_VALUE("AttributeValue");
         private final String text;
         Label(String text) { this.text = text; }
         public String text() { return text; }

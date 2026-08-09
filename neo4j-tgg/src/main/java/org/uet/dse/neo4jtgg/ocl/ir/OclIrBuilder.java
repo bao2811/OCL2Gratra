@@ -86,6 +86,7 @@ public class OclIrBuilder {
         if (expression instanceof OclSemanticBinder.BoundCollectionOperation collectionOperation) {
             return new OclIr.CollectionOperation(
                     buildExpression(collectionOperation.source()),
+                    collectionOperation.sourceCollectionType(),
                     collectionOperation.ast().opName,
                     buildArguments(collectionOperation.arguments()),
                     collectionOperation.type());
@@ -93,6 +94,7 @@ public class OclIrBuilder {
         if (expression instanceof OclSemanticBinder.BoundIterator iterator) {
             return new OclIr.IteratorOperation(
                     buildExpression(iterator.source()),
+                    iterator.sourceCollectionType(),
                     iterator.ast().operation,
                     iterator.ast().iteratorName,
                     buildExpression(iterator.body()),

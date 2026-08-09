@@ -1,6 +1,6 @@
 package org.uet.dse.neo4jtgg.ocl;
 
-import org.neo4j.driver.Session;
+import org.neo4j.driver.QueryRunner;
 import org.tzi.use.uml.mm.MAttribute;
 import org.tzi.use.uml.sys.MObject;
 import org.tzi.use.uml.sys.MSystem;
@@ -53,7 +53,7 @@ public final class OclExecutionPremiseChecker {
      * unreachable.
      */
     public static OclScalarClosureChecker.Result checkGraphScalarClosed(
-            Session session, String modelName, OclIr.InvariantQuery invariant) {
+            QueryRunner session, String modelName, OclIr.InvariantQuery invariant) {
         if (session == null || modelName == null || modelName.isBlank()) {
             return new OclScalarClosureChecker.Result(
                     OclScalarClosureChecker.Status.OUT_OF_SCOPE,
@@ -67,7 +67,7 @@ public final class OclExecutionPremiseChecker {
     }
 
     public static void requireGraphScalarClosed(
-            Session session, String modelName, OclIr.InvariantQuery invariant) {
+            QueryRunner session, String modelName, OclIr.InvariantQuery invariant) {
         OclScalarClosureChecker.requirePass(
                 checkGraphScalarClosed(session, modelName, invariant), "ScalarClosed");
     }
@@ -102,7 +102,7 @@ public final class OclExecutionPremiseChecker {
     }
 
     private static List<Object> observedGraphValues(
-            Session session, String modelName, String modelKey, MAttribute attribute) {
+            QueryRunner session, String modelName, String modelKey, MAttribute attribute) {
         String attributeKey = CanonicalGraphEncoding.attributeKey(
                 modelName, attribute.owner().name(), attribute.name());
         return session.run(

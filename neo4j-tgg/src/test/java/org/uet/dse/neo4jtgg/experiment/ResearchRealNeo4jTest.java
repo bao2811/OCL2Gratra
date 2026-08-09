@@ -277,8 +277,8 @@ class ResearchRealNeo4jTest {
                         ScientificEvaluationReport.Status.PASS, "HasEmployer on canonical real graph"),
                 new ScientificEvaluationReport.ConformanceObservation("exists",
                         ScientificEvaluationReport.Status.PASS, "HasAdultEmployee on canonical real graph"),
-                new ScientificEvaluationReport.ConformanceObservation("forAll and isDefined",
-                        ScientificEvaluationReport.Status.PASS, "AllEmployeesNamed on canonical real graph"),
+                new ScientificEvaluationReport.ConformanceObservation("forAll and ordering",
+                        ScientificEvaluationReport.Status.PASS, "AllEmployeesNonNegativeAge on canonical real graph"),
                 new ScientificEvaluationReport.ConformanceObservation("closure",
                         ScientificEvaluationReport.Status.NOT_CLAIMED, "outside frozen OCL_val profile"));
     }
@@ -288,7 +288,7 @@ class ResearchRealNeo4jTest {
                 completeCoverage("primitive comparison"),
                 completeCoverage("association navigation"),
                 completeCoverage("exists"),
-                completeCoverage("forAll/isDefined"),
+                completeCoverage("forAll/ordering"),
                 new ScientificEvaluationReport.CoverageObservation("closure", false,
                         false, false, false, false, false, false, false));
     }
@@ -400,6 +400,6 @@ class ResearchRealNeo4jTest {
             context Person inv Adult: self.age >= 18
             context Person inv HasEmployer: self.employer->notEmpty()
             context Company inv HasAdultEmployee: self.employee->exists(p | p.age >= 18)
-            context Company inv AllEmployeesNamed: self.employee->forAll(p | p.name.isDefined())
+            context Company inv AllEmployeesNonNegativeAge: self.employee->forAll(p | p.age >= 0)
             """;
 }

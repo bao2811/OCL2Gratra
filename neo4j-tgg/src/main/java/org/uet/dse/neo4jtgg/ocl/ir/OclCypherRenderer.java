@@ -46,7 +46,7 @@ public class OclCypherRenderer {
         RenderedExpression predicate = renderExpression(invariantPlan.predicate(), state);
         String classParam = state.newParam(classKey(invariantPlan.contextClassName()));
         String cypher = "MATCH (self:Object)-[:" + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
-                + "]->(cls {classKey: $" + classParam + "})\n" +
+                + "]->(cls:UmlClass {classKey: $" + classParam + "})\n" +
                 "WHERE " + OclValidationSemantics.violationPredicate(predicate.cypher()) + "\n" +
                 "RETURN DISTINCT self.use_id AS useId";
         Map<String, Object> parameters = state.parameters();
@@ -103,12 +103,11 @@ public class OclCypherRenderer {
         if (expression instanceof OclCypherPlan.LetPlan letPlan) {
             RenderedExpression value = renderExpression(letPlan.value(), state);
             String letAlias = "_let" + state.newVariableSuffix();
-            String loopAlias = "_letKeep" + state.newVariableSuffix();
             state.enterExpressionBinding(letPlan.variableName(), letAlias);
             RenderedExpression body = renderExpression(letPlan.body(), state);
             state.exitExpressionBinding();
             return new RenderedExpression(
-                    "reduce(" + letAlias + " = (" + value.cypher() + "), " + loopAlias + " IN [1] | " + body.cypher() + ")",
+                    "head([" + letAlias + " IN [(" + value.cypher() + ")] | " + body.cypher() + "])",
                     letPlan.type());
         }
         if (expression instanceof OclCypherPlan.BinaryPlan binary) {
@@ -130,6 +129,8 @@ public class OclCypherRenderer {
                     && binary.right().type().isCollection()
                     && ("=".equals(operator) || "<>".equals(operator))
                     ? renderFiniteSetComparison(operator, left.cypher(), right.cypher(), state)
+                    : "=".equals(operator) || "<>".equals(operator)
+                    ? renderSemanticScalarEquality(operator, left.cypher(), right.cypher())
                     : "IMPLIES".equals(operator)
                     ? OclValidationSemantics.implies(left.cypher(), right.cypher())
                     : switch (operator) {
@@ -153,15 +154,19 @@ public class OclCypherRenderer {
             return renderMethodCall(methodCall, source, state);
         }
         if (expression instanceof OclCypherPlan.CollectionOperationPlan collectionOperation) {
-            RenderedExpression source = renderExpression(collectionOperation.source(), state);
+            RenderedExpression source = renderCollectionView(
+                    renderExpression(collectionOperation.source(), state),
+                    collectionOperation.sourceCollectionType());
             return renderCollectionOperation(collectionOperation, source, state);
         }
         if (expression instanceof OclCypherPlan.IteratorOperationPlan iteratorOperation) {
             if (iteratorOperation.source() instanceof OclCypherPlan.NavigationAccessPlan navigationAccess) {
                 return renderNavigationIterator(iteratorOperation, navigationAccess, state);
             }
-            RenderedExpression source = renderExpression(iteratorOperation.source(), state);
-            state.enterVariable(iteratorOperation.iteratorName(), source.type().elementType());
+            RenderedExpression source = renderCollectionView(
+                    renderExpression(iteratorOperation.source(), state),
+                    iteratorOperation.sourceCollectionType());
+            state.enterVariable(iteratorOperation.iteratorName(), iteratorOperation.sourceCollectionType().elementType());
             RenderedExpression body = renderExpression(iteratorOperation.body(), state);
             state.exitVariable();
             String predicate = OclValidationSemantics.validationTruth(body.cypher());
@@ -210,8 +215,10 @@ public class OclCypherRenderer {
                                                         RenderState state) {
         String operation = iteratorOperation.operationName().toLowerCase();
         if (!"exists".equals(operation) && !"forall".equals(operation)) {
-            RenderedExpression source = renderExpression(iteratorOperation.source(), state);
-            state.enterVariable(iteratorOperation.iteratorName(), source.type().elementType());
+            RenderedExpression source = renderCollectionView(
+                    renderExpression(iteratorOperation.source(), state),
+                    iteratorOperation.sourceCollectionType());
+            state.enterVariable(iteratorOperation.iteratorName(), iteratorOperation.sourceCollectionType().elementType());
             RenderedExpression body = renderExpression(iteratorOperation.body(), state);
             state.exitVariable();
             String predicate = OclValidationSemantics.validationTruth(body.cypher());
@@ -256,7 +263,7 @@ public class OclCypherRenderer {
             String classAlias = "cls" + state.newVariableSuffix();
             String cypher = "COLLECT { MATCH (" + objectAlias + ")-[:"
                     + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF + "]->(" + classAlias
-                    + " {classKey: $" + classParam + "}) RETURN DISTINCT " + objectAlias + " }";
+                    + ":UmlClass {classKey: $" + classParam + "}) RETURN DISTINCT " + objectAlias + " }";
             return new RenderedExpression(cypher, methodCall.type());
         }
         if ("split".equalsIgnoreCase(methodCall.methodName())) {
@@ -952,6 +959,22 @@ public class OclCypherRenderer {
         return "CASE WHEN " + expression + " IS NULL THEN [] ELSE [" + expression + "] END";
     }
 
+    /**
+     * Materializes the explicit collection view recorded by the semantic binder.
+     * In the certified profile the only scalar source allowed here is a resolved
+     * native to-one navigation, whose collection semantics is empty/singleton.
+     */
+    private RenderedExpression renderCollectionView(RenderedExpression source,
+                                                     OclTypeBinding sourceCollectionType) {
+        if (source.type().isCollection()) {
+            return new RenderedExpression(source.cypher(), sourceCollectionType);
+        }
+        if (sourceCollectionType.isCollection()) {
+            return new RenderedExpression(renderSingletonNodeList(source.cypher()), sourceCollectionType);
+        }
+        return source;
+    }
+
     private String renderIteratorIsUnique(String iteratorName, String sourceCypher, String bodyCypher, RenderState state) {
         String projected = "[" + iteratorName + " IN " + sourceCypher + " | " + bodyCypher + "]";
         return "size(" + projected + ") = size(" + renderUniqueCollection(projected, state) + ")";
@@ -965,7 +988,7 @@ public class OclCypherRenderer {
                 + " WHERE " + receiverKeyAlias + " IS NOT NULL"
                 + " MATCH (" + receiverAlias + ":Object {objectKey: " + receiverKeyAlias + "})-[:"
                 + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
-                + "]->(" + classAlias + " {classKey: $" + classParam + "}) RETURN " + receiverAlias + " }";
+                + "]->(" + classAlias + ":UmlClass {classKey: $" + classParam + "}) RETURN " + receiverAlias + " }";
     }
 
     private String renderGuardedCast(String sourceCypher, String classParam, RenderState state) {
@@ -976,7 +999,7 @@ public class OclCypherRenderer {
                 + " WHERE " + receiverKeyAlias + " IS NOT NULL"
                 + " MATCH (" + receiverAlias + ":Object {objectKey: " + receiverKeyAlias + "})-[:"
                 + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
-                + "]->(" + classAlias + " {classKey: $" + classParam + "}) RETURN " + receiverAlias + " AS value })";
+                + "]->(" + classAlias + ":UmlClass {classKey: $" + classParam + "}) RETURN " + receiverAlias + " AS value })";
     }
 
     private String renderGuardedEntityValue(String sourceCypher, String receiverAlias,
@@ -1063,6 +1086,19 @@ public class OclCypherRenderer {
     private String renderSetEquality(String leftCypher, String rightCypher, RenderState state) {
         return "coalesce(" + renderSetValue(leftCypher, state) + " = " +
                 renderSetValue(rightCypher, state) + ", false)";
+    }
+
+    /**
+     * Total equality for scalar/entity values in the canonical profile.
+     * Cypher's native {@code null = null} is {@code null}; OCL_val instead has
+     * one bottom value and defines bottom equality as true only against bottom.
+     */
+    private String renderSemanticScalarEquality(String operator, String leftCypher, String rightCypher) {
+        String equality = "(CASE WHEN (" + leftCypher + " IS NULL AND " + rightCypher
+                + " IS NULL) THEN true WHEN (" + leftCypher + " IS NULL OR " + rightCypher
+                + " IS NULL) THEN false ELSE coalesce(" + leftCypher + " = " + rightCypher
+                + ", false) END)";
+        return "<>".equals(operator) ? "(NOT " + equality + ")" : equality;
     }
 
     /** Extensional, order-independent equality for the certified finite-set fragment. */

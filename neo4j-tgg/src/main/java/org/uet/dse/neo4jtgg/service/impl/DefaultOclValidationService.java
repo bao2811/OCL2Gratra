@@ -1,10 +1,13 @@
 package org.uet.dse.neo4jtgg.service.impl;
 
 import org.neo4j.driver.Record;
+import org.neo4j.driver.QueryRunner;
 import org.neo4j.driver.Session;
+import org.neo4j.driver.Transaction;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.types.Node;
 import org.tzi.use.uml.mm.MModel;
+import org.tzi.use.uml.sys.MSystem;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.oclite.Neo4jRepository;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
@@ -45,6 +48,9 @@ import org.uet.dse.neo4jtgg.ocl.OclBottomToken;
 import org.uet.dse.neo4jtgg.ocl.OclExecutionPremiseChecker;
 import org.uet.dse.neo4jtgg.ocl.OclScalarClosureChecker;
 import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+import org.uet.dse.neo4jtgg.experiment.AdapterAdequacyCertificate;
+import org.uet.dse.neo4jtgg.experiment.AdapterAdequacySnapshotReader;
+import org.uet.dse.neo4jtgg.experiment.InstrumentedCompilationResult;
 import org.uet.dse.neo4jtgg.service.OclValidationService;
 
 import java.util.ArrayList;
@@ -127,16 +133,28 @@ public class DefaultOclValidationService implements OclValidationService {
             Map<String, List<OclContextBatchQueryExecutor.BatchRule>> batchRulesByClass =
                     collectBatchedContextRules(rules, compiledRules);
             int compiledIndex = 0;
-            try (Session sharedSession = Neo4jDriverManager.getInstance().openSession()) {
+            try (Session sharedSession = Neo4jDriverManager.getInstance().openSession();
+                 Transaction transaction = sharedSession.beginTransaction()) {
+                String modelKey = CanonicalGraphEncoding.modelKey(model.name());
+                MSystem sourceSystem = requireSourceSystem(context, model);
+                var sourceAtStart = AdapterAdequacySnapshotReader.source(sourceSystem, model.name());
+                var graphAtStart = AdapterAdequacySnapshotReader.graph(transaction, modelKey);
                 OclBottomSeparationChecker.requireGraphSeparated(
-                        sharedSession, CanonicalGraphEncoding.modelKey(model.name()));
+                        transaction, modelKey);
                 OclScalarClosureChecker.requireGraphClosed(
-                        sharedSession, CanonicalGraphEncoding.modelKey(model.name()));
-                requireCertifiedContextPremises(
-                        sharedSession, model.name(), compiler, rules, compiledRules);
+                        transaction, modelKey);
+                List<InstrumentedCompilationResult> certifiedPlans = requireCertifiedContextPremises(
+                        transaction, model.name(), compiler, rules, compiledRules);
+                if (!certifiedPlans.isEmpty()) {
+                    AdapterAdequacyCertificate.issue(new AdapterAdequacyCertificate.AdapterAdequacySnapshot(
+                            "validation-service-read-transaction", model.name(), modelKey,
+                            "OclCypherRenderer-direct-v1", sourceAtStart,
+                            AdapterAdequacySnapshotReader.source(sourceSystem, model.name()), graphAtStart,
+                            AdapterAdequacySnapshotReader.graph(transaction, modelKey), certifiedPlans));
+                }
                 for (List<OclContextBatchQueryExecutor.BatchRule> batchRules : batchRulesByClass.values()) {
                     OclContextBatchQueryExecutor.BatchExecutionResult batchExecutionResult =
-                            OclContextBatchQueryExecutor.execute(sharedSession, batchRules);
+                            OclContextBatchQueryExecutor.execute(transaction, batchRules);
                     executionTimeMs += batchExecutionResult.executionTimeMs();
                     for (OclContextBatchQueryExecutor.BatchRule batchRule : batchRules) {
                         Map<String, String> violations = batchExecutionResult.violationsByRuleIndex()
@@ -161,7 +179,7 @@ public class DefaultOclValidationService implements OclValidationService {
                             OclRuleValidationResult ruleResult = batchedContextResults.get(ruleIndex);
                             if (ruleResult == null) {
                                 ruleResult = validateContextWithCypher(
-                                        sharedSession, rule, astContext, compilation);
+                                        transaction, rule, astContext, compilation);
                             }
                             long batchExecutionTime = batchedContextExecutionTimes.getOrDefault(ruleIndex, 0L);
                             if (dualCheck) {
@@ -210,7 +228,7 @@ public class DefaultOclValidationService implements OclValidationService {
                                     : "Precondition `" + displayRuleName(rule) + "` violated";
                             String ruleLabel = rule.ruleKind() == OclRuleKind.POST ? "postcondition" : "precondition";
                             OclRuleValidationResult ruleResult =
-                                    validateCompiledRule(sharedSession, rule, compilation, documentRuleParameters,
+                                    validateCompiledRule(transaction, rule, compilation, documentRuleParameters,
                                             violationMessage, ruleLabel);
                             if (dualCheck) {
                                 ruleResult = attachDualCheckOperation(model, rule, compilation, documentRuleParameters, ruleResult);
@@ -233,7 +251,7 @@ public class DefaultOclValidationService implements OclValidationService {
                         CypherCompilationResult compilation = compiledRule.getCompilation();
                         OclRuleValidationResult ruleResult;
                         if (compilation.isSupported()) {
-                            ruleResult = validateCompiledExpression(sharedSession, rule, compilation);
+                            ruleResult = validateCompiledExpression(transaction, rule, compilation);
                             ruleResult = withRuleTiming(ruleResult, 0L, compiledRule.getCompilationTimeMs(), 0L);
                         } else {
                             ruleResult = withRuleTiming(
@@ -254,6 +272,7 @@ public class DefaultOclValidationService implements OclValidationService {
                     ruleResults.add(ruleResult);
                     executionTimeMs += ruleResult.getExecutionTimeMs();
                 }
+                transaction.commit();
             }
 
             return OclFileValidationResult.fromRuleResults(requestScope, ruleResults,
@@ -401,11 +420,28 @@ public class DefaultOclValidationService implements OclValidationService {
                     continue;
                 }
                 if (compilation.isSupported()) {
-                    try (Session premiseSession = Neo4jDriverManager.getInstance().openSession()) {
-                        requireCertifiedContextPremise(
-                                premiseSession, model.name(), compiler, astContext, compiledRule);
+                    OclRuleValidationResult ruleResult;
+                    String modelKey = CanonicalGraphEncoding.modelKey(model.name());
+                    MSystem sourceSystem = requireSourceSystem(context, model);
+                    try (Session neo4jSession = Neo4jDriverManager.getInstance().openSession();
+                         Transaction transaction = neo4jSession.beginTransaction()) {
+                        var sourceAtStart = AdapterAdequacySnapshotReader.source(sourceSystem, model.name());
+                        var graphAtStart = AdapterAdequacySnapshotReader.graph(transaction, modelKey);
+                        OclBottomSeparationChecker.requireGraphSeparated(transaction, modelKey);
+                        OclScalarClosureChecker.requireGraphClosed(transaction, modelKey);
+                        InstrumentedCompilationResult certified = requireCertifiedContextPremise(
+                                transaction, model.name(), compiler, astContext, compiledRule);
+                        AdapterAdequacyCertificate.issue(
+                                new AdapterAdequacyCertificate.AdapterAdequacySnapshot(
+                                        "validation-rule-read-transaction", model.name(), modelKey,
+                                        "OclCypherRenderer-direct-v1", sourceAtStart,
+                                        AdapterAdequacySnapshotReader.source(sourceSystem, model.name()),
+                                        graphAtStart, AdapterAdequacySnapshotReader.graph(transaction, modelKey),
+                                        List.of(certified)));
+                        ruleResult = validateContextWithCypher(
+                                transaction, rule, astContext, compilation);
+                        transaction.commit();
                     }
-                    OclRuleValidationResult ruleResult = validateContextWithCypher(rule, astContext, compilation);
                     if (dualCheck) {
                         ruleResult = attachDualCheck(model, rule, astContext, compilation, ruleResult);
                     }
@@ -436,7 +472,7 @@ public class DefaultOclValidationService implements OclValidationService {
         }
     }
 
-    private OclRuleValidationResult validateContextWithCypher(Session neo4jSession,
+    private OclRuleValidationResult validateContextWithCypher(QueryRunner neo4jSession,
                                                               OclRuleDescriptor rule,
                                                               ASTContext astContext,
                                                               CypherCompilationResult compilation) {
@@ -454,7 +490,7 @@ public class DefaultOclValidationService implements OclValidationService {
         }
     }
 
-    private OclRuleValidationResult validateCompiledRule(Session neo4jSession,
+    private OclRuleValidationResult validateCompiledRule(QueryRunner neo4jSession,
                                                          OclRuleDescriptor rule,
                                                          CypherCompilationResult compilation,
                                                          Map<String, Object> runtimeParameters,
@@ -480,30 +516,35 @@ public class DefaultOclValidationService implements OclValidationService {
                 inferRequiredInputs(rule));
     }
 
-    private void requireCertifiedContextPremises(Session session,
-                                                 String modelName,
-                                                 DefaultOclToCypherCompiler compiler,
-                                                 List<OclRuleDescriptor> rules,
-                                                 List<OclRuleCompilationResult> compiledRules) {
+    private List<InstrumentedCompilationResult> requireCertifiedContextPremises(
+            QueryRunner session,
+            String modelName,
+            DefaultOclToCypherCompiler compiler,
+            List<OclRuleDescriptor> rules,
+            List<OclRuleCompilationResult> compiledRules) {
         if (rules.size() != compiledRules.size()) {
             throw new IllegalStateException("Certified premise gate cannot align parsed and compiled rules");
         }
+        List<InstrumentedCompilationResult> certifiedPlans = new ArrayList<>();
         for (int index = 0; index < rules.size(); index++) {
             OclRuleDescriptor rule = rules.get(index);
             if (rule.ast() instanceof ASTContext contextInvariant) {
-                requireCertifiedContextPremise(
+                InstrumentedCompilationResult certified = requireCertifiedContextPremise(
                         session, modelName, compiler, contextInvariant, compiledRules.get(index));
+                if (certified != null) certifiedPlans.add(certified);
             }
         }
+        return List.copyOf(certifiedPlans);
     }
 
-    private void requireCertifiedContextPremise(Session session,
-                                                String modelName,
-                                                DefaultOclToCypherCompiler compiler,
-                                                ASTContext contextInvariant,
-                                                OclRuleCompilationResult compiledRule) {
+    private InstrumentedCompilationResult requireCertifiedContextPremise(
+            QueryRunner session,
+            String modelName,
+            DefaultOclToCypherCompiler compiler,
+            ASTContext contextInvariant,
+            OclRuleCompilationResult compiledRule) {
         if (!compiledRule.isSupported()) {
-            return;
+            return null;
         }
         var certified = compiler.compileInvariantInstrumented(contextInvariant);
         CypherCompilationResult compilation = compiledRule.getCompilation();
@@ -515,9 +556,23 @@ public class DefaultOclValidationService implements OclValidationService {
         OclExecutionPremiseChecker.requireGeneratedBottomSeparated(certified.parameters());
         OclExecutionPremiseChecker.requireGraphScalarClosed(
                 session, modelName, certified.validationAlgebra());
+        return certified;
     }
 
-    private OclRuleValidationResult validateCompiledExpression(Session neo4jSession,
+    private MSystem requireSourceSystem(TggWorkspaceContext context, MModel model) {
+        if (context == null || context.getSession() == null || !context.getSession().hasSystem()) {
+            throw new IllegalStateException(
+                    "AdapterAdequate requires the native USE source state used to encode the graph");
+        }
+        MSystem system = context.getSession().system();
+        if (!model.name().equals(system.model().name())) {
+            throw new IllegalStateException("AdapterAdequate source/model mismatch: expected "
+                    + model.name() + " but USE session contains " + system.model().name());
+        }
+        return system;
+    }
+
+    private OclRuleValidationResult validateCompiledExpression(QueryRunner neo4jSession,
                                                                OclRuleDescriptor rule,
                                                                CypherCompilationResult compilation) {
         long executionStartedAt = System.nanoTime();

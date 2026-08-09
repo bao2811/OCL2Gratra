@@ -77,7 +77,8 @@ class CompilerMutationContractTest {
                 text("allinstances-bag-duplicates", allInstancesResult,
                         allInstancesResult.cypher().replaceFirst("RETURN DISTINCT obj", "RETURN obj")),
                 text("allinstances-display-class", allInstancesResult,
-                        allInstancesResult.cypher().replaceFirst("(cls\\d+ )\\{classKey:", "$1{name:")),
+                        allInstancesResult.cypher().replaceFirst(
+                                "(cls\\d+:UmlClass )\\{classKey:", "$1{name:")),
                 text("schema-instanceof-for-kindof", kindOfResult,
                         kindOfResult.cypher().replaceFirst(
                                 "\\[:ObjectInstanceOf\\](?=->\\(typeCls)", "[:InstanceOf]")));

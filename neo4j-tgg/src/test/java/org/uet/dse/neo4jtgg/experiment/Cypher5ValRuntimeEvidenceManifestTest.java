@@ -44,14 +44,19 @@ class Cypher5ValRuntimeEvidenceManifestTest {
         List<String> altered = replace(original, "CY5\t", "rows=4;", "rows=99;");
         assertThrows(IllegalStateException.class, () -> validate(parse(altered), workspace));
 
-        List<String> stale = replace(original, "# rendererSha256\t", "F5990B", "000000");
+        List<String> stale = replace(original, "# rendererSha256\t",
+                "# rendererSha256\t", "# rendererSha256\t00");
         assertThrows(IllegalStateException.class, () -> validate(parse(stale), workspace));
+
+        List<String> invalidProvenance = replace(original, "# gitDirtyAtCapture\t",
+                "true", "unknown");
+        assertThrows(IllegalStateException.class, () -> validate(parse(invalidProvenance), workspace));
     }
 
     private static void validate(Evidence evidence, Path workspace) throws Exception {
         Map<String, String> metadata = evidence.metadata();
-        requireEquals("cypher5-val-runtime-evidence-v1", metadata.get("schema"), "schema");
-        requireEquals("PC-2026-07-22.2", metadata.get("proofContract"), "proofContract");
+        requireEquals("cypher5-val-runtime-evidence-v2", metadata.get("schema"), "schema");
+        requireEquals("PC-2026-07-22.3", metadata.get("proofContract"), "proofContract");
         requireEquals(Cypher5ValAssumptionMatrix.NEO4J_KERNEL, metadata.get("neo4jKernel"), "neo4jKernel");
         requireEquals(Cypher5ValAssumptionMatrix.CYPHER_COMPONENT,
                 metadata.get("cypherComponent"), "cypherComponent");
@@ -65,12 +70,23 @@ class Cypher5ValRuntimeEvidenceManifestTest {
         requireEquals("47/47", metadata.get("oclDifferentialPassed"), "oclDifferentialPassed");
         requireEquals(EvidenceSourceHash.MODE, metadata.get("sourceHashMode"), "sourceHashMode");
         requireMatches(metadata.get("executedAt"), "\\d{4}-\\d{2}-\\d{2}T.+[+-]\\d{2}:\\d{2}", "executedAt");
-        requireMatches(metadata.get("gitCommit"), "[0-9a-f]{40}", "gitCommit");
-        requireEquals("true", metadata.get("gitDirtyAtCapture"), "gitDirtyAtCapture");
+        EvidenceGitProvenance.validate(metadata, workspace);
 
         requireEquals(metadata.get("rendererSha256"), EvidenceSourceHash.sha256(workspace.resolve(
                 "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java")),
                 "rendererSha256");
+        requireSourceHash(metadata, "binderSha256", workspace,
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclSemanticBinder.java");
+        requireSourceHash(metadata, "admissionSha256", workspace,
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclValBoundAdmissionPolicy.java");
+        requireSourceHash(metadata, "irBuilderSha256", workspace,
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclIrBuilder.java");
+        requireSourceHash(metadata, "optimizerSha256", workspace,
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclIrOptimizer.java");
+        requireSourceHash(metadata, "adapterCertificateSha256", workspace,
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacyCertificate.java");
+        requireSourceHash(metadata, "adapterSnapshotReaderSha256", workspace,
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacySnapshotReader.java");
         requireEquals(metadata.get("encodingSha256"), EvidenceSourceHash.sha256(workspace.resolve(
                 "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphEncoding.java")),
                 "encodingSha256");
@@ -148,6 +164,11 @@ class Cypher5ValRuntimeEvidenceManifestTest {
         var matcher = pattern.matcher(Files.readString(pom));
         if (!matcher.find()) throw new IllegalStateException("Missing dependency version: " + artifactId);
         return matcher.group(1).trim();
+    }
+
+    private static void requireSourceHash(Map<String, String> metadata, String key,
+                                          Path workspace, String relativePath) throws Exception {
+        requireEquals(metadata.get(key), EvidenceSourceHash.sha256(workspace.resolve(relativePath)), key);
     }
 
     private static Path workspace() {

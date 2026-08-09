@@ -29,10 +29,12 @@ final class PipelineRefinementVerifier {
     private static void verifyBoundToVa(OclSemanticBinder.BoundExpression bound, OclIr.Expression va) {
         assertNotNull(bound.type());
         assertEquals(bound.type(), va.type());
-        if (bound instanceof OclSemanticBinder.BoundVariable) {
+        if (bound instanceof OclSemanticBinder.BoundVariable source) {
             assertTrue(va instanceof OclIr.Variable);
-        } else if (bound instanceof OclSemanticBinder.BoundLiteral) {
+            assertEquals(source.ast().name, ((OclIr.Variable) va).name());
+        } else if (bound instanceof OclSemanticBinder.BoundLiteral source) {
             assertTrue(va instanceof OclIr.Literal);
+            assertEquals(source.value(), ((OclIr.Literal) va).value());
         } else if (bound instanceof OclSemanticBinder.BoundSetLiteral source) {
             assertTrue(va instanceof OclIr.SetLiteral);
             verifyLists(source.elements(), ((OclIr.SetLiteral) va).elements());
@@ -69,6 +71,7 @@ final class PipelineRefinementVerifier {
             assertTrue(va instanceof OclIr.CollectionOperation);
             OclIr.CollectionOperation target = (OclIr.CollectionOperation) va;
             assertEquals(source.ast().opName, target.operationName());
+            assertEquals(source.sourceCollectionType(), target.sourceCollectionType());
             verifyBoundToVa(source.source(), target.source());
             verifyLists(source.arguments(), target.arguments());
         } else if (bound instanceof OclSemanticBinder.BoundIterator source) {
@@ -76,6 +79,7 @@ final class PipelineRefinementVerifier {
             OclIr.IteratorOperation target = (OclIr.IteratorOperation) va;
             assertEquals(source.ast().operation, target.operationName());
             assertEquals(source.ast().iteratorName, target.iteratorName());
+            assertEquals(source.sourceCollectionType(), target.sourceCollectionType());
             verifyBoundToVa(source.source(), target.source());
             verifyBoundToVa(source.body(), target.body());
         } else {
@@ -107,13 +111,15 @@ final class PipelineRefinementVerifier {
         }
     }
 
-    private static void verifyOptimizedToPlan(OclIr.Expression source, OclCypherPlan.ExpressionPlan target) {
+    static void verifyOptimizedToPlan(OclIr.Expression source, OclCypherPlan.ExpressionPlan target) {
         assertNotNull(source.type());
         assertEquals(source.type(), target.type());
-        if (source instanceof OclIr.Variable) {
+        if (source instanceof OclIr.Variable value) {
             assertTrue(target instanceof OclCypherPlan.VariablePlan);
-        } else if (source instanceof OclIr.Literal) {
+            assertEquals(value.name(), ((OclCypherPlan.VariablePlan) target).name());
+        } else if (source instanceof OclIr.Literal value) {
             assertTrue(target instanceof OclCypherPlan.LiteralPlan);
+            assertEquals(value.value(), ((OclCypherPlan.LiteralPlan) target).value());
         } else if (source instanceof OclIr.SetLiteral value) {
             assertTrue(target instanceof OclCypherPlan.SetLiteralPlan);
             verifyPlanLists(value.elements(), ((OclCypherPlan.SetLiteralPlan) target).elements());
@@ -140,7 +146,11 @@ final class PipelineRefinementVerifier {
             verifyOptimizedToPlan(value.right(), plan.right());
         } else if (source instanceof OclIr.AttributeAccess value) {
             assertTrue(target instanceof OclCypherPlan.AttributeAccessPlan);
-            verifyOptimizedToPlan(value.source(), ((OclCypherPlan.AttributeAccessPlan) target).source());
+            OclCypherPlan.AttributeAccessPlan plan = (OclCypherPlan.AttributeAccessPlan) target;
+            assertEquals(value.attributeName(), plan.attributeName());
+            assertEquals(value.attributeType(), plan.attributeType());
+            assertSame(value.attribute(), plan.attribute());
+            verifyOptimizedToPlan(value.source(), plan.source());
         } else if (source instanceof OclIr.NavigationAccess value) {
             assertTrue(target instanceof OclCypherPlan.NavigationAccessPlan);
             OclCypherPlan.NavigationAccessPlan plan = (OclCypherPlan.NavigationAccessPlan) target;
@@ -157,6 +167,7 @@ final class PipelineRefinementVerifier {
             assertTrue(target instanceof OclCypherPlan.CollectionOperationPlan);
             OclCypherPlan.CollectionOperationPlan plan = (OclCypherPlan.CollectionOperationPlan) target;
             assertEquals(value.operationName(), plan.operationName());
+            assertEquals(value.sourceCollectionType(), plan.sourceCollectionType());
             verifyOptimizedToPlan(value.source(), plan.source());
             verifyPlanLists(value.arguments(), plan.arguments());
         } else if (source instanceof OclIr.IteratorOperation value) {
@@ -164,6 +175,7 @@ final class PipelineRefinementVerifier {
             OclCypherPlan.IteratorOperationPlan plan = (OclCypherPlan.IteratorOperationPlan) target;
             assertEquals(value.operationName(), plan.operationName());
             assertEquals(value.iteratorName(), plan.iteratorName());
+            assertEquals(value.sourceCollectionType(), plan.sourceCollectionType());
             verifyOptimizedToPlan(value.source(), plan.source());
             verifyOptimizedToPlan(value.body(), plan.body());
         } else if (source instanceof OclIr.NavigationPredicateCheck value) {

@@ -1,0 +1,12 @@
+premise,lean_field,java_source,java_symbol,observation,evidence_test
+shared-snapshot,sharedSnapshot,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacyCertificate.java,sourceStart.equals(sourceEnd),snapshot stability,AdapterAdequacyEvidenceMatrixTest
+exact-M2,exactM2,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,metamodel key declarations,METAMODEL,AdapterAdequacyEvidenceMatrixTest
+PA1,pa1KeyAgreement,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,keyUniqueness(graph),METAMODEL,AdapterAdequacyEvidenceMatrixTest
+PA2,pa2ObjectExactness,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,"pa2(source, graph)",OBJECTS,AdapterAdequacyEvidenceMatrixTest
+PA3,pa3IdentifierInjectivity,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,"pa3(source, graph)",OBJECTS,AdapterAdequacyEvidenceMatrixTest
+PA4,pa4TypeExactness,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,prototype type exactness,TYPE,AdapterAdequacyEvidenceMatrixTest
+PA5,pa5ValueExactness,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,"pa5(source, graph)",VALUE,AdapterAdequacyEvidenceMatrixTest
+PA6,pa6LinkExactness,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,"pa6(source, graph)",NAV,AdapterAdequacyEvidenceMatrixTest
+PA7,pa7QualifierAgreement,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,"pa7(source, graph)",NAV,AdapterAdequacyEvidenceMatrixTest
+PA8,pa8AllInstancesAgreement,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/RepresentationAdequacyEvaluator.java,prototype allInstances accessor agreement,ALL_INSTANCES,AdapterAdequacyEvidenceMatrixTest
+PA9,pa9RendererAgreement,neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacyCertificate.java,verifyRendererAccessors,METAMODEL|TYPE|VALUE|NAV|ALL_INSTANCES,AdapterAdequacyEvidenceMatrixTest

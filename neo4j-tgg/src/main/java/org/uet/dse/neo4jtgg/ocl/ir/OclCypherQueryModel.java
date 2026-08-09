@@ -123,23 +123,27 @@ public final class OclCypherQueryModel {
     }
 
     public static OclCypherPlan.CollectionOperationPlan collectionOperation(OclCypherPlan.ExpressionPlan source,
-                                                                            String operationName,
+                                                                             OclTypeBinding sourceCollectionType,
+                                                                             String operationName,
                                                                             List<OclCypherPlan.ExpressionPlan> arguments,
                                                                             OclTypeBinding type) {
         return new OclCypherPlan.CollectionOperationPlan(
                 required(source, "source"),
+                required(sourceCollectionType, "sourceCollectionType"),
                 nonBlank(operationName, "operationName"),
                 copyList(arguments, "arguments"),
                 required(type, "type"));
     }
 
     public static OclCypherPlan.IteratorOperationPlan iteratorOperation(OclCypherPlan.ExpressionPlan source,
-                                                                        String operationName,
+                                                                         OclTypeBinding sourceCollectionType,
+                                                                         String operationName,
                                                                         String iteratorName,
                                                                         OclCypherPlan.ExpressionPlan body,
                                                                         OclTypeBinding type) {
         return new OclCypherPlan.IteratorOperationPlan(
                 required(source, "source"),
+                required(sourceCollectionType, "sourceCollectionType"),
                 nonBlank(operationName, "operationName"),
                 nonBlank(iteratorName, "iteratorName"),
                 required(body, "body"),

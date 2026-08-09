@@ -33,7 +33,7 @@ class OclGraphEncodingAdequacyTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains(
-                "MATCH (self:Object)-[:ObjectInstanceOf]->(cls {classKey:"),
+                "MATCH (self:Object)-[:ObjectInstanceOf]->(cls:UmlClass {classKey:"),
                 result.getCypher());
         assertTrue(result.getCypher().contains("RETURN DISTINCT self.use_id AS useId"), result.getCypher());
     }

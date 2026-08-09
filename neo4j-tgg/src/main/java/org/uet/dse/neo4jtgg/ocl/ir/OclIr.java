@@ -123,11 +123,13 @@ public final class OclIr {
                              OclTypeBinding type) implements SemanticExpression, OptimizedExpression {
     }
 
-    public record CollectionOperation(Expression source, String operationName, List<Expression> arguments,
+    public record CollectionOperation(Expression source, OclTypeBinding sourceCollectionType,
+                                      String operationName, List<Expression> arguments,
                                       OclTypeBinding type) implements SemanticExpression, OptimizedExpression {
     }
 
-    public record IteratorOperation(Expression source, String operationName, String iteratorName,
+    public record IteratorOperation(Expression source, OclTypeBinding sourceCollectionType,
+                                    String operationName, String iteratorName,
                                     Expression body, OclTypeBinding type) implements SemanticExpression, OptimizedExpression {
     }
 

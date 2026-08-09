@@ -17,6 +17,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -54,11 +56,12 @@ jobs:
       - name: Build reactor artifacts
         # Legacy USE integration tests are not the OCL2Cypher proof gate and
         # currently contain platform-sensitive golden-output cases. The next
-        # step runs the explicit 261-test implementation conformance suite.
+        # step runs the explicit implementation conformance suite,
+        # including both runtime-evidence freshness guards.
         run: mvn --batch-mode --update-snapshots -Dmaven.test.skip=true install
       - name: Check proof and implementation conformance
         shell: pwsh
-        run: ./verification/scripts/check-implementation-conformance.ps1
+        run: ./verification/scripts/check-implementation-conformance.ps1 -RequireCleanRuntimeEvidence
       - name: Write machine verification report
         shell: pwsh
         run: |
@@ -68,7 +71,7 @@ jobs:
       - name: Upload machine verification artifact
         uses: actions/upload-artifact@v4
         with:
-          name: proof-contract-PC-2026-07-22.2
+          name: proof-contract-PC-2026-07-22.3
           path: |
             ${{ runner.temp }}/proof-verification
             verification/contract/proof-contract-registry.json

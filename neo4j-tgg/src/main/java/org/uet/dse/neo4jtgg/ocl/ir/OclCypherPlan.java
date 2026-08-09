@@ -87,12 +87,14 @@ public final class OclCypherPlan {
                                  OclTypeBinding type) implements ExpressionPlan {
     }
 
-    public record CollectionOperationPlan(ExpressionPlan source, String operationName, List<ExpressionPlan> arguments,
-                                          OclTypeBinding type) implements ExpressionPlan {
+    public record CollectionOperationPlan(ExpressionPlan source, OclTypeBinding sourceCollectionType,
+                                           String operationName, List<ExpressionPlan> arguments,
+                                           OclTypeBinding type) implements ExpressionPlan {
     }
 
-    public record IteratorOperationPlan(ExpressionPlan source, String operationName, String iteratorName,
-                                        ExpressionPlan body, OclTypeBinding type) implements ExpressionPlan {
+    public record IteratorOperationPlan(ExpressionPlan source, OclTypeBinding sourceCollectionType,
+                                         String operationName, String iteratorName,
+                                         ExpressionPlan body, OclTypeBinding type) implements ExpressionPlan {
     }
 
     /**

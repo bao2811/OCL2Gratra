@@ -68,8 +68,13 @@ class OclValNegativeAdmissionCoverageTest {
                 c("wrong qualifier type", "context Library inv Bad: self.book[1]->notEmpty()", false, OclDiagnosticPhase.SEMANTIC),
                 certified("scalar attribute is not a collection source",
                         "context Person inv Bad: self.age->isEmpty()"),
+                certified("native-scalar to-one navigation is not a direct iterator source",
+                        "context Person inv Bad: self.employer->select(c | c = c)->notEmpty()"),
                 c("non-invariant root", "Person.allInstances()->size() >= 0", true, null),
                 c("empty Set literal", "context Person inv Bad: Set{}->isEmpty()", false, OclDiagnosticPhase.SEMANTIC),
+                c("Void-only Set literal has no contextual element type",
+                        "context Person inv Bad: Set{null}->notEmpty()", false,
+                        OclDiagnosticPhase.SEMANTIC, OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT),
                 c("nested Set literal", "context Person inv Bad: Set{Set{1}}->notEmpty()", false, OclDiagnosticPhase.SEMANTIC),
                 c("heterogeneous Set literal", "context Person inv Bad: Set{1, 'one'}->notEmpty()", false, OclDiagnosticPhase.SEMANTIC),
                 c("incompatible set union", "context Person inv Bad: Set{1}->union(Set{'one'})->notEmpty()", false, OclDiagnosticPhase.SEMANTIC),
@@ -159,6 +164,34 @@ class OclValNegativeAdmissionCoverageTest {
                 OclCodedUnsupportedOperationException.class,
                 () -> compiler.compileInvariantInstrumented(expression));
         assertTrue(certifiedFailure.code() == OclDiagnosticCode.OCL_VAL_EXCLUDED_CONSTRUCT);
+    }
+
+    @Test
+    void toOneNavigationKeepsUseScalarTypeAndIsNotSilentlyCertifiedAsASet() {
+        MModel model = compileModel("""
+                model ToOneNavigation
+                class Company end
+                class Person
+                attributes
+                    name : String
+                end
+                association CompanyManager between
+                    Company[*] role managedCompany
+                    Person[1] role manager
+                end
+                """, "to-one-navigation.use");
+        assertNotNull(model);
+        DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
+
+        String scalarAccess = "context Company inv ManagerNamed: self.manager.name <> ''";
+        assertTrue(compiler.compile(scalarAccess).isSupported(),
+                "The experimental path must preserve USE's scalar Person navigation");
+
+        OclCodedUnsupportedOperationException failure = assertThrows(
+                OclCodedUnsupportedOperationException.class,
+                () -> compiler.compileInvariantInstrumented(scalarAccess));
+        assertTrue(failure.code() == OclDiagnosticCode.OCL_VAL_EXCLUDED_CONSTRUCT);
+        assertTrue(failure.getMessage().contains("association navigation must bind to Set(Entity)"));
     }
 
     @Test

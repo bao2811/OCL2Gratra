@@ -180,6 +180,9 @@ class OclMetamodelIndexTest {
         assertEquals("CompanyEmployee", employer.associationName());
         assertEquals("CompanyManager", managedCompany.associationName());
         assertTrue(manager.targetSingleValued());
+        assertFalse(manager.resultBinding().isCollection());
+        assertTrue(manager.resultBinding().isNode());
+        assertEquals("Person", manager.resultBinding().typeName());
         assertEquals(OclMetamodelIndex.NavigationDirection.OUTGOING, employee.direction());
         assertEquals(OclMetamodelIndex.NavigationDirection.OUTGOING, manager.direction());
         assertEquals(OclMetamodelIndex.NavigationDirection.INCOMING, employer.direction());
@@ -261,7 +264,7 @@ class OclMetamodelIndexTest {
                 end
                 association Catalog between
                     Library[1] role library qualifier (shelf : String)
-                    Book[*] role book
+                    Book[*] role book qualifier (code : String)
                 end
                 """;
 
@@ -275,6 +278,12 @@ class OclMetamodelIndexTest {
         assertEquals("Catalog", book.associationName());
         assertTrue(book.hasQualifiers());
         assertTrue(book.supportsDirectCypherNavigation());
+
+        OclMetamodelIndex.NavigationInfo library = index.resolveNavigation("Book", "library");
+        assertNotNull(library);
+        assertTrue(library.targetSingleValued());
+        assertTrue(library.resultBinding().isCollection(),
+                "The native USE result kind, not target multiplicity alone, controls qualified navigation typing");
     }
 
     @Test

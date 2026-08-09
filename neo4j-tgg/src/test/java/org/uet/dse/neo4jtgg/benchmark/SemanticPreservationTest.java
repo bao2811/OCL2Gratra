@@ -8,7 +8,6 @@ import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.OCLLexer;
 import org.uet.dse.neo4j.OCLParser;
-import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
 import org.uet.dse.neo4jtgg.ocl.ir.*;
@@ -25,11 +24,13 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Semantic preservation evaluation: compares Java evaluator violations vs IR
- * compiled violations on realistic test data, grouped by OCL category.
+ * Internal Bound-to-IR evaluator-consistency regression on realistic test
+ * data, grouped by OCL category.
  *
  * Uses self-contained TestObject/TestRuntime/evaluators (same logic as
- * OclDualCheckTest).
+ * OclDualCheckTest). This is not a native USE semantic oracle and must not be
+ * reported as differential or theorem evidence; the research evidence uses
+ * the separate USE-vs-real-Neo4j suites.
  */
 class SemanticPreservationTest {
 
@@ -103,14 +104,14 @@ class SemanticPreservationTest {
         categories.put("Navigation", List.of(
                 "context Company inv HasEmployees: self.employee->notEmpty()",
                 "context Person inv HasEmployer: self.employer->notEmpty()",
-                "context Company inv ManagerDefined: self.manager.firstName.isDefined()",
+                "context Company inv ManagerPresent: self.manager->notEmpty()",
                 "context Department inv HasStaff: self.staff->notEmpty()"
         ));
         categories.put("Iterator (forAll/exists/select)", List.of(
                 "context Company inv WorkingAge: self.employee->forAll(p | p.age <= 65)",
                 "context Company inv HasSenior: self.employee->exists(p | p.age > 50)",
                 "context Company inv AdultOnly: self.employee->select(p | p.age >= 18)->size() = self.employee->size()",
-                "context Company inv AllNamed: self.employee->forAll(e | e.firstName.isDefined())"
+                "context Company inv AllNonNegativeAge: self.employee->forAll(e | e.age >= 0)"
         ));
         categories.put("Collection (size/isEmpty/count)", List.of(
                 "context Company inv AtLeastOne: self.employee->size() >= 1",
@@ -119,11 +120,11 @@ class SemanticPreservationTest {
         ));
         categories.put("Arithmetic/Comparison", List.of(
                 "context Person inv PositiveSalary: self.salary > 0",
-                "context Company inv NameDefined: self.name.isDefined()"
+                "context Company inv NameNonEmpty: self.name <> ''"
         ));
         categories.put("Logic (implies/and/or)", List.of(
                 "context Person inv AdultRule: self.age >= 18 implies self.salary > 0",
-                "context Company inv HasBothOrNone: self.employee->notEmpty() implies self.manager.firstName.isDefined()"
+                "context Company inv HasBothOrNone: self.employee->notEmpty() implies self.manager->notEmpty()"
         ));
         categories.put("Control flow (if/let)", List.of(
                 "context Person inv IfCheck: if self.age >= 18 then self.salary > 0 else true endif",
@@ -133,7 +134,7 @@ class SemanticPreservationTest {
         // Evaluate all
         List<EvalResult> results = new ArrayList<>();
         OclMetamodelIndex idx = new OclMetamodelIndex(model);
-        OclSemanticBinder binder = new OclSemanticBinder(idx);
+        OclSemanticBinder binder = new OclSemanticBinder(idx).forCertifiedProfile();
         DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
 
         for (var entry : categories.entrySet()) {
@@ -158,13 +159,14 @@ class SemanticPreservationTest {
                     }
                 }
                 results.add(new EvalResult(entry.getKey(), ocl, jv, iv, jv == iv));
-                assertTrue(compiler.compile(ocl).isSupported(), "Unsupported: " + ocl);
+                assertNotNull(compiler.compileInvariantInstrumented(ocl).cypher(),
+                        "Certified compiler produced no Cypher: " + ocl);
             }
         }
 
         // Print report
         StringBuilder rpt = new StringBuilder();
-        rpt.append("\n=== Semantic Preservation Evaluation ===\n\n");
+        rpt.append("\n=== Bound-to-IR Evaluation Consistency (non-oracle) ===\n\n");
         rpt.append(String.format("%-35s %-15s %-15s %-8s %-8s\n",
                 "OCL Group", "Java Violations", "IR Violations", "Match", "Rules"));
         rpt.append("-".repeat(85)).append("\n");

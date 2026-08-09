@@ -52,7 +52,7 @@ public class OclSemanticBinder {
         this.certifiedFiniteSetSemantics = certifiedFiniteSetSemantics;
     }
 
-    /** Binder view implementing the theorem profile's uniform finite-Set navigation policy. */
+    /** Binder view implementing the theorem profile's finite-Set collection policy. */
     public OclSemanticBinder forCertifiedProfile() {
         return certifiedFiniteSetSemantics ? this : new OclSemanticBinder(metamodelIndex, true);
     }
@@ -183,22 +183,25 @@ public class OclSemanticBinder {
         if (expression instanceof ASTCollectionOp collectionOp) {
             BoundExpression source = bind(collectionOp.source, scope);
             List<BoundExpression> arguments = bindArguments(collectionOp.args, scope);
-            return new BoundCollectionOperation(collectionOp, source, arguments,
-                    inferCollectionOpType(collectionOp.opName, source.type(), arguments));
+            OclTypeBinding sourceCollectionType = collectionSourceType(source);
+            return new BoundCollectionOperation(collectionOp, source, arguments, sourceCollectionType,
+                    inferCollectionOpType(collectionOp.opName, sourceCollectionType, arguments));
         }
 
         if (expression instanceof ASTIterator iterator) {
             BoundExpression source = bind(iterator.source, scope);
-            if (!source.type().isCollection()) {
+            OclTypeBinding sourceCollectionType = collectionSourceType(source);
+            if (!sourceCollectionType.isCollection()) {
                 throw new OclCodedUnsupportedOperationException(
                         OclDiagnosticCode.INVALID_ITERATOR_SOURCE,
                         "Iterator source must be a collection: " + iterator.operation);
             }
-            validateIteratorType(iterator, source.type().elementType());
-            scope.enter(iterator.iteratorName, source.type().elementType());
+            validateIteratorType(iterator, sourceCollectionType.elementType());
+            scope.enter(iterator.iteratorName, sourceCollectionType.elementType());
             BoundExpression body = bind(iterator.body, scope);
             scope.exit();
-            return new BoundIterator(iterator, source, body, inferIteratorType(iterator.operation, source.type(), body.type()));
+            return new BoundIterator(iterator, source, sourceCollectionType, body,
+                    inferIteratorType(iterator.operation, sourceCollectionType, body.type()));
         }
 
         throw new OclCodedUnsupportedOperationException(
@@ -230,13 +233,40 @@ public class OclSemanticBinder {
         projectionScope.exit();
 
         ASTIterator collectAst = new ASTIterator(property.source, "collect", iteratorName, projectedPropertyAst);
-        BoundIterator collectBound = new BoundIterator(collectAst, source, body, inferIteratorType("collect", source.type(), body.type()));
+        BoundIterator collectBound = new BoundIterator(collectAst, source, source.type(), body,
+                inferIteratorType("collect", source.type(), body.type()));
         if (!body.type().isCollection()) {
             return collectBound;
         }
 
         ASTCollectionOp flattenAst = new ASTCollectionOp(collectAst, "flatten", List.of());
-        return new BoundCollectionOperation(flattenAst, collectBound, List.of(), inferFlattenType(collectBound.type()));
+        return new BoundCollectionOperation(flattenAst, collectBound, List.of(), collectBound.type(),
+                inferFlattenType(collectBound.type()));
+    }
+
+    /**
+     * OCL/USE keeps an ordinary navigation with upper multiplicity one scalar.
+     * Qualified forms can still have a native collection result, so the USE
+     * result binding rather than multiplicity alone decides the property type.
+     * When the surface expression applies a collection operator with {@code ->}, the
+     * certified profile records the corresponding finite singleton/empty-set
+     * view at that operator boundary instead of changing the property's static
+     * type inside the bound tree.
+     */
+    private OclTypeBinding collectionSourceType(BoundExpression source) {
+        if (source.type().isCollection()) {
+            return source.type();
+        }
+        if (certifiedFiniteSetSemantics
+                && source instanceof BoundProperty property
+                && !property.isAttribute()
+                && property.navigation() != null
+                && property.navigation().targetSingleValued()
+                && !property.navigation().resultBinding().isCollection()) {
+            return OclTypeBinding.nodeCollection(
+                    property.navigation().targetClassName(), OclTypeBinding.CollectionKind.SET);
+        }
+        return source.type();
     }
 
     private BoundExpression bindNodePropertyAccess(ASTProperty property, BoundExpression source, Scope scope) {
@@ -263,7 +293,15 @@ public class OclSemanticBinder {
             if (!navigation.supportsDirectCypherNavigation()) {
                 throw new OclCodedUnsupportedOperationException(navigation.unsupportedCode(), navigation.unsupportedReason());
             }
-            OclTypeBinding resultType = certifiedFiniteSetSemantics
+            // The certified finite-set view may forget ordering on a native
+            // collection result, but it must not change a native scalar
+            // navigation from Entity to Set(Entity). Such a lift needs an
+            // explicit lowering rule and preservation theorem. The native USE
+            // binding is authoritative here. In particular,
+            // ordinary upper-one navigation is scalar, while some qualified
+            // navigation forms can still have a collection result even when
+            // the target end itself is upper-one.
+            OclTypeBinding resultType = certifiedFiniteSetSemantics && navigation.resultBinding().isCollection()
                     ? OclTypeBinding.nodeCollection(
                             navigation.targetClassName(), OclTypeBinding.CollectionKind.SET)
                     : navigation.resultBinding();
@@ -407,7 +445,7 @@ public class OclSemanticBinder {
             }
             elementType = elementType == null ? candidate : setJoin(elementType, candidate, "Set literal");
         }
-        if (elementType == null) {
+        if (elementType == null || isVoidType(elementType)) {
             throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
                     "A Set literal containing only undefined values has no inferable element type.");
@@ -938,10 +976,12 @@ public class OclSemanticBinder {
     }
 
     public record BoundCollectionOperation(ASTCollectionOp ast, BoundExpression source, List<BoundExpression> arguments,
+                                           OclTypeBinding sourceCollectionType,
                                            OclTypeBinding type) implements BoundExpression {
     }
 
-    public record BoundIterator(ASTIterator ast, BoundExpression source, BoundExpression body,
+    public record BoundIterator(ASTIterator ast, BoundExpression source, OclTypeBinding sourceCollectionType,
+                                BoundExpression body,
                                 OclTypeBinding type) implements BoundExpression {
     }
 

@@ -196,8 +196,8 @@ class ResearchScaleRealNeo4jTest {
                 }
                 if (!found) ids.add("scale_company_" + company);
             }
-        } else if (!Set.of("HasEmployees", "WorkingAge", "EmployeeCount", "NamedManager",
-                "HasEmployer", "AdultWorker", "AllNamed").contains(invariantName)) {
+        } else if (!Set.of("HasEmployees", "WorkingAge", "EmployeeCount", "CompanyNameNonEmpty",
+                "HasEmployer", "AdultWorker", "AllSalariesNonNegative").contains(invariantName)) {
             throw new IllegalArgumentException("No deterministic oracle for invariant " + invariantName);
         }
         return Set.copyOf(ids);
@@ -479,11 +479,11 @@ class ResearchScaleRealNeo4jTest {
             context Company inv HasSenior: self.employee->exists(p | p.age > 50)
             context Company inv SeniorSelect: self.employee->select(p | p.age > 50)->notEmpty()
             context Company inv EmployeeCount: self.employee->size() >= 1
-            context Company inv NamedManager: self.manager.firstName.isDefined()
+            context Company inv CompanyNameNonEmpty: self.name <> ''
             context Person inv HasEmployer: self.employer->notEmpty()
             context Person inv AdultWorker: self.age >= 18 implies self.employer->notEmpty()
             context Company inv HighSalaryExists: self.employee->exists(e | e.salary > 5000)
-            context Company inv AllNamed: self.employee->forAll(e | e.firstName.isDefined())
+            context Company inv AllSalariesNonNegative: self.employee->forAll(e | e.salary >= 0)
             """;
 
     private static final String COMPANY_LOAD = """

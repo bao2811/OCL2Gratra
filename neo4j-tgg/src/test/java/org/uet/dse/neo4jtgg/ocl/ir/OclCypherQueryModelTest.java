@@ -109,7 +109,7 @@ class OclCypherQueryModelTest {
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
 
         assertTrue(rendered.cypher().contains(
-                "MATCH (self:Object)-[:ObjectInstanceOf]->(cls {classKey:"));
+                "MATCH (self:Object)-[:ObjectInstanceOf]->(cls:UmlClass {classKey:"));
         assertTrue(rendered.cypher().contains("WHERE NOT coalesce($"));
         assertTrue(rendered.cypher().contains("RETURN DISTINCT self.use_id AS useId"));
         assertTrue(rendered.parameters().containsValue(Boolean.TRUE));

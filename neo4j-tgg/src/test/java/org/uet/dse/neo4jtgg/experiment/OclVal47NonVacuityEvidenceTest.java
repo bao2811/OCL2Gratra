@@ -46,12 +46,16 @@ class OclVal47NonVacuityEvidenceTest {
 
         List<String> stale = replace(original, "# fixtureSha256\t", "# fixtureSha256\t", "# fixtureSha256\t00");
         assertThrows(IllegalStateException.class, () -> validate(parse(stale), workspace));
+
+        List<String> invalidProvenance = replace(original, "# gitDirtyAtCapture\t",
+                "true", "unknown");
+        assertThrows(IllegalStateException.class, () -> validate(parse(invalidProvenance), workspace));
     }
 
     private static void validate(Evidence evidence, Path workspace) throws Exception {
         Map<String, String> metadata = evidence.metadata();
-        requireEquals("oclval47-nonvacuity-runtime-evidence-v1", metadata.get("schema"), "schema");
-        requireEquals("PC-2026-07-22.2", metadata.get("proofContract"), "proofContract");
+        requireEquals("oclval47-nonvacuity-runtime-evidence-v2", metadata.get("schema"), "schema");
+        requireEquals("PC-2026-07-22.3", metadata.get("proofContract"), "proofContract");
         requireEquals(Cypher5ValAssumptionMatrix.NEO4J_KERNEL, metadata.get("neo4jKernel"), "neo4jKernel");
         requireEquals(Cypher5ValAssumptionMatrix.CYPHER_COMPONENT,
                 metadata.get("cypherComponent"), "cypherComponent");
@@ -71,7 +75,7 @@ class OclVal47NonVacuityEvidenceTest {
         requireEquals(RUNTIME_TEST, metadata.get("runtimeTest"), "runtimeTest");
         requireEquals(EvidenceSourceHash.MODE, metadata.get("sourceHashMode"), "sourceHashMode");
         requireMatches(metadata.get("executedAt"), "\\d{4}-\\d{2}-\\d{2}T.+[+-]\\d{2}:\\d{2}", "executedAt");
-        requireMatches(metadata.get("gitCommit"), "[0-9a-f]{40}", "gitCommit");
+        EvidenceGitProvenance.validate(metadata, workspace);
 
         requireHash(metadata, "expectationManifestSha256", workspace.resolve(
                 "neo4j-tgg/src/test/resources/org/uet/dse/neo4jtgg/experiment/oclval47-nonvacuity.tsv"));
@@ -81,6 +85,18 @@ class OclVal47NonVacuityEvidenceTest {
                 "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValRealNeo4jCoverageTest.java"));
         requireHash(metadata, "rendererSha256", workspace.resolve(
                 "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java"));
+        requireHash(metadata, "binderSha256", workspace.resolve(
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclSemanticBinder.java"));
+        requireHash(metadata, "admissionSha256", workspace.resolve(
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclValBoundAdmissionPolicy.java"));
+        requireHash(metadata, "irBuilderSha256", workspace.resolve(
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclIrBuilder.java"));
+        requireHash(metadata, "optimizerSha256", workspace.resolve(
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclIrOptimizer.java"));
+        requireHash(metadata, "adapterCertificateSha256", workspace.resolve(
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacyCertificate.java"));
+        requireHash(metadata, "adapterSnapshotReaderSha256", workspace.resolve(
+                "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacySnapshotReader.java"));
         requireHash(metadata, "encodingSha256", workspace.resolve(
                 "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphEncoding.java"));
         requireEquals(Cypher5ValAssumptionMatrix.JAVA_DRIVER_DEPENDENCY,

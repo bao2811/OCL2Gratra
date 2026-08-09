@@ -511,7 +511,7 @@ public class DefaultTggWorkspaceService implements TggWorkspaceService {
         sb.append("Runtime notes\n");
         sb.append("- Run Workspace imports or reuses only M2/M1 metamodel data on Neo4j.\n");
         sb.append("- XMI/XML import creates M0 instances and links them to the existing metamodel.\n");
-        sb.append("- M0 object nodes are stored as (:ClassName {use_id: ...})-[:ObjectInstanceOf]->(:Class), not as direct children of ManageModel.\n");
+        sb.append("- M0 object nodes are stored as (:Object {use_id: ...})-[:ObjectInstanceOf]->(:UmlClass {classKey: ...}), not as direct children of ManageModel.\n");
         sb.append("- Import batches write directly to Neo4j.\n");
         sb.append("- Graph views read source/corr/target snapshots directly from Neo4j.\n");
         sb.append("- 'Refresh USE Mirror' rebuilds the USE session from the current Neo4j snapshot.\n");

@@ -1,6 +1,8 @@
 model PersonsValidation
 
 class PersonRegister
+attributes
+    label : String
 end
 
 abstract class Person

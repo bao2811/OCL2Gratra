@@ -1,7 +1,7 @@
 import Init.Data.List.Lemmas
 
 /-!
-Machine-checked kernel for selected obligations of PC-2026-07-22.2.
+Machine-checked kernel for selected obligations of PC-2026-07-22.3.
 
 This file models the registered flat typed-value, normalization, Boolean, and
 16-constructor relational-refinement kernels. It is not a formalization of the
@@ -10,9 +10,9 @@ Java renderer, Neo4j, nested collections, or the complete OCL_val syntax.
 
 namespace Ocl2CypherProof
 
-def proofContractVersion : String := "PC-2026-07-22.2"
+def proofContractVersion : String := "PC-2026-07-22.3"
 def proofRegistrySha256 : String :=
-  "52cbbf1c616027017fcf13379acdbf792f1c54260a5a1b5670f6556453cb721e"
+  "2aa1722c9c09180892ca2da3c35705db39c2d735bfeae9b5d34122e5ab93994a"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/
@@ -71,6 +71,69 @@ theorem forall_over_image (f : α → β) (s : PSet α) (q : β → Prop) :
     exact h x hx
 
 end PSet
+
+/-! ## LIFT1: the collection view of a scalar to-one navigation
+
+The source evaluator keeps a `[0..1]`/`[1]` navigation scalar.  The certified
+collection consumers do not change that source type: they observe an absent
+target as the empty finite collection and a present target as a singleton.
+The three definitions below are deliberately independent, so the theorem is
+an agreement result rather than a definitional alias between the source,
+Bound, and validation-algebra stages.
+-/
+
+namespace ToOneLift
+
+def sourceView {Entity : Type u} : Option Entity -> List Entity
+  | none => []
+  | some entity => [entity]
+
+def boundView {Entity : Type u} : Option Entity -> List Entity
+  | none => []
+  | some entity => [entity]
+
+def validationView {Entity : Type u} : Option Entity -> List Entity
+  | none => []
+  | some entity => [entity]
+
+structure CollectionObservation (Entity : Type u) where
+  asSet : List Entity
+  size : Nat
+  isEmpty : Prop
+  notEmpty : Prop
+
+def observe {Entity : Type u} (values : List Entity) : CollectionObservation Entity where
+  asSet := values
+  size := values.length
+  isEmpty := values = []
+  notEmpty := Not (values = [])
+
+theorem lift1_source_bound (target : Option Entity) :
+    sourceView target = boundView target := by
+  cases target <;> rfl
+
+theorem lift1_bound_validation (target : Option Entity) :
+    boundView target = validationView target := by
+  cases target <;> rfl
+
+theorem lift1_present (entity : Entity) :
+    sourceView (some entity) = [entity] /\
+    boundView (some entity) = [entity] /\
+    validationView (some entity) = [entity] := by
+  exact And.intro rfl (And.intro rfl rfl)
+
+theorem lift1_absent :
+    sourceView (none : Option Entity) = [] /\
+    boundView (none : Option Entity) = [] /\
+    validationView (none : Option Entity) = [] := by
+  exact And.intro rfl (And.intro rfl rfl)
+
+theorem lift1_consumer_agreement (target : Option Entity) :
+    observe (sourceView target) = observe (boundView target) /\
+    observe (boundView target) = observe (validationView target) := by
+  cases target <;> exact And.intro rfl rfl
+
+end ToOneLift
 
 /-! ## Flat typed values and encodeValue injectivity -/
 
@@ -1192,10 +1255,11 @@ end Formula
 
 /-! ## Full production-constructor structural kernel for Theorem 4
 
-`JavaIrRefinement.Expr` mirrors every constructor permitted by the production
-`OclIr.OptimizedExpression` interface.  Object and graph interpretations are
-given as two algebras.  `AlgebraAgreement` states the primitive commutation
-premise for each Java constructor, and `java_ir_eval_refinement` composes those
+`JavaIrRefinement.Expr` mirrors every constructor and every non-recursive
+payload permitted by the production `OclIr.OptimizedExpression` interface.
+Object and graph interpretations are given as two payload-parametric algebras.
+`AlgebraAgreement` states the primitive commutation premise for each Java
+constructor at the same payload, and `java_ir_eval_refinement` composes those
 premises by structural induction, including lists and optional predicates.
 This theorem does not assume Neo4j semantics or AdapterAdequate; those remain
 separate required premises/obligations.
@@ -1204,88 +1268,103 @@ separate required premises/obligations.
 namespace JavaIrRefinement
 
 mutual
-  inductive Expr where
-    | variableE
-    | literalE
-    | setLiteralE (elements : ExprList)
-    | notE (body : Expr)
-    | binaryE (left right : Expr)
-    | attributeAccessE (source : Expr)
-    | navigationAccessE (source : Expr) (qualifiers : ExprList)
-    | methodCallE (source : Expr) (arguments : ExprList)
-    | collectionOperationE (source : Expr) (arguments : ExprList)
-    | iteratorOperationE (source body : Expr)
-    | ifE (condition thenBranch elseBranch : Expr)
-    | letE (value body : Expr)
-    | navigationPredicateE (navigation : Expr) (predicate : OptionalExpr)
-    | navigationCountE (navigation : Expr) (predicate : OptionalExpr)
-    | navigationAggregationE (navigation : Expr) (predicate : OptionalExpr)
-        (projection : Expr)
-    | navigationUniquenessE (navigation : Expr) (predicate : OptionalExpr)
-        (projection : Expr)
+  inductive Expr (Payload : Type u) where
+    | variableE (name typeTag : Payload)
+    | literalE (value typeTag : Payload)
+    | setLiteralE (elements : ExprList Payload) (typeTag : Payload)
+    | notE (body : Expr Payload) (typeTag : Payload)
+    | binaryE (operator : Payload) (left right : Expr Payload) (typeTag : Payload)
+    | attributeAccessE (source : Expr Payload)
+        (attributeName attributeType typeTag attributeIdentity : Payload)
+    | navigationAccessE (source : Expr Payload) (navigation : Payload)
+        (qualifiers : ExprList Payload) (typeTag : Payload)
+    | methodCallE (source : Expr Payload) (methodName : Payload)
+        (arguments : ExprList Payload) (typeTag : Payload)
+    | collectionOperationE (source : Expr Payload) (sourceCollectionType operationName : Payload)
+        (arguments : ExprList Payload) (typeTag : Payload)
+    | iteratorOperationE (source : Expr Payload) (sourceCollectionType operationName iteratorName : Payload)
+        (body : Expr Payload) (typeTag : Payload)
+    | ifE (condition thenBranch elseBranch : Expr Payload) (typeTag : Payload)
+    | letE (variableName : Payload) (value body : Expr Payload) (typeTag : Payload)
+    | navigationPredicateE (navigation : Expr Payload) (iteratorName : Option Payload)
+        (predicate : OptionalExpr Payload) (kind typeTag : Payload)
+    | navigationCountE (navigation : Expr Payload) (iteratorName : Option Payload)
+        (predicate : OptionalExpr Payload) (operator literal typeTag : Payload)
+    | navigationAggregationE (navigation : Expr Payload) (iteratorName : Option Payload)
+        (predicate : OptionalExpr Payload) (projection : Expr Payload)
+        (operationName typeTag : Payload)
+    | navigationUniquenessE (navigation : Expr Payload) (iteratorName : Option Payload)
+        (predicate : OptionalExpr Payload) (projection : Expr Payload) (typeTag : Payload)
 
-  inductive ExprList where
+  inductive ExprList (Payload : Type u) where
     | nil
-    | cons (head : Expr) (tail : ExprList)
+    | cons (head : Expr Payload) (tail : ExprList Payload)
 
-  inductive OptionalExpr where
+  inductive OptionalExpr (Payload : Type u) where
     | none
-    | some (value : Expr)
+    | some (value : Expr Payload)
 end
 
-structure Algebra (Value : Type u) where
-  variableValue : Value
-  literalValue : Value
-  setLiteralOp : List Value → Value
-  notOp : Value → Value
-  binaryOp : Value → Value → Value
-  attributeAccessOp : Value → Value
-  navigationAccessOp : Value → List Value → Value
-  methodCallOp : Value → List Value → Value
-  collectionOperationOp : Value → List Value → Value
-  iteratorOperationOp : Value → Value → Value
-  iteOp : Value → Value → Value → Value
-  letOp : Value → Value → Value
-  navigationPredicateOp : Value → Option Value → Value
-  navigationCountOp : Value → Option Value → Value
-  navigationAggregationOp : Value → Option Value → Value → Value
-  navigationUniquenessOp : Value → Option Value → Value → Value
+structure Algebra (Payload : Type u) (Value : Type v) where
+  variableOp : Payload → Payload → Value
+  literalOp : Payload → Payload → Value
+  setLiteralOp : Payload → List Value → Value
+  notOp : Payload → Value → Value
+  binaryOp : Payload → Payload → Value → Value → Value
+  attributeAccessOp : Payload → Payload → Payload → Payload → Value → Value
+  navigationAccessOp : Payload → Payload → Value → List Value → Value
+  methodCallOp : Payload → Payload → Value → List Value → Value
+  collectionOperationOp : Payload → Payload → Payload → Value → List Value → Value
+  iteratorOperationOp : Payload → Payload → Payload → Payload → Value → Value → Value
+  iteOp : Payload → Value → Value → Value → Value
+  letOp : Payload → Payload → Value → Value → Value
+  navigationPredicateOp : Option Payload → Payload → Payload → Value → Option Value → Value
+  navigationCountOp : Option Payload → Payload → Payload → Payload → Value → Option Value → Value
+  navigationAggregationOp : Option Payload → Payload → Payload → Value → Option Value → Value → Value
+  navigationUniquenessOp : Option Payload → Payload → Value → Option Value → Value → Value
 
 mutual
-  def eval (algebra : Algebra Value) : Expr → Value
-    | .variableE => algebra.variableValue
-    | .literalE => algebra.literalValue
-    | .setLiteralE elements => algebra.setLiteralOp (evalList algebra elements)
-    | .notE body => algebra.notOp (eval algebra body)
-    | .binaryE left right => algebra.binaryOp (eval algebra left) (eval algebra right)
-    | .attributeAccessE source => algebra.attributeAccessOp (eval algebra source)
-    | .navigationAccessE source qualifiers =>
-        algebra.navigationAccessOp (eval algebra source) (evalList algebra qualifiers)
-    | .methodCallE source arguments =>
-        algebra.methodCallOp (eval algebra source) (evalList algebra arguments)
-    | .collectionOperationE source arguments =>
-        algebra.collectionOperationOp (eval algebra source) (evalList algebra arguments)
-    | .iteratorOperationE source body =>
-        algebra.iteratorOperationOp (eval algebra source) (eval algebra body)
-    | .ifE condition thenBranch elseBranch =>
-        algebra.iteOp (eval algebra condition) (eval algebra thenBranch) (eval algebra elseBranch)
-    | .letE value body => algebra.letOp (eval algebra value) (eval algebra body)
-    | .navigationPredicateE navigation predicate =>
-        algebra.navigationPredicateOp (eval algebra navigation) (evalOptional algebra predicate)
-    | .navigationCountE navigation predicate =>
-        algebra.navigationCountOp (eval algebra navigation) (evalOptional algebra predicate)
-    | .navigationAggregationE navigation predicate projection =>
-        algebra.navigationAggregationOp (eval algebra navigation)
-          (evalOptional algebra predicate) (eval algebra projection)
-    | .navigationUniquenessE navigation predicate projection =>
-        algebra.navigationUniquenessOp (eval algebra navigation)
-          (evalOptional algebra predicate) (eval algebra projection)
+  def eval (algebra : Algebra Payload Value) : Expr Payload → Value
+    | .variableE name typeTag => algebra.variableOp name typeTag
+    | .literalE value typeTag => algebra.literalOp value typeTag
+    | .setLiteralE elements typeTag => algebra.setLiteralOp typeTag (evalList algebra elements)
+    | .notE body typeTag => algebra.notOp typeTag (eval algebra body)
+    | .binaryE operator left right typeTag =>
+        algebra.binaryOp operator typeTag (eval algebra left) (eval algebra right)
+    | .attributeAccessE source attributeName attributeType typeTag attributeIdentity =>
+        algebra.attributeAccessOp attributeName attributeType typeTag attributeIdentity (eval algebra source)
+    | .navigationAccessE source navigation qualifiers typeTag =>
+        algebra.navigationAccessOp navigation typeTag (eval algebra source) (evalList algebra qualifiers)
+    | .methodCallE source methodName arguments typeTag =>
+        algebra.methodCallOp methodName typeTag (eval algebra source) (evalList algebra arguments)
+    | .collectionOperationE source sourceCollectionType operationName arguments typeTag =>
+        algebra.collectionOperationOp sourceCollectionType operationName typeTag
+          (eval algebra source) (evalList algebra arguments)
+    | .iteratorOperationE source sourceCollectionType operationName iteratorName body typeTag =>
+        algebra.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+          (eval algebra source) (eval algebra body)
+    | .ifE condition thenBranch elseBranch typeTag =>
+        algebra.iteOp typeTag (eval algebra condition) (eval algebra thenBranch) (eval algebra elseBranch)
+    | .letE variableName value body typeTag =>
+        algebra.letOp variableName typeTag (eval algebra value) (eval algebra body)
+    | .navigationPredicateE navigation iteratorName predicate kind typeTag =>
+        algebra.navigationPredicateOp iteratorName kind typeTag
+          (eval algebra navigation) (evalOptional algebra predicate)
+    | .navigationCountE navigation iteratorName predicate operator literal typeTag =>
+        algebra.navigationCountOp iteratorName operator literal typeTag
+          (eval algebra navigation) (evalOptional algebra predicate)
+    | .navigationAggregationE navigation iteratorName predicate projection operationName typeTag =>
+        algebra.navigationAggregationOp iteratorName operationName typeTag
+          (eval algebra navigation) (evalOptional algebra predicate) (eval algebra projection)
+    | .navigationUniquenessE navigation iteratorName predicate projection typeTag =>
+        algebra.navigationUniquenessOp iteratorName typeTag
+          (eval algebra navigation) (evalOptional algebra predicate) (eval algebra projection)
 
-  def evalList (algebra : Algebra Value) : ExprList → List Value
+  def evalList (algebra : Algebra Payload Value) : ExprList Payload → List Value
     | .nil => []
     | .cons head tail => eval algebra head :: evalList algebra tail
 
-  def evalOptional (algebra : Algebra Value) : OptionalExpr → Option Value
+  def evalOptional (algebra : Algebra Payload Value) : OptionalExpr Payload → Option Value
     | .none => none
     | .some value => some (eval algebra value)
 end
@@ -1304,120 +1383,153 @@ inductive RelatedList (relation : ObjectValue → GraphValue → Prop) :
       RelatedList relation (objectHead :: objectTail) (graphHead :: graphTail)
 
 structure AlgebraAgreement (relation : ObjectValue → GraphValue → Prop)
-    (object : Algebra ObjectValue) (graph : Algebra GraphValue) : Prop where
-  variableCase : relation object.variableValue graph.variableValue
-  literalCase : relation object.literalValue graph.literalValue
-  setLiteralCase : ∀ objectValues graphValues,
+    (object : Algebra Payload ObjectValue) (graph : Algebra Payload GraphValue) : Prop where
+  variableCase : ∀ name typeTag,
+    relation (object.variableOp name typeTag) (graph.variableOp name typeTag)
+  literalCase : ∀ value typeTag,
+    relation (object.literalOp value typeTag) (graph.literalOp value typeTag)
+  setLiteralCase : ∀ typeTag objectValues graphValues,
     RelatedList relation objectValues graphValues →
-      relation (object.setLiteralOp objectValues) (graph.setLiteralOp graphValues)
-  notCase : ∀ objectValue graphValue, relation objectValue graphValue →
-    relation (object.notOp objectValue) (graph.notOp graphValue)
-  binaryCase : ∀ objectLeft graphLeft objectRight graphRight,
+      relation (object.setLiteralOp typeTag objectValues) (graph.setLiteralOp typeTag graphValues)
+  notCase : ∀ typeTag objectValue graphValue, relation objectValue graphValue →
+    relation (object.notOp typeTag objectValue) (graph.notOp typeTag graphValue)
+  binaryCase : ∀ operator typeTag objectLeft graphLeft objectRight graphRight,
     relation objectLeft graphLeft → relation objectRight graphRight →
-      relation (object.binaryOp objectLeft objectRight) (graph.binaryOp graphLeft graphRight)
-  attributeAccessCase : ∀ objectSource graphSource, relation objectSource graphSource →
-    relation (object.attributeAccessOp objectSource) (graph.attributeAccessOp graphSource)
-  navigationAccessCase : ∀ objectSource graphSource objectQualifiers graphQualifiers,
+      relation (object.binaryOp operator typeTag objectLeft objectRight)
+        (graph.binaryOp operator typeTag graphLeft graphRight)
+  attributeAccessCase : ∀ attributeName attributeType typeTag attributeIdentity objectSource graphSource,
+    relation objectSource graphSource →
+    relation (object.attributeAccessOp attributeName attributeType typeTag attributeIdentity objectSource)
+      (graph.attributeAccessOp attributeName attributeType typeTag attributeIdentity graphSource)
+  navigationAccessCase : ∀ navigation typeTag objectSource graphSource objectQualifiers graphQualifiers,
     relation objectSource graphSource → RelatedList relation objectQualifiers graphQualifiers →
-      relation (object.navigationAccessOp objectSource objectQualifiers)
-        (graph.navigationAccessOp graphSource graphQualifiers)
-  methodCallCase : ∀ objectSource graphSource objectArguments graphArguments,
+      relation (object.navigationAccessOp navigation typeTag objectSource objectQualifiers)
+        (graph.navigationAccessOp navigation typeTag graphSource graphQualifiers)
+  methodCallCase : ∀ methodName typeTag objectSource graphSource objectArguments graphArguments,
     relation objectSource graphSource → RelatedList relation objectArguments graphArguments →
-      relation (object.methodCallOp objectSource objectArguments)
-        (graph.methodCallOp graphSource graphArguments)
-  collectionOperationCase : ∀ objectSource graphSource objectArguments graphArguments,
+      relation (object.methodCallOp methodName typeTag objectSource objectArguments)
+        (graph.methodCallOp methodName typeTag graphSource graphArguments)
+  collectionOperationCase : ∀ sourceCollectionType operationName typeTag
+      objectSource graphSource objectArguments graphArguments,
     relation objectSource graphSource → RelatedList relation objectArguments graphArguments →
-      relation (object.collectionOperationOp objectSource objectArguments)
-        (graph.collectionOperationOp graphSource graphArguments)
-  iteratorOperationCase : ∀ objectSource graphSource objectBody graphBody,
+      relation (object.collectionOperationOp sourceCollectionType operationName typeTag
+          objectSource objectArguments)
+        (graph.collectionOperationOp sourceCollectionType operationName typeTag
+          graphSource graphArguments)
+  iteratorOperationCase : ∀ sourceCollectionType operationName iteratorName typeTag
+      objectSource graphSource objectBody graphBody,
     relation objectSource graphSource → relation objectBody graphBody →
-      relation (object.iteratorOperationOp objectSource objectBody)
-        (graph.iteratorOperationOp graphSource graphBody)
-  iteCase : ∀ objectCondition graphCondition objectThen graphThen objectElse graphElse,
+      relation (object.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+          objectSource objectBody)
+        (graph.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+          graphSource graphBody)
+  iteCase : ∀ typeTag objectCondition graphCondition objectThen graphThen objectElse graphElse,
     relation objectCondition graphCondition → relation objectThen graphThen →
       relation objectElse graphElse →
-      relation (object.iteOp objectCondition objectThen objectElse)
-        (graph.iteOp graphCondition graphThen graphElse)
-  letCase : ∀ objectValue graphValue objectBody graphBody,
+      relation (object.iteOp typeTag objectCondition objectThen objectElse)
+        (graph.iteOp typeTag graphCondition graphThen graphElse)
+  letCase : ∀ variableName typeTag objectValue graphValue objectBody graphBody,
     relation objectValue graphValue → relation objectBody graphBody →
-      relation (object.letOp objectValue objectBody) (graph.letOp graphValue graphBody)
-  navigationPredicateCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate,
+      relation (object.letOp variableName typeTag objectValue objectBody)
+        (graph.letOp variableName typeTag graphValue graphBody)
+  navigationPredicateCase : ∀ iteratorName kind typeTag objectNavigation graphNavigation
+      objectPredicate graphPredicate,
     relation objectNavigation graphNavigation →
       RelatedOption relation objectPredicate graphPredicate →
-      relation (object.navigationPredicateOp objectNavigation objectPredicate)
-        (graph.navigationPredicateOp graphNavigation graphPredicate)
-  navigationCountCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate,
+      relation (object.navigationPredicateOp iteratorName kind typeTag objectNavigation objectPredicate)
+        (graph.navigationPredicateOp iteratorName kind typeTag graphNavigation graphPredicate)
+  navigationCountCase : ∀ iteratorName operator literal typeTag objectNavigation graphNavigation
+      objectPredicate graphPredicate,
     relation objectNavigation graphNavigation →
       RelatedOption relation objectPredicate graphPredicate →
-      relation (object.navigationCountOp objectNavigation objectPredicate)
-        (graph.navigationCountOp graphNavigation graphPredicate)
-  navigationAggregationCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate
-      objectProjection graphProjection,
-    relation objectNavigation graphNavigation →
-      RelatedOption relation objectPredicate graphPredicate →
-      relation objectProjection graphProjection →
-      relation (object.navigationAggregationOp objectNavigation objectPredicate objectProjection)
-        (graph.navigationAggregationOp graphNavigation graphPredicate graphProjection)
-  navigationUniquenessCase : ∀ objectNavigation graphNavigation objectPredicate graphPredicate
-      objectProjection graphProjection,
+      relation (object.navigationCountOp iteratorName operator literal typeTag objectNavigation objectPredicate)
+        (graph.navigationCountOp iteratorName operator literal typeTag graphNavigation graphPredicate)
+  navigationAggregationCase : ∀ iteratorName operationName typeTag objectNavigation graphNavigation
+      objectPredicate graphPredicate objectProjection graphProjection,
     relation objectNavigation graphNavigation →
       RelatedOption relation objectPredicate graphPredicate →
       relation objectProjection graphProjection →
-      relation (object.navigationUniquenessOp objectNavigation objectPredicate objectProjection)
-        (graph.navigationUniquenessOp graphNavigation graphPredicate graphProjection)
+      relation (object.navigationAggregationOp iteratorName operationName typeTag
+          objectNavigation objectPredicate objectProjection)
+        (graph.navigationAggregationOp iteratorName operationName typeTag
+          graphNavigation graphPredicate graphProjection)
+  navigationUniquenessCase : ∀ iteratorName typeTag objectNavigation graphNavigation
+      objectPredicate graphPredicate objectProjection graphProjection,
+    relation objectNavigation graphNavigation →
+      RelatedOption relation objectPredicate graphPredicate →
+      relation objectProjection graphProjection →
+      relation (object.navigationUniquenessOp iteratorName typeTag
+          objectNavigation objectPredicate objectProjection)
+        (graph.navigationUniquenessOp iteratorName typeTag
+          graphNavigation graphPredicate graphProjection)
 
 mutual
   theorem java_ir_eval_refinement
-      (agreement : AlgebraAgreement relation object graph) (expression : Expr) :
+      {Payload : Type u} {ObjectValue : Type v} {GraphValue : Type w}
+      {relation : ObjectValue → GraphValue → Prop}
+      {object : Algebra Payload ObjectValue} {graph : Algebra Payload GraphValue}
+      (agreement : AlgebraAgreement relation object graph) (expression : Expr Payload) :
       relation (eval object expression) (eval graph expression) := by
     cases expression with
-    | variableE => exact agreement.variableCase
-    | literalE => exact agreement.literalCase
-    | setLiteralE elements => exact agreement.setLiteralCase _ _ (java_ir_list_refinement agreement elements)
-    | notE body => exact agreement.notCase _ _ (java_ir_eval_refinement agreement body)
-    | binaryE left right =>
-        exact agreement.binaryCase _ _ _ _ (java_ir_eval_refinement agreement left)
+    | variableE name typeTag => exact agreement.variableCase name typeTag
+    | literalE value typeTag => exact agreement.literalCase value typeTag
+    | setLiteralE elements typeTag =>
+        exact agreement.setLiteralCase typeTag _ _ (java_ir_list_refinement agreement elements)
+    | notE body typeTag =>
+        exact agreement.notCase typeTag _ _ (java_ir_eval_refinement agreement body)
+    | binaryE operator left right typeTag =>
+        exact agreement.binaryCase operator typeTag _ _ _ _ (java_ir_eval_refinement agreement left)
           (java_ir_eval_refinement agreement right)
-    | attributeAccessE source =>
-        exact agreement.attributeAccessCase _ _ (java_ir_eval_refinement agreement source)
-    | navigationAccessE source qualifiers =>
-        exact agreement.navigationAccessCase _ _ _ _ (java_ir_eval_refinement agreement source)
+    | attributeAccessE source attributeName attributeType typeTag attributeIdentity =>
+        exact agreement.attributeAccessCase attributeName attributeType typeTag attributeIdentity _ _
+          (java_ir_eval_refinement agreement source)
+    | navigationAccessE source navigation qualifiers typeTag =>
+        exact agreement.navigationAccessCase navigation typeTag _ _ _ _
+          (java_ir_eval_refinement agreement source)
           (java_ir_list_refinement agreement qualifiers)
-    | methodCallE source arguments =>
-        exact agreement.methodCallCase _ _ _ _ (java_ir_eval_refinement agreement source)
+    | methodCallE source methodName arguments typeTag =>
+        exact agreement.methodCallCase methodName typeTag _ _ _ _
+          (java_ir_eval_refinement agreement source)
           (java_ir_list_refinement agreement arguments)
-    | collectionOperationE source arguments =>
-        exact agreement.collectionOperationCase _ _ _ _ (java_ir_eval_refinement agreement source)
+    | collectionOperationE source sourceCollectionType operationName arguments typeTag =>
+        exact agreement.collectionOperationCase sourceCollectionType operationName typeTag _ _ _ _
+          (java_ir_eval_refinement agreement source)
           (java_ir_list_refinement agreement arguments)
-    | iteratorOperationE source body =>
-        exact agreement.iteratorOperationCase _ _ _ _ (java_ir_eval_refinement agreement source)
+    | iteratorOperationE source sourceCollectionType operationName iteratorName body typeTag =>
+        exact agreement.iteratorOperationCase sourceCollectionType operationName iteratorName typeTag _ _ _ _
+          (java_ir_eval_refinement agreement source)
           (java_ir_eval_refinement agreement body)
-    | ifE condition thenBranch elseBranch =>
-        exact agreement.iteCase _ _ _ _ _ _ (java_ir_eval_refinement agreement condition)
+    | ifE condition thenBranch elseBranch typeTag =>
+        exact agreement.iteCase typeTag _ _ _ _ _ _ (java_ir_eval_refinement agreement condition)
           (java_ir_eval_refinement agreement thenBranch)
           (java_ir_eval_refinement agreement elseBranch)
-    | letE value body =>
-        exact agreement.letCase _ _ _ _ (java_ir_eval_refinement agreement value)
+    | letE variableName value body typeTag =>
+        exact agreement.letCase variableName typeTag _ _ _ _ (java_ir_eval_refinement agreement value)
           (java_ir_eval_refinement agreement body)
-    | navigationPredicateE navigation predicate =>
-        exact agreement.navigationPredicateCase _ _ _ _ (java_ir_eval_refinement agreement navigation)
+    | navigationPredicateE navigation iteratorName predicate kind typeTag =>
+        exact agreement.navigationPredicateCase iteratorName kind typeTag _ _ _ _
+          (java_ir_eval_refinement agreement navigation)
           (java_ir_optional_refinement agreement predicate)
-    | navigationCountE navigation predicate =>
-        exact agreement.navigationCountCase _ _ _ _ (java_ir_eval_refinement agreement navigation)
+    | navigationCountE navigation iteratorName predicate operator literal typeTag =>
+        exact agreement.navigationCountCase iteratorName operator literal typeTag _ _ _ _
+          (java_ir_eval_refinement agreement navigation)
           (java_ir_optional_refinement agreement predicate)
-    | navigationAggregationE navigation predicate projection =>
-        exact agreement.navigationAggregationCase _ _ _ _ _ _
+    | navigationAggregationE navigation iteratorName predicate projection operationName typeTag =>
+        exact agreement.navigationAggregationCase iteratorName operationName typeTag _ _ _ _ _ _
           (java_ir_eval_refinement agreement navigation)
           (java_ir_optional_refinement agreement predicate)
           (java_ir_eval_refinement agreement projection)
-    | navigationUniquenessE navigation predicate projection =>
-        exact agreement.navigationUniquenessCase _ _ _ _ _ _
+    | navigationUniquenessE navigation iteratorName predicate projection typeTag =>
+        exact agreement.navigationUniquenessCase iteratorName typeTag _ _ _ _ _ _
           (java_ir_eval_refinement agreement navigation)
           (java_ir_optional_refinement agreement predicate)
           (java_ir_eval_refinement agreement projection)
 
   theorem java_ir_list_refinement
-      (agreement : AlgebraAgreement relation object graph) (expressions : ExprList) :
+      {Payload : Type u} {ObjectValue : Type v} {GraphValue : Type w}
+      {relation : ObjectValue → GraphValue → Prop}
+      {object : Algebra Payload ObjectValue} {graph : Algebra Payload GraphValue}
+      (agreement : AlgebraAgreement relation object graph) (expressions : ExprList Payload) :
       RelatedList relation (evalList object expressions) (evalList graph expressions) := by
     cases expressions with
     | nil => exact .nil
@@ -1426,7 +1538,10 @@ mutual
           (java_ir_list_refinement agreement tail)
 
   theorem java_ir_optional_refinement
-      (agreement : AlgebraAgreement relation object graph) (expression : OptionalExpr) :
+      {Payload : Type u} {ObjectValue : Type v} {GraphValue : Type w}
+      {relation : ObjectValue → GraphValue → Prop}
+      {object : Algebra Payload ObjectValue} {graph : Algebra Payload GraphValue}
+      (agreement : AlgebraAgreement relation object graph) (expression : OptionalExpr Payload) :
       RelatedOption relation (evalOptional object expression) (evalOptional graph expression) := by
     cases expression with
     | none => trivial
@@ -1434,6 +1549,223 @@ mutual
 end
 
 end JavaIrRefinement
+
+/-! ## Production Bound-to-VA abstraction kernel
+
+`BoundVaAbstraction.BoundExpr` is the semantic projection of the eleven Java
+`BoundExpression` record families.  `BoundProperty` is split into its two
+disjoint resolved cases, attribute and navigation, so `alpha` targets exactly
+the twelve production `OclIr.SemanticExpression` constructors.  The theorem is
+parametric in every payload and in the primitive algebra: it proves that the
+abstraction neither changes a payload nor changes recursive evaluation shape.
+It does not identify the abstract algebra with the Java or Neo4j evaluator.
+-/
+
+namespace BoundVaAbstraction
+
+mutual
+  inductive BoundExpr (Payload : Type u) where
+    | variableB (name typeTag : Payload)
+    | literalB (value typeTag : Payload)
+    | setLiteralB (elements : BoundList Payload) (typeTag : Payload)
+    | notB (body : BoundExpr Payload) (typeTag : Payload)
+    | ifB (condition thenBranch elseBranch : BoundExpr Payload) (typeTag : Payload)
+    | letB (variableName : Payload) (value body : BoundExpr Payload) (typeTag : Payload)
+    | binaryB (operator : Payload) (left right : BoundExpr Payload) (typeTag : Payload)
+    | attributePropertyB (source : BoundExpr Payload)
+        (attributeName attributeType typeTag attributeIdentity : Payload)
+    | navigationPropertyB (source : BoundExpr Payload) (navigation : Payload)
+        (qualifiers : BoundList Payload) (typeTag : Payload)
+    | methodCallB (source : BoundExpr Payload) (methodName : Payload)
+        (arguments : BoundList Payload) (typeTag : Payload)
+    | collectionOperationB (source : BoundExpr Payload)
+        (sourceCollectionType operationName : Payload)
+        (arguments : BoundList Payload) (typeTag : Payload)
+    | iteratorB (source : BoundExpr Payload)
+        (sourceCollectionType operationName iteratorName : Payload)
+        (body : BoundExpr Payload) (typeTag : Payload)
+
+  inductive BoundList (Payload : Type u) where
+    | nil
+    | cons (head : BoundExpr Payload) (tail : BoundList Payload)
+end
+
+mutual
+  def alpha : BoundExpr Payload -> JavaIrRefinement.Expr Payload
+    | .variableB name typeTag => .variableE name typeTag
+    | .literalB value typeTag => .literalE value typeTag
+    | .setLiteralB elements typeTag => .setLiteralE (alphaList elements) typeTag
+    | .notB body typeTag => .notE (alpha body) typeTag
+    | .ifB condition thenBranch elseBranch typeTag =>
+        .ifE (alpha condition) (alpha thenBranch) (alpha elseBranch) typeTag
+    | .letB variableName value body typeTag =>
+        .letE variableName (alpha value) (alpha body) typeTag
+    | .binaryB operator left right typeTag =>
+        .binaryE operator (alpha left) (alpha right) typeTag
+    | .attributePropertyB source attributeName attributeType typeTag attributeIdentity =>
+        .attributeAccessE (alpha source) attributeName attributeType typeTag attributeIdentity
+    | .navigationPropertyB source navigation qualifiers typeTag =>
+        .navigationAccessE (alpha source) navigation (alphaList qualifiers) typeTag
+    | .methodCallB source methodName arguments typeTag =>
+        .methodCallE (alpha source) methodName (alphaList arguments) typeTag
+    | .collectionOperationB source sourceCollectionType operationName arguments typeTag =>
+        .collectionOperationE (alpha source) sourceCollectionType operationName
+          (alphaList arguments) typeTag
+    | .iteratorB source sourceCollectionType operationName iteratorName body typeTag =>
+        .iteratorOperationE (alpha source) sourceCollectionType operationName iteratorName
+          (alpha body) typeTag
+
+  def alphaList : BoundList Payload -> JavaIrRefinement.ExprList Payload
+    | .nil => .nil
+    | .cons head tail => .cons (alpha head) (alphaList tail)
+end
+
+mutual
+  def evalBound (algebra : JavaIrRefinement.Algebra Payload Value) : BoundExpr Payload -> Value
+    | .variableB name typeTag => algebra.variableOp name typeTag
+    | .literalB value typeTag => algebra.literalOp value typeTag
+    | .setLiteralB elements typeTag => algebra.setLiteralOp typeTag (evalBoundList algebra elements)
+    | .notB body typeTag => algebra.notOp typeTag (evalBound algebra body)
+    | .ifB condition thenBranch elseBranch typeTag =>
+        algebra.iteOp typeTag (evalBound algebra condition) (evalBound algebra thenBranch)
+          (evalBound algebra elseBranch)
+    | .letB variableName value body typeTag =>
+        algebra.letOp variableName typeTag (evalBound algebra value) (evalBound algebra body)
+    | .binaryB operator left right typeTag =>
+        algebra.binaryOp operator typeTag (evalBound algebra left) (evalBound algebra right)
+    | .attributePropertyB source attributeName attributeType typeTag attributeIdentity =>
+        algebra.attributeAccessOp attributeName attributeType typeTag attributeIdentity
+          (evalBound algebra source)
+    | .navigationPropertyB source navigation qualifiers typeTag =>
+        algebra.navigationAccessOp navigation typeTag (evalBound algebra source)
+          (evalBoundList algebra qualifiers)
+    | .methodCallB source methodName arguments typeTag =>
+        algebra.methodCallOp methodName typeTag (evalBound algebra source)
+          (evalBoundList algebra arguments)
+    | .collectionOperationB source sourceCollectionType operationName arguments typeTag =>
+        algebra.collectionOperationOp sourceCollectionType operationName typeTag
+          (evalBound algebra source) (evalBoundList algebra arguments)
+    | .iteratorB source sourceCollectionType operationName iteratorName body typeTag =>
+        algebra.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+          (evalBound algebra source) (evalBound algebra body)
+
+  def evalBoundList (algebra : JavaIrRefinement.Algebra Payload Value) :
+      BoundList Payload -> List Value
+    | .nil => []
+    | .cons head tail => evalBound algebra head :: evalBoundList algebra tail
+end
+
+mutual
+  theorem bound_va_abstraction
+      (algebra : JavaIrRefinement.Algebra Payload Value) (expression : BoundExpr Payload) :
+      evalBound algebra expression = JavaIrRefinement.eval algebra (alpha expression) := by
+    cases expression with
+    | variableB name typeTag => rfl
+    | literalB value typeTag => rfl
+    | setLiteralB elements typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_list_abstraction algebra elements]
+    | notB body typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra body]
+    | ifB condition thenBranch elseBranch typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra condition, bound_va_abstraction algebra thenBranch,
+          bound_va_abstraction algebra elseBranch]
+    | letB variableName value body typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra value, bound_va_abstraction algebra body]
+    | binaryB operator left right typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra left, bound_va_abstraction algebra right]
+    | attributePropertyB source attributeName attributeType typeTag attributeIdentity =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra source]
+    | navigationPropertyB source navigation qualifiers typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra source, bound_va_list_abstraction algebra qualifiers]
+    | methodCallB source methodName arguments typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra source, bound_va_list_abstraction algebra arguments]
+    | collectionOperationB source sourceCollectionType operationName arguments typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra source, bound_va_list_abstraction algebra arguments]
+    | iteratorB source sourceCollectionType operationName iteratorName body typeTag =>
+        simp only [evalBound, alpha, JavaIrRefinement.eval]
+        rw [bound_va_abstraction algebra source, bound_va_abstraction algebra body]
+
+  theorem bound_va_list_abstraction
+      (algebra : JavaIrRefinement.Algebra Payload Value) (expressions : BoundList Payload) :
+      evalBoundList algebra expressions = JavaIrRefinement.evalList algebra (alphaList expressions) := by
+    cases expressions with
+    | nil => rfl
+    | cons head tail =>
+        simp only [evalBoundList, alphaList, JavaIrRefinement.evalList]
+        rw [bound_va_abstraction algebra head, bound_va_list_abstraction algebra tail]
+end
+
+end BoundVaAbstraction
+
+/-! ## PA-COMP: shared-snapshot adapter composition -/
+
+namespace AdapterComposition
+
+structure Observations
+    (Objects Metamodel Types Values Navigation Qualifiers Instances : Type) where
+  objects : Objects
+  metamodel : Metamodel
+  types : Types
+  values : Values
+  navigation : Prod Navigation Qualifiers
+  allInstances : Instances
+
+structure Premises
+    (Objects Metamodel Types Values Navigation Qualifiers Instances Snapshot : Type)
+    (canonical prototype rendered :
+      Observations Objects Metamodel Types Values Navigation Qualifiers Instances) where
+  sourceSnapshot : Snapshot
+  graphSnapshot : Snapshot
+  sharedSnapshot : sourceSnapshot = graphSnapshot
+  exactM2 : prototype.metamodel = canonical.metamodel
+  pa1KeyAgreement : prototype.metamodel = canonical.metamodel
+  pa2ObjectExactness : prototype.objects = canonical.objects
+  pa3IdentifierInjectivity : Prop
+  pa4TypeExactness : prototype.types = canonical.types
+  pa5ValueExactness : prototype.values = canonical.values
+  pa6LinkExactness : prototype.navigation.1 = canonical.navigation.1
+  pa7QualifierAgreement : prototype.navigation.2 = canonical.navigation.2
+  pa8AllInstancesAgreement : prototype.allInstances = canonical.allInstances
+  pa9RendererAgreement : rendered = prototype
+
+structure AdapterAdequate
+    (Objects Metamodel Types Values Navigation Qualifiers Instances : Type)
+    (canonical rendered :
+      Observations Objects Metamodel Types Values Navigation Qualifiers Instances) : Prop where
+  objects : rendered.objects = canonical.objects
+  metamodel : rendered.metamodel = canonical.metamodel
+  types : rendered.types = canonical.types
+  values : rendered.values = canonical.values
+  navigation : rendered.navigation = canonical.navigation
+  allInstances : rendered.allInstances = canonical.allInstances
+
+theorem pa_comp
+    {Objects Metamodel Types Values Navigation Qualifiers Instances Snapshot : Type}
+    {canonical prototype rendered :
+      Observations Objects Metamodel Types Values Navigation Qualifiers Instances}
+    (premises : Premises Objects Metamodel Types Values Navigation Qualifiers Instances Snapshot
+      canonical prototype rendered) :
+    AdapterAdequate Objects Metamodel Types Values Navigation Qualifiers Instances canonical rendered := by
+  cases premises.pa9RendererAgreement
+  exact {
+    objects := premises.pa2ObjectExactness
+    metamodel := premises.exactM2
+    types := premises.pa4TypeExactness
+    values := premises.pa5ValueExactness
+    navigation := Prod.ext premises.pa6LinkExactness premises.pa7QualifierAgreement
+    allInstances := premises.pa8AllInstancesAgreement
+  }
+
+end AdapterComposition
 
 /-! ## Theorem 6 two-inclusion kernel -/
 
@@ -1467,10 +1799,13 @@ theorem theorem6_at_object (id : Obj → Identifier) (idInjective : Function.Inj
 end Ocl2CypherProof
 
 #print axioms Ocl2CypherProof.encodeValue_injective
+#print axioms Ocl2CypherProof.ToOneLift.lift1_consumer_agreement
 #print axioms Ocl2CypherProof.BoolExpr.normalize_preserves_eval
 #print axioms Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free
 #print axioms Ocl2CypherProof.Formula.structural_preservation
 #print axioms Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement
+#print axioms Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction
+#print axioms Ocl2CypherProof.AdapterComposition.pa_comp
 #print axioms Ocl2CypherProof.theorem6_at_object
 #print axioms Ocl2CypherProof.Normalization.all_rewrite_semantics
 #print axioms Ocl2CypherProof.Normalization.typed_rewrite_preserves_type

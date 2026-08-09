@@ -1,7 +1,9 @@
 package org.uet.dse.neo4jtgg.ui;
 
 import org.neo4j.driver.Result;
+import org.neo4j.driver.QueryRunner;
 import org.neo4j.driver.Session;
+import org.neo4j.driver.Transaction;
 import org.tzi.use.api.UseModelApi;
 import org.tzi.use.api.UseSystemApi;
 import org.tzi.use.gui.main.MainWindow;
@@ -19,6 +21,8 @@ import org.uet.dse.neo4j.sync.object.ObjectDiff;
 import org.uet.dse.neo4j.sync.object.ObjectPushService;
 import org.uet.dse.neo4j.sync.object.ObjectSnapshotCompare;
 import org.uet.dse.neo4jtgg.experiment.InstrumentedCompilationResult;
+import org.uet.dse.neo4jtgg.experiment.AdapterAdequacyCertificate;
+import org.uet.dse.neo4jtgg.experiment.AdapterAdequacySnapshotReader;
 import org.uet.dse.neo4jtgg.experiment.Neo4jEnvironmentConfig;
 import org.uet.dse.neo4jtgg.experiment.ScientificEvaluationReport;
 import org.uet.dse.neo4jtgg.experiment.ViolationOracleResult;
@@ -419,7 +423,6 @@ public final class ResearchToolDialog extends JDialog {
     private ValidationRun runInvariantSuite(String ocl) {
         OclCompilerFactory.Selection compilerSelection = selectCompiler();
         DefaultOclToCypherCompiler compiler = compilerSelection.compiler();
-        requireGraphPremises();
         List<org.uet.dse.neo4j.oclite.ast.ASTContext> invariants = compiler.parseContextInvariants(ocl);
         StringBuilder finalResult = new StringBuilder();
         StringBuilder allArtifacts = new StringBuilder();
@@ -429,8 +432,6 @@ public final class ResearchToolDialog extends JDialog {
         long compileNs = 0L;
         long queryNs = 0L;
         List<ScientificEvaluationReport.CorrectnessObservation> correctness = new ArrayList<>();
-        ViolationSetOracle oracle = new ViolationSetOracle(
-                new UseObjectSideReferenceEvaluator(), this::executeViolationQuery);
         finalResult.append("EXECUTION PREMISES\n")
                 .append("  BottomSeparated=PASS\n")
                 .append("  StoredScalarDomain=PASS\n")
@@ -444,9 +445,30 @@ public final class ResearchToolDialog extends JDialog {
                 OclExecutionPremiseChecker.requireGeneratedBottomSeparated(compiled.parameters());
                 compileNs += compiled.timings().compileNs();
                 long queryStart = System.nanoTime();
-                ViolationOracleResult oracleResult = oracle.evaluate(
-                        ruleId, contextIds(invariant.className), system, invariant,
-                        compiled.cypher(), compiled.parameters());
+                ViolationOracleResult oracleResult;
+                String modelKey = CanonicalGraphEncoding.modelKey(model.name());
+                try (Session neo4jSession = Neo4jDriverManager.getInstance().openSession();
+                     Transaction transaction = neo4jSession.beginTransaction()) {
+                    var sourceAtStart = AdapterAdequacySnapshotReader.source(system, model.name());
+                    var graphAtStart = AdapterAdequacySnapshotReader.graph(transaction, modelKey);
+                    OclBottomSeparationChecker.requireGraphSeparated(transaction, modelKey);
+                    OclScalarClosureChecker.requireGraphClosed(transaction, modelKey);
+                    OclExecutionPremiseChecker.requireGraphScalarClosed(
+                            transaction, model.name(), compiled.validationAlgebra());
+                    AdapterAdequacyCertificate.issue(
+                            new AdapterAdequacyCertificate.AdapterAdequacySnapshot(
+                                    "research-tool-read-transaction-" + ruleId, model.name(), modelKey,
+                                    "OclCypherRenderer-direct-v1", sourceAtStart,
+                                    AdapterAdequacySnapshotReader.source(system, model.name()), graphAtStart,
+                                    AdapterAdequacySnapshotReader.graph(transaction, modelKey), List.of(compiled)));
+                    ViolationSetOracle oracle = new ViolationSetOracle(
+                            new UseObjectSideReferenceEvaluator(),
+                            (cypher, parameters) -> executeViolationQuery(transaction, cypher, parameters));
+                    oracleResult = oracle.evaluate(
+                            ruleId, contextIds(invariant.className), system, invariant,
+                            compiled.cypher(), compiled.parameters());
+                    transaction.commit();
+                }
                 long currentQueryNs = System.nanoTime() - queryStart;
                 queryNs += currentQueryNs;
                 if (!oracleResult.completed()) {
@@ -531,13 +553,16 @@ public final class ResearchToolDialog extends JDialog {
     }
 
     private Set<String> executeViolationQuery(String cypher, Map<String, Object> parameters) {
-        Set<String> ids = new LinkedHashSet<>();
         try (Session session = Neo4jDriverManager.getInstance().openSession()) {
-            Result result = session.run(cypher, parameters);
-            while (result.hasNext()) {
-                ids.add(result.next().get("useId").asString());
-            }
+            return executeViolationQuery(session, cypher, parameters);
         }
+    }
+
+    private Set<String> executeViolationQuery(QueryRunner runner, String cypher,
+                                              Map<String, Object> parameters) {
+        Set<String> ids = new LinkedHashSet<>();
+        Result result = runner.run(cypher, parameters);
+        while (result.hasNext()) ids.add(result.next().get("useId").asString());
         return Set.copyOf(ids);
     }
 

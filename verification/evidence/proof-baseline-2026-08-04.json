@@ -1,8 +1,8 @@
 {
   "schema": "proof-evidence.schema.v1",
-  "capturedAt": "2026-08-03T16:19:21+07:00",
+  "capturedAt": "2026-08-04T10:24:44+07:00",
   "proofContract": "PC-2026-07-22.2",
-  "sourceRevision": "7badcf199d881f09dfb456ae91082997aabbae47",
+  "sourceRevision": "24ce4f26d17ae0c332e1f98d1b848e4c174396ce",
   "gitDirtyAtCapture": true,
   "machineContract": {
     "registrySchemaVersion": 4,
@@ -23,7 +23,7 @@
   },
   "implementation": {
     "cleanRecompile": true,
-    "conformanceTests": 261,
+    "conformanceTests": 263,
     "failures": 0,
     "errors": 0,
     "skipped": 0,

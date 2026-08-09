@@ -34,7 +34,8 @@ final class GeneratedCypherContractVerifier {
         assertFalse(cypher.matches("(?s).*<[A-Za-z_][A-Za-z0-9_]*>.*"), "Unexpanded placeholder");
 
         OclCypherPlan.InvariantPlan invariant = result.queryPlan();
-        assertTrue(cypher.contains("(cls {classKey: $"), "Context must use exact classKey lookup");
+        assertTrue(cypher.contains("(cls:UmlClass {classKey: $"),
+                "Context must use the canonical UmlClass label and exact classKey lookup");
         assertTrue(hasCanonicalParameter(parameters, "::class::" + invariant.contextClassName()),
                 "Missing canonical context classKey parameter for " + invariant.contextClassName());
 
@@ -100,9 +101,9 @@ final class GeneratedCypherContractVerifier {
                 assertTrue(hasCanonicalParameter(parameters, "::class::" + call.source().type().typeName()),
                         "Missing canonical allInstances classKey parameter");
                 assertTrue(Pattern.compile("(?s)COLLECT \\{ MATCH \\(obj\\d+\\)-\\[:ObjectInstanceOf\\]->"
-                                + "\\(cls\\d+ \\{classKey: \\$[^}]+}\\) RETURN DISTINCT obj\\d+ \\}")
+                                + "\\(cls\\d+:UmlClass \\{classKey: \\$[^}]+}\\) RETURN DISTINCT obj\\d+ \\}")
                                 .matcher(cypher).find(),
-                        "allInstances must use exact ObjectInstanceOf/classKey lookup with local DISTINCT");
+                        "allInstances must use canonical UmlClass/ObjectInstanceOf/classKey lookup with local DISTINCT");
             }
             if ("oclIsKindOf".equalsIgnoreCase(call.methodName())
                     || "oclAsType".equalsIgnoreCase(call.methodName())) {
@@ -110,9 +111,9 @@ final class GeneratedCypherContractVerifier {
                                 + "(?:typeRecv|castRecv)\\d+Key WHERE (?:typeRecv|castRecv)\\d+Key IS NOT NULL "
                                 + "MATCH \\((?:typeRecv|castRecv)\\d+:Object \\{objectKey: (?:typeRecv|castRecv)\\d+Key}\\)"
                                 + "-\\[:ObjectInstanceOf\\]->"
-                                + "\\((?:typeCls|castCls)\\d+ \\{classKey: \\$[^}]+}\\)")
+                                + "\\((?:typeCls|castCls)\\d+:UmlClass \\{classKey: \\$[^}]+}\\)")
                                 .matcher(cypher).find(),
-                        "Type accessor must guard canonical receiver identity before exact ObjectInstanceOf/classKey lookup");
+                        "Type accessor must guard canonical receiver identity before exact UmlClass/ObjectInstanceOf/classKey lookup");
                 assertTrue(hasCanonicalParameter(parameters,
                                 "::class::" + call.arguments().get(0).type().typeName()),
                         "Missing canonical type-operation classKey parameter");

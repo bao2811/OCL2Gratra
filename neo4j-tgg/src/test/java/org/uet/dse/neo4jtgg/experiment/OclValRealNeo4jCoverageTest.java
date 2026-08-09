@@ -18,9 +18,22 @@ import org.uet.dse.neo4j.sync.object.ObjectSnapshotCompare;
 import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 import org.uet.dse.neo4jtgg.ocl.OclBottomSeparationChecker;
 import org.uet.dse.neo4jtgg.ocl.OclExecutionPremiseChecker;
+import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
+import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
 import org.uet.dse.neo4jtgg.ocl.OclScalarClosureChecker;
+import org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlanner;
+import org.uet.dse.neo4jtgg.ocl.ir.OclCypherRenderer;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIrBuilder;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIrOptimizer;
 
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
@@ -62,11 +75,14 @@ class OclValRealNeo4jCoverageTest {
                     new UseObjectSideReferenceEvaluator(), this::execute);
             int compared = 0;
             Set<String> newConstructs = new LinkedHashSet<>();
+            Set<Class<?>> runtimeConstructors = new LinkedHashSet<>();
             Map<BenchmarkVacuityStatus, Integer> vacuity = new EnumMap<>(BenchmarkVacuityStatus.class);
             for (OclValFragmentCoverageTest.CoverageCase testCase
                     : OclValFragmentCoverageTest.admittedCases()) {
                 var invariant = compiler.parseContextInvariants(testCase.ocl()).get(0);
                 var compiled = compiler.compileInvariantInstrumented(invariant);
+                collectOptimizedConstructors(compiled.normalizedValidationAlgebra().predicate(),
+                        runtimeConstructors, Collections.newSetFromMap(new IdentityHashMap<>()));
                 FixturePremiseVerifier.verify(api.getSystem(), compiled);
                 try (Session premiseSession = Neo4jDriverManager.getInstance().openSession()) {
                     OclExecutionPremiseChecker.requireGraphScalarClosed(
@@ -95,6 +111,40 @@ class OclValRealNeo4jCoverageTest {
                 }
                 compared++;
             }
+            for (String supplemental : List.of(
+                    "context Company inv T4Aggregation: "
+                            + "self.employee->collect(p | p.age)->sum() >= 0",
+                    "context Company inv T4NavigationUnique: "
+                            + "self.employee->isUnique(p | p.name)",
+                    "context Person inv T4Let: let threshold = 18 in self.age >= threshold")) {
+                var invariant = compiler.parseContextInvariants(supplemental).get(0);
+                var bound = new OclSemanticBinder(new OclMetamodelIndex(model)).bindContext(invariant);
+                OclIr.InvariantQuery validationAlgebra = new OclIrBuilder().buildInvariant(bound);
+                OclIr.InvariantQuery optimized = new OclIrOptimizer().optimizeInvariant(validationAlgebra);
+                OclIr.InvariantQuery lowered = invariant.invName.equals("T4Let")
+                        ? validationAlgebra : optimized;
+                var queryPlan = new OclCypherPlanner().planInvariant(lowered);
+                PipelineRefinementVerifier.verifyOptimizedToPlan(
+                        lowered.predicate(), queryPlan.predicate());
+                var rendered = new OclCypherRenderer(model.name()).renderInvariant(queryPlan);
+                collectOptimizedConstructors(lowered.predicate(),
+                        runtimeConstructors, Collections.newSetFromMap(new IdentityHashMap<>()));
+                OclExecutionPremiseChecker.requireUseSystemScalarClosed(
+                        api.getSystem(), validationAlgebra);
+                try (Session premiseSession = Neo4jDriverManager.getInstance().openSession()) {
+                    OclExecutionPremiseChecker.requireGraphScalarClosed(
+                            premiseSession, model.name(), validationAlgebra);
+                }
+                String caseId = invariant.className + "::" + invariant.invName;
+                ViolationOracleResult result = oracle.evaluate(
+                        caseId, OclVal47NonVacuityFixture.contextIds(api, invariant.className),
+                        api.getSystem(), invariant,
+                        OclVal47NonVacuityFixture.expressionSource(supplemental),
+                        rendered.cypher(), rendered.parameters());
+                assertTrue(result.completed(), result::render);
+                assertTrue(result.equivalent(),
+                        () -> result.render() + "\n" + rendered.cypher() + "\n" + rendered.parameters());
+            }
             assertEquals(47, compared);
             assertEquals(47, expected.size());
             assertEquals(0, vacuity.getOrDefault(BenchmarkVacuityStatus.EMPTY_CONTEXT, 0));
@@ -103,9 +153,13 @@ class OclValRealNeo4jCoverageTest {
             assertEquals(28, vacuity.getOrDefault(BenchmarkVacuityStatus.NON_VACUOUS_MIXED, 0));
             assertEquals(Set.of("xor", "Set literal", "union", "intersection", "asSet", "isUnique"),
                     newConstructs);
+            assertEquals(new LinkedHashSet<>(Arrays.asList(
+                            OclIr.OptimizedExpression.class.getPermittedSubclasses())),
+                    runtimeConstructors,
+                    "T4 runtime corpus must exercise all production optimized constructors");
             System.out.println("OCLVAL47_DIFFERENTIAL_ORACLE=PASS equivalent=" + compared
                     + " profile=" + CanonicalGraphEncoding.PROFILE_ID
-                    + " vacuity=" + vacuity);
+                    + " vacuity=" + vacuity + " t4Constructors=" + runtimeConstructors.size() + "/16");
         } finally {
             cleanup(modelKey);
             Neo4jDriverManager manager = Neo4jDriverManager.getInstance();
@@ -121,6 +175,25 @@ class OclValRealNeo4jCoverageTest {
             while (result.hasNext()) ids.add(result.next().get("useId").asString());
         }
         return Set.copyOf(ids);
+    }
+
+    private static void collectOptimizedConstructors(Object value, Set<Class<?>> constructors,
+                                                     Set<Object> seen) {
+        if (value == null || value instanceof String || value instanceof Number
+                || value instanceof Boolean || value instanceof Enum<?> || !seen.add(value)) return;
+        if (value instanceof OclIr.OptimizedExpression) constructors.add(value.getClass());
+        if (value instanceof Collection<?> collection) {
+            collection.forEach(item -> collectOptimizedConstructors(item, constructors, seen));
+            return;
+        }
+        if (!value.getClass().isRecord()) return;
+        for (RecordComponent component : value.getClass().getRecordComponents()) {
+            try {
+                collectOptimizedConstructors(component.getAccessor().invoke(value), constructors, seen);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException(exception);
+            }
+        }
     }
 
     private void connect(Neo4jEnvironmentConfig config) throws Exception {

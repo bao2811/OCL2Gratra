@@ -1,7 +1,7 @@
 package org.uet.dse.neo4jtgg.service.impl;
 
 import org.neo4j.driver.Record;
-import org.neo4j.driver.Session;
+import org.neo4j.driver.QueryRunner;
 import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
 import org.uet.dse.neo4jtgg.model.OclRuleCompilationResult;
 import org.uet.dse.neo4jtgg.model.OclRuleDescriptor;
@@ -57,7 +57,7 @@ final class OclContextBatchQueryExecutor {
         return new BatchQueryPlan(cypher.toString(), Map.copyOf(mergedParameters), Map.copyOf(aliasToRule));
     }
 
-    static BatchExecutionResult execute(Session session, List<BatchRule> batchRules) {
+    static BatchExecutionResult execute(QueryRunner session, List<BatchRule> batchRules) {
         if (batchRules.isEmpty()) {
             return new BatchExecutionResult(Map.of(), 0L);
         }
