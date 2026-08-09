@@ -29,6 +29,7 @@ $tests = @(
     'OclValNegativeAdmissionCoverageTest',
     'OclVal47NonVacuityContractTest',
     'OclVal47NonVacuityEvidenceTest',
+    'CanonicalProfileRuntimeEvidenceManifestTest',
     'CertifiedValidationCompilationTest',
     'FixturePremiseVerifierTest',
     'OclMetamodelSnapshotTest',

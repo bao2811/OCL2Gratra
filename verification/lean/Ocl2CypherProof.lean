@@ -12,7 +12,7 @@ namespace Ocl2CypherProof
 
 def proofContractVersion : String := "PC-2026-07-22.3"
 def proofRegistrySha256 : String :=
-  "2aa1722c9c09180892ca2da3c35705db39c2d735bfeae9b5d34122e5ab93994a"
+  "8a385323b21b6515742bd9276ef93e637cab792da799b16f51e7e280af37a27b"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/

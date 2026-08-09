@@ -48,7 +48,7 @@ class OclVal47NonVacuityEvidenceTest {
         assertThrows(IllegalStateException.class, () -> validate(parse(stale), workspace));
 
         List<String> invalidProvenance = replace(original, "# gitDirtyAtCapture\t",
-                "true", "unknown");
+                "false", "unknown");
         assertThrows(IllegalStateException.class, () -> validate(parse(invalidProvenance), workspace));
     }
 
