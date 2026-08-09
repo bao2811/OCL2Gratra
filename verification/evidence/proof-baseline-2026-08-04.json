@@ -1,9 +1,9 @@
 {
   "schema": "proof-evidence.schema.v1",
-  "capturedAt": "2026-08-09T19:56:05+07:00",
+  "capturedAt": "2026-08-09T21:07:46+07:00",
   "proofContract": "PC-2026-07-22.3",
-  "sourceRevision": "6738bf117c01be9e2f629b93cf4b01c1cb157b56",
-  "gitDirtyAtCapture": true,
+  "sourceRevision": "f09385197460d3a9b91fc878354583062bacdfb1",
+  "gitDirtyAtCapture": false,
   "machineContract": {
     "registrySchemaVersion": 4,
     "theorems": 7,
