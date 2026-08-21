@@ -153,77 +153,7 @@ class RepresentationEvaluationRealNeo4jTest {
     }
 
     static RepresentationAdequacyEvaluator.Snapshot sourceSnapshot(MSystem system, String modelName) {
-        Map<String, Integer> objects = new LinkedHashMap<>();
-        List<RepresentationAdequacyEvaluator.ObjectObservation> objectObservations = new ArrayList<>();
-        Set<RepresentationAdequacyEvaluator.TypeFact> types = new LinkedHashSet<>();
-        Set<RepresentationAdequacyEvaluator.AttributeFact> attributes = new LinkedHashSet<>();
-        List<RepresentationAdequacyEvaluator.AttributeObservation> attributeObservations = new ArrayList<>();
-        Set<RepresentationAdequacyEvaluator.LinkFact> links = new LinkedHashSet<>();
-        List<RepresentationAdequacyEvaluator.LinkObservation> linkObservations = new ArrayList<>();
-        Map<String, Set<String>> keys = sourceKeys(system.model(), modelName);
-
-        var state = system.state();
-        for (MObject object : state.allObjects()) {
-            objects.put(object.name(), 1);
-            objectObservations.add(new RepresentationAdequacyEvaluator.ObjectObservation(
-                    "source:" + object.name(), object.name(),
-                    CanonicalGraphEncoding.objectKey(modelName, object.name())));
-            types.add(new RepresentationAdequacyEvaluator.TypeFact(object.name(),
-                    CanonicalGraphEncoding.classKey(modelName, object.cls().name())));
-            object.cls().allParents().forEach(parent -> types.add(
-                    new RepresentationAdequacyEvaluator.TypeFact(object.name(),
-                            CanonicalGraphEncoding.classKey(modelName, parent.name()))));
-            for (MAttribute attribute : object.cls().allAttributes()) {
-                Object mapped = ValueMapper.mapUseValue(object.state(state).attributeValue(attribute));
-                String attributeKey = CanonicalGraphEncoding.attributeKey(
-                        modelName, attribute.owner().name(), attribute.name());
-                String payload = expectedStoredPayload(mapped);
-                attributes.add(new RepresentationAdequacyEvaluator.AttributeFact(
-                        object.name(), attributeKey, payload));
-                attributeObservations.add(new RepresentationAdequacyEvaluator.AttributeObservation(
-                        "source:" + object.name() + ":" + attributeKey,
-                        object.name(), attributeKey, payload,
-                        CanonicalGraphEncoding.attributeSlotKey(
-                                modelName, object.name(), attribute.owner().name(), attribute.name())));
-            }
-        }
-        for (MLink link : state.allLinks()) {
-            if (link.linkedObjects().size() != 2) continue;
-            MAssociationEnd sourceEnd = link.association().associationEnds().get(0);
-            MAssociationEnd targetEnd = link.association().associationEnds().get(1);
-            List<List<String>> qualifiers = new ArrayList<>();
-            link.getQualifier().forEach(values -> qualifiers.add(QualifierValueCodec.encodeQualifierValues(values)));
-            while (qualifiers.size() < 2) qualifiers.add(List.of());
-            String associationKey = CanonicalGraphEncoding.associationKey(modelName, link.association().name());
-            String sourceId = link.linkedObjects().get(0).name();
-            String targetId = link.linkedObjects().get(1).name();
-            links.add(new RepresentationAdequacyEvaluator.LinkFact(
-                    associationKey, sourceId, targetId, sourceEnd.name(), targetEnd.name(),
-                    qualifiers.get(0), qualifiers.get(1)));
-            linkObservations.add(new RepresentationAdequacyEvaluator.LinkObservation(
-                    "source:" + link,
-                    CanonicalGraphEncoding.binaryLinkKey(modelName, link.association().name(),
-                            sourceId, targetId, qualifiers.get(0), qualifiers.get(1)),
-                    associationKey, sourceId, targetId, sourceEnd.name(), targetEnd.name(),
-                    qualifiers.get(0), qualifiers.get(1)));
-        }
-        return new RepresentationAdequacyEvaluator.Snapshot(
-                objects, types, attributes, links, keys, 0, objectObservations,
-                attributeObservations, linkObservations);
-    }
-
-    /** Independent oracle for the canonical AttributeValue.value payload. */
-    private static String expectedStoredPayload(Object value) {
-        if (value == null || "Undefined".equals(value)) return "Undefined";
-        if (value instanceof Map<?, ?> collection) {
-            Object rawItems = collection.get("items");
-            List<?> items = rawItems instanceof List<?> list ? list : List.of();
-            if (items.isEmpty()) return "COLLECTION_EMPTY";
-            return items.stream()
-                    .map(item -> item == null ? "null" : item.toString())
-                    .collect(java.util.stream.Collectors.joining(" | "));
-        }
-        return value.toString();
+        return AdapterAdequacySnapshotReader.source(system, modelName);
     }
 
     private static Map<String, Set<String>> sourceKeys(MModel model, String modelName) {
@@ -246,6 +176,12 @@ class RepresentationEvaluationRealNeo4jTest {
     }
 
     static RepresentationAdequacyEvaluator.Snapshot graphSnapshot(String modelKey, QueryRunner session) {
+        return AdapterAdequacySnapshotReader.graph(session, modelKey);
+    }
+
+    @SuppressWarnings("unused")
+    private static RepresentationAdequacyEvaluator.Snapshot legacyGraphSnapshot(
+            String modelKey, QueryRunner session) {
         Map<String, Integer> objects = new LinkedHashMap<>();
         List<RepresentationAdequacyEvaluator.ObjectObservation> objectObservations = new ArrayList<>();
         Set<RepresentationAdequacyEvaluator.TypeFact> types = new LinkedHashSet<>();
@@ -468,9 +404,12 @@ class RepresentationEvaluationRealNeo4jTest {
             session.run("CREATE (:Object {modelKey:$modelKey,use_id:'ghost',objectKey:$ghostKey})",
                     Map.of("modelKey", modelKey,
                             "ghostKey", CanonicalGraphEncoding.objectKey(modelKey, "ghost"))).consume();
-            session.run("CREATE ({modelKey:$modelKey,classKey:$libraryKey,name:'CollidingLibrary'})",
+            session.run("MATCH (source:UmlClass {modelKey:$modelKey,name:'Library'}),"
+                            + "(target:UmlClass {modelKey:$modelKey,name:'Publication'}) "
+                            + "CREATE (source)-[:InjectedAssociation {modelKey:$modelKey,"
+                            + "associationKey:$catalogKey,associationName:'CollidingCatalog'}]->(target)",
                     Map.of("modelKey", modelKey,
-                            "libraryKey", CanonicalGraphEncoding.classKey(modelKey, "Library"))).consume();
+                            "catalogKey", CanonicalGraphEncoding.associationKey(modelKey, "Catalog"))).consume();
             session.run("MATCH (a:Object {modelKey:$modelKey,use_id:'central'})-[r]->"
                             + "(b:Object {modelKey:$modelKey,use_id:'book_b'}) "
                             + "WHERE type(r) STARTS WITH 'Link' DELETE r",

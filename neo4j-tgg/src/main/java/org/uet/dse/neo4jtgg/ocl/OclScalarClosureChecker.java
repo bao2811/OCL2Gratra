@@ -132,6 +132,10 @@ public final class OclScalarClosureChecker {
                 if (Set.of("+", "-", "*", "/").contains(binary.operator())) {
                     return arithmetic(binary, left, right);
                 }
+                if (Set.of("=", "<>", ">", "<", ">=", "<=").contains(binary.operator())) {
+                    requireExactCommonNumericConversion(left, binary.left().type(),
+                            right, binary.right().type(), binary.operator());
+                }
                 return NumericValues.empty();
             }
             if (expression instanceof OclIr.Not value) {
@@ -141,6 +145,10 @@ public final class OclScalarClosureChecker {
                 NumericValues result = NumericValues.empty();
                 for (OclIr.Expression element : value.elements()) {
                     NumericValues next = inspect(element, environment);
+                    if (value.type().isCollection()
+                            && "Real".equals(value.type().elementType().typeName())) {
+                        requireExactIntegerValues(next, element.type(), "Set literal");
+                    }
                     if (next != null) result = result.merge(next);
                 }
                 return result;
@@ -174,8 +182,18 @@ public final class OclScalarClosureChecker {
                 return NumericValues.empty();
             }
             if (expression instanceof OclIr.CollectionOperation value) {
-                inspect(value.source(), environment);
-                value.arguments().forEach(item -> inspect(item, environment));
+                NumericValues source = inspect(value.source(), environment);
+                for (OclIr.Expression argument : value.arguments()) {
+                    NumericValues argumentValues = inspect(argument, environment);
+                    if (Set.of("includes", "excludes", "includesAll", "excludesAll",
+                            "union", "intersection").contains(value.operationName())) {
+                        OclTypeBinding sourceElement = value.sourceCollectionType().elementType();
+                        OclTypeBinding argumentElement = argument.type().isCollection()
+                                ? argument.type().elementType() : argument.type();
+                        requireExactCommonNumericConversion(source, sourceElement,
+                                argumentValues, argumentElement, value.operationName());
+                    }
+                }
                 return NumericValues.empty();
             }
             return NumericValues.empty();
@@ -234,6 +252,22 @@ public final class OclScalarClosureChecker {
             if ("Integer".equals(type.typeName()) && value.abs().compareTo(MAX_EXACT_REAL_INTEGER) > 0) {
                 failures.add("Inexact Integer-to-Real conversion is reachable for " + operator + ": " + value);
             }
+        }
+
+        private void requireExactCommonNumericConversion(NumericValues left, OclTypeBinding leftType,
+                                                         NumericValues right, OclTypeBinding rightType,
+                                                         String operator) {
+            if (!isNumeric(leftType) || !isNumeric(rightType)
+                    || (!"Real".equals(leftType.typeName()) && !"Real".equals(rightType.typeName()))) {
+                return;
+            }
+            requireExactIntegerValues(left, leftType, operator);
+            requireExactIntegerValues(right, rightType, operator);
+        }
+
+        private void requireExactIntegerValues(NumericValues values, OclTypeBinding type, String operator) {
+            if (values == null || !"Integer".equals(type.typeName())) return;
+            values.values().forEach(value -> requireExactIntegerConversion(value, type, operator));
         }
 
         private void checkScalar(Object value, String location) {

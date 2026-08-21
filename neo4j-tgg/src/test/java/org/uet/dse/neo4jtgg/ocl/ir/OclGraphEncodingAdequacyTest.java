@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -32,9 +33,11 @@ class OclGraphEncodingAdequacyTest {
                 "context Family inv Named: self.name.isDefined()");
 
         assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("MATCH (self:Object {modelKey:"), result.getCypher());
         assertTrue(result.getCypher().contains(
-                "MATCH (self:Object)-[:ObjectInstanceOf]->(cls:UmlClass {classKey:"),
-                result.getCypher());
+                "-[:ObjectInstanceOf]->(cls:UmlClass {modelKey:"), result.getCypher());
+        assertTrue(result.getCypher().contains("classKey:"), result.getCypher());
+        assertTrue(result.getParameters().containsValue(CanonicalGraphEncoding.modelKey("Demo")));
         assertTrue(result.getCypher().contains("RETURN DISTINCT self.use_id AS useId"), result.getCypher());
     }
 
@@ -47,6 +50,10 @@ class OclGraphEncodingAdequacyTest {
         assertTrue(result.getCypher().contains("ObjectHasAttribute"), result.getCypher());
         assertTrue(result.getCypher().contains("AttributeValue"), result.getCypher());
         assertTrue(result.getCypher().contains("val.attributeKey = $"), result.getCypher());
+        assertTrue(result.getCypher().contains("STARTS WITH 'v1|S|'"), result.getCypher());
+        assertTrue(result.getCypher().contains("'%7C', '|'"), result.getCypher());
+        assertFalse(result.getCypher().contains("replace(head([(")
+                && result.getCypher().contains("\"'\", \"\")"), result.getCypher());
         assertTrue(result.getParameters().containsValue(
                 CanonicalGraphEncoding.attributeKey("Demo", "Family", "name")));
     }
@@ -87,7 +94,9 @@ class OclGraphEncodingAdequacyTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("ObjectInstanceOf"), result.getCypher());
-        assertTrue(result.getCypher().contains("RETURN size(COLLECT { MATCH"), result.getCypher());
+        assertTrue(result.getCypher().contains("RETURN size((CASE WHEN COLLECT { MATCH"), result.getCypher());
+        assertTrue(result.getCypher().contains("THEN [] ELSE COLLECT { MATCH"), result.getCypher());
+        assertTrue(result.getCypher().contains("END)) AS value"), result.getCypher());
         assertTrue(result.getCypher().contains("RETURN DISTINCT"), result.getCypher());
         assertTrue(result.getCypher().contains("AS value"), result.getCypher());
         assertTrue(result.getParameters().containsValue(
@@ -101,6 +110,11 @@ class OclGraphEncodingAdequacyTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("sourceQualifiers[0]"), result.getCypher());
+        assertTrue(result.getCypher().contains("AND NOT ("), result.getCypher());
+        assertTrue(result.getCypher().contains("AND r.sourceQualifiers[0]"), result.getCypher());
+        assertTrue(result.getCypher().contains("'v1|S|' +"), result.getCypher());
+        assertTrue(result.getCypher().contains("'%', '%25'"), result.getCypher());
+        assertTrue(result.getCypher().contains("'|', '%7C'"), result.getCypher());
         assertTrue(result.getParameters().containsValue(
                 CanonicalGraphEncoding.associationKey("Demo", "Catalog")),
                 result.getParameters().toString());

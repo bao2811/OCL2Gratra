@@ -8,6 +8,7 @@ public class ASTOperationConstraint extends ASTNode {
     public String operationName;
     public List<String> parameterNames;
     public List<String> parameterTypes;
+    public String returnTypeName;
     public String constraintKind;
     public String ruleName;
     public ASTExpression expression;
@@ -19,10 +20,23 @@ public class ASTOperationConstraint extends ASTNode {
                                   String constraintKind,
                                   String ruleName,
                                   ASTExpression expression) {
+        this(className, operationName, parameterNames, parameterTypes, null,
+                constraintKind, ruleName, expression);
+    }
+
+    public ASTOperationConstraint(String className,
+                                  String operationName,
+                                  List<String> parameterNames,
+                                  List<String> parameterTypes,
+                                  String returnTypeName,
+                                  String constraintKind,
+                                  String ruleName,
+                                  ASTExpression expression) {
         this.className = className;
         this.operationName = operationName;
         this.parameterNames = new ArrayList<>(parameterNames != null ? parameterNames : List.of());
         this.parameterTypes = new ArrayList<>(parameterTypes != null ? parameterTypes : List.of());
+        this.returnTypeName = returnTypeName;
         this.constraintKind = constraintKind;
         this.ruleName = ruleName;
         this.expression = expression;

@@ -12,6 +12,8 @@ import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -685,6 +687,61 @@ class OclSemanticBinderTest {
         OclSemanticBinder.BoundVariable threshold = as(comparison.right(), OclSemanticBinder.BoundVariable.class);
         assertEquals("threshold", threshold.ast().name);
         assertEquals("Boolean", letExpression.type().typeName());
+    }
+
+    @Test
+    void bindsTypedLetUsingDeclaredTypeAndNumericConformance() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                """, "context Person inv TypedLet: let threshold : Real = self.age in threshold >= 0.0");
+
+        OclSemanticBinder.BoundLet letExpression = as(bound.expression(), OclSemanticBinder.BoundLet.class);
+        assertEquals("Integer", letExpression.value().type().typeName());
+        assertEquals("Real", letExpression.variableType().typeName());
+        OclSemanticBinder.BoundVariable threshold = as(
+                as(letExpression.body(), OclSemanticBinder.BoundBinary.class).left(),
+                OclSemanticBinder.BoundVariable.class);
+        assertEquals("Real", threshold.type().typeName());
+    }
+
+    @Test
+    void rejectsTypedLetWhenInitializerDoesNotConform() {
+        OclCodedUnsupportedOperationException failure = assertThrows(
+                OclCodedUnsupportedOperationException.class,
+                () -> bind("""
+                        model Demo
+                        class Person
+                        attributes
+                            age : Integer
+                        end
+                        """, "context Person inv BadTypedLet: let x : String = self.age in x = x"));
+
+        assertEquals(OclDiagnosticCode.LET_TYPE_MISMATCH, failure.code());
+    }
+
+    @Test
+    void bindsTypedIteratorWithElementSupertype() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                attributes
+                    age : Integer
+                end
+                class Employee < Person
+                end
+                """, "context Person inv TypedIterator: Employee.allInstances()->forAll(e : Person | e.age >= 0)");
+
+        OclSemanticBinder.BoundIterator iterator = as(bound.expression(), OclSemanticBinder.BoundIterator.class);
+        assertEquals("Employee", iterator.sourceCollectionType().elementType().typeName());
+        assertEquals("Person", iterator.iteratorVariableType().typeName());
+        OclSemanticBinder.BoundProperty age = as(
+                as(iterator.body(), OclSemanticBinder.BoundBinary.class).left(),
+                OclSemanticBinder.BoundProperty.class);
+        assertEquals("Person", age.source().type().typeName());
     }
 
     @Test

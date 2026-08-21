@@ -56,8 +56,8 @@ class OclIrJavaRefinementCoverageTest {
                         "(source : Expr Payload) (sourceCollectionType operationName : Payload)"),
                 "Lean CollectionOperation must preserve the Java sourceCollectionType payload");
         assertTrue(lean.contains(
-                        "(source : Expr Payload) (sourceCollectionType operationName iteratorName : Payload)"),
-                "Lean IteratorOperation must preserve the Java sourceCollectionType payload");
+                        "(source : Expr Payload) (sourceCollectionType operationName iteratorName iteratorVariableType : Payload)"),
+                "Lean IteratorOperation must preserve collection and declared iterator type payloads");
         for (Row row : rows) {
             assertPattern(ir, "\\brecord\\s+" + Pattern.quote(row.javaConstructor()) + "\\b");
             Class<?> javaConstructor = Arrays.stream(OclIr.OptimizedExpression.class.getPermittedSubclasses())

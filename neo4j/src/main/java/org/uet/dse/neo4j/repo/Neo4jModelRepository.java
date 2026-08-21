@@ -164,7 +164,7 @@ public class Neo4jModelRepository {
         runner.run("UNWIND $rows AS row "
                         + "MATCH (m:ManageModel {name:$modelName})-[:DefineMetamodels]->"
                         + "(meta:MetaNode {name:row.metaName}) "
-                        + "MERGE (inst:UmlClass {classKey:row.classKey}) "
+                        + "MERGE (inst:UmlClass {modelKey:$modelName,classKey:row.classKey}) "
                         + "SET inst += row.props "
                         + "MERGE (inst)-[:InstanceOf]->(meta)",
                 Map.of("rows", rows, "modelName", modelName));
@@ -183,8 +183,8 @@ public class Neo4jModelRepository {
     public void upsertInheritanceBatch(QueryRunner runner, String modelName, List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return;
         runner.run("UNWIND $rows AS row "
-                        + "MATCH (src:UmlClass {classKey:row.childKey}), "
-                        + "(tgt:UmlClass {classKey:row.parentKey}) "
+                        + "MATCH (src:UmlClass {modelKey:$modelName,classKey:row.childKey}), "
+                        + "(tgt:UmlClass {modelKey:$modelName,classKey:row.parentKey}) "
                         + "MERGE (src)-[r:Extends]->(tgt) "
                         + "SET r.sourceName=row.childName, r.targetName=row.parentName, r.modelKey=$modelName",
                 Map.of("rows", rows, "modelName", modelName));
@@ -195,8 +195,8 @@ public class Neo4jModelRepository {
         runner.run("UNWIND $rows AS row "
                         + "MATCH (m:ManageModel {name:$modelName})-[:DefineMetamodels]->"
                         + "(meta:MetaNode {name:'NodeAttribute'}) "
-                        + "MATCH (owner:UmlClass {classKey:row.ownerKey}) "
-                        + "MERGE (a:Attribute {attributeKey:row.attributeKey}) "
+                        + "MATCH (owner:UmlClass {modelKey:$modelName,classKey:row.ownerKey}) "
+                        + "MERGE (a:Attribute {modelKey:$modelName,attributeKey:row.attributeKey}) "
                         + "SET a += row.props "
                         + "MERGE (owner)-[:HasAttribute]->(a) "
                         + "MERGE (a)-[:InstanceOf]->(meta) "
@@ -204,22 +204,25 @@ public class Neo4jModelRepository {
                 Map.of("rows", rows, "modelName", modelName));
     }
 
-    public void upsertAttributeReferencesBatch(QueryRunner runner, List<Map<String, Object>> rows) {
+    public void upsertAttributeReferencesBatch(QueryRunner runner, String modelName,
+                                               List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return;
         runner.run("UNWIND $rows AS row "
-                        + "MATCH (a:Attribute {attributeKey:row.attributeKey}), "
-                        + "(target:UmlClass {classKey:row.referenceKey}) "
+                        + "MATCH (a:Attribute {modelKey:$modelName,attributeKey:row.attributeKey}), "
+                        + "(target:UmlClass {modelKey:$modelName,classKey:row.referenceKey}) "
                         + "MERGE (a)-[:ReferenceType]->(target)",
-                Map.of("rows", rows));
+                Map.of("rows", rows, "modelName", modelName));
     }
 
-    public void removeObsoleteBinaryAssociationTypes(QueryRunner runner, List<Map<String, Object>> rows) {
+    public void removeObsoleteBinaryAssociationTypes(QueryRunner runner, String modelName,
+                                                     List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return;
         runner.run("UNWIND $rows AS row "
-                        + "MATCH (s:UmlClass {classKey:row.sourceClassKey})-[r]->"
-                        + "(t:UmlClass {classKey:row.targetClassKey}) "
-                        + "WHERE r.associationKey=row.associationKey AND type(r) <> row.edgeLabel DELETE r",
-                Map.of("rows", rows));
+                        + "MATCH (s:UmlClass {modelKey:$modelName,classKey:row.sourceClassKey})-[r]->"
+                        + "(t:UmlClass {modelKey:$modelName,classKey:row.targetClassKey}) "
+                        + "WHERE r.modelKey=$modelName AND r.associationKey=row.associationKey "
+                        + "AND type(r) <> row.edgeLabel DELETE r",
+                Map.of("rows", rows, "modelName", modelName));
     }
 
     public void upsertBinaryAssociationsBatch(QueryRunner runner, String edgeLabel,
@@ -227,9 +230,9 @@ public class Neo4jModelRepository {
         if (rows.isEmpty()) return;
         String query = String.format(
                 "UNWIND $rows AS row "
-                        + "MATCH (s:UmlClass {classKey:row.sourceClassKey}), "
-                        + "(t:UmlClass {classKey:row.targetClassKey}) "
-                        + "MERGE (s)-[r:%s {associationKey:row.associationKey}]->(t) "
+                        + "MATCH (s:UmlClass {modelKey:$modelName,classKey:row.sourceClassKey}), "
+                        + "(t:UmlClass {modelKey:$modelName,classKey:row.targetClassKey}) "
+                        + "MERGE (s)-[r:%s {modelKey:$modelName,associationKey:row.associationKey}]->(t) "
                         + "SET r += row.props, r.modelKey=$modelName, r.isTernary=false",
                 edgeLabel);
         runner.run(query, Map.of("rows", rows, "modelName", rows.get(0).get("modelName")));

@@ -204,9 +204,10 @@ final class ExpectedFormalCypherTreeVerifier {
             return "not-exists:" + value.match().predicateMode();
         }
         if (plan instanceof OclCypherPlan.CountSubqueryComparisonPlan value) {
-            expected.add(ast(AstKind.COUNT_EXPRESSION, AstKind.MATCH, AstKind.RELATIONSHIP_PATTERN,
+            expected.add(ast(AstKind.COLLECT_EXPRESSION, AstKind.MATCH, AstKind.RELATIONSHIP_PATTERN,
                     AstKind.BINARY_EXPRESSION));
-            expected.add(sequence("COUNT", "{"));
+            expected.add(sequence("COLLECT", "{"));
+            expected.add(token("size"));
             expected.add(token(value.operator()));
             expected.add(parameterValue(value.literal(), parameters));
             navigation(value.match().navigation(), expected, parameters);

@@ -28,8 +28,6 @@ $tests = @(
     'OclValFragmentCoverageTest',
     'OclValNegativeAdmissionCoverageTest',
     'OclVal47NonVacuityContractTest',
-    'OclVal47NonVacuityEvidenceTest',
-    'CanonicalProfileRuntimeEvidenceManifestTest',
     'CertifiedValidationCompilationTest',
     'FixturePremiseVerifierTest',
     'OclMetamodelSnapshotTest',
@@ -57,10 +55,18 @@ $tests = @(
     'AdapterAdequacyEvidenceMatrixTest',
     'FamiliesToPersonsCaseStudyTest',
     'OclCypherRendererTest',
-    'Cypher5ValRuntimeEvidenceManifestTest',
     'OclRewritePreservationTest',
     'OclDualCheckTest'
-) -join ','
+)
+
+if ($RequireCleanRuntimeEvidence) {
+    $tests += @(
+        'OclVal47NonVacuityEvidenceTest',
+        'CanonicalProfileRuntimeEvidenceManifestTest',
+        'Cypher5ValRuntimeEvidenceManifestTest'
+    )
+}
+$tests = $tests -join ','
 
 Push-Location $workspace
 try {

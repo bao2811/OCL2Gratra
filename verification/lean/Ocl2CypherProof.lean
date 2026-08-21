@@ -12,7 +12,7 @@ namespace Ocl2CypherProof
 
 def proofContractVersion : String := "PC-2026-07-22.3"
 def proofRegistrySha256 : String :=
-  "8a385323b21b6515742bd9276ef93e637cab792da799b16f51e7e280af37a27b"
+  "21df2e0244e185926169a6078e469d7f020c7ac1f9967fe1abdc8cec26568379"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/
@@ -1282,10 +1282,11 @@ mutual
         (arguments : ExprList Payload) (typeTag : Payload)
     | collectionOperationE (source : Expr Payload) (sourceCollectionType operationName : Payload)
         (arguments : ExprList Payload) (typeTag : Payload)
-    | iteratorOperationE (source : Expr Payload) (sourceCollectionType operationName iteratorName : Payload)
+    | iteratorOperationE (source : Expr Payload) (sourceCollectionType operationName iteratorName iteratorVariableType : Payload)
         (body : Expr Payload) (typeTag : Payload)
     | ifE (condition thenBranch elseBranch : Expr Payload) (typeTag : Payload)
-    | letE (variableName : Payload) (value body : Expr Payload) (typeTag : Payload)
+    | letE (variableName : Payload) (value : Expr Payload) (variableType : Payload)
+        (body : Expr Payload) (typeTag : Payload)
     | navigationPredicateE (navigation : Expr Payload) (iteratorName : Option Payload)
         (predicate : OptionalExpr Payload) (kind typeTag : Payload)
     | navigationCountE (navigation : Expr Payload) (iteratorName : Option Payload)
@@ -1315,9 +1316,9 @@ structure Algebra (Payload : Type u) (Value : Type v) where
   navigationAccessOp : Payload → Payload → Value → List Value → Value
   methodCallOp : Payload → Payload → Value → List Value → Value
   collectionOperationOp : Payload → Payload → Payload → Value → List Value → Value
-  iteratorOperationOp : Payload → Payload → Payload → Payload → Value → Value → Value
+  iteratorOperationOp : Payload → Payload → Payload → Payload → Payload → Value → Value → Value
   iteOp : Payload → Value → Value → Value → Value
-  letOp : Payload → Payload → Value → Value → Value
+  letOp : Payload → Payload → Payload → Value → Value → Value
   navigationPredicateOp : Option Payload → Payload → Payload → Value → Option Value → Value
   navigationCountOp : Option Payload → Payload → Payload → Payload → Value → Option Value → Value
   navigationAggregationOp : Option Payload → Payload → Payload → Value → Option Value → Value → Value
@@ -1340,13 +1341,13 @@ mutual
     | .collectionOperationE source sourceCollectionType operationName arguments typeTag =>
         algebra.collectionOperationOp sourceCollectionType operationName typeTag
           (eval algebra source) (evalList algebra arguments)
-    | .iteratorOperationE source sourceCollectionType operationName iteratorName body typeTag =>
-        algebra.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+    | .iteratorOperationE source sourceCollectionType operationName iteratorName iteratorVariableType body typeTag =>
+        algebra.iteratorOperationOp sourceCollectionType operationName iteratorName iteratorVariableType typeTag
           (eval algebra source) (eval algebra body)
     | .ifE condition thenBranch elseBranch typeTag =>
         algebra.iteOp typeTag (eval algebra condition) (eval algebra thenBranch) (eval algebra elseBranch)
-    | .letE variableName value body typeTag =>
-        algebra.letOp variableName typeTag (eval algebra value) (eval algebra body)
+    | .letE variableName value variableType body typeTag =>
+        algebra.letOp variableName variableType typeTag (eval algebra value) (eval algebra body)
     | .navigationPredicateE navigation iteratorName predicate kind typeTag =>
         algebra.navigationPredicateOp iteratorName kind typeTag
           (eval algebra navigation) (evalOptional algebra predicate)
@@ -1416,22 +1417,22 @@ structure AlgebraAgreement (relation : ObjectValue → GraphValue → Prop)
           objectSource objectArguments)
         (graph.collectionOperationOp sourceCollectionType operationName typeTag
           graphSource graphArguments)
-  iteratorOperationCase : ∀ sourceCollectionType operationName iteratorName typeTag
+  iteratorOperationCase : ∀ sourceCollectionType operationName iteratorName iteratorVariableType typeTag
       objectSource graphSource objectBody graphBody,
     relation objectSource graphSource → relation objectBody graphBody →
-      relation (object.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+      relation (object.iteratorOperationOp sourceCollectionType operationName iteratorName iteratorVariableType typeTag
           objectSource objectBody)
-        (graph.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+        (graph.iteratorOperationOp sourceCollectionType operationName iteratorName iteratorVariableType typeTag
           graphSource graphBody)
   iteCase : ∀ typeTag objectCondition graphCondition objectThen graphThen objectElse graphElse,
     relation objectCondition graphCondition → relation objectThen graphThen →
       relation objectElse graphElse →
       relation (object.iteOp typeTag objectCondition objectThen objectElse)
         (graph.iteOp typeTag graphCondition graphThen graphElse)
-  letCase : ∀ variableName typeTag objectValue graphValue objectBody graphBody,
+  letCase : ∀ variableName variableType typeTag objectValue graphValue objectBody graphBody,
     relation objectValue graphValue → relation objectBody graphBody →
-      relation (object.letOp variableName typeTag objectValue objectBody)
-        (graph.letOp variableName typeTag graphValue graphBody)
+      relation (object.letOp variableName variableType typeTag objectValue objectBody)
+        (graph.letOp variableName variableType typeTag graphValue graphBody)
   navigationPredicateCase : ∀ iteratorName kind typeTag objectNavigation graphNavigation
       objectPredicate graphPredicate,
     relation objectNavigation graphNavigation →
@@ -1495,16 +1496,16 @@ mutual
         exact agreement.collectionOperationCase sourceCollectionType operationName typeTag _ _ _ _
           (java_ir_eval_refinement agreement source)
           (java_ir_list_refinement agreement arguments)
-    | iteratorOperationE source sourceCollectionType operationName iteratorName body typeTag =>
-        exact agreement.iteratorOperationCase sourceCollectionType operationName iteratorName typeTag _ _ _ _
+    | iteratorOperationE source sourceCollectionType operationName iteratorName iteratorVariableType body typeTag =>
+        exact agreement.iteratorOperationCase sourceCollectionType operationName iteratorName iteratorVariableType typeTag _ _ _ _
           (java_ir_eval_refinement agreement source)
           (java_ir_eval_refinement agreement body)
     | ifE condition thenBranch elseBranch typeTag =>
         exact agreement.iteCase typeTag _ _ _ _ _ _ (java_ir_eval_refinement agreement condition)
           (java_ir_eval_refinement agreement thenBranch)
           (java_ir_eval_refinement agreement elseBranch)
-    | letE variableName value body typeTag =>
-        exact agreement.letCase variableName typeTag _ _ _ _ (java_ir_eval_refinement agreement value)
+    | letE variableName value variableType body typeTag =>
+        exact agreement.letCase variableName variableType typeTag _ _ _ _ (java_ir_eval_refinement agreement value)
           (java_ir_eval_refinement agreement body)
     | navigationPredicateE navigation iteratorName predicate kind typeTag =>
         exact agreement.navigationPredicateCase iteratorName kind typeTag _ _ _ _
@@ -1570,7 +1571,8 @@ mutual
     | setLiteralB (elements : BoundList Payload) (typeTag : Payload)
     | notB (body : BoundExpr Payload) (typeTag : Payload)
     | ifB (condition thenBranch elseBranch : BoundExpr Payload) (typeTag : Payload)
-    | letB (variableName : Payload) (value body : BoundExpr Payload) (typeTag : Payload)
+    | letB (variableName : Payload) (value : BoundExpr Payload) (variableType : Payload)
+        (body : BoundExpr Payload) (typeTag : Payload)
     | binaryB (operator : Payload) (left right : BoundExpr Payload) (typeTag : Payload)
     | attributePropertyB (source : BoundExpr Payload)
         (attributeName attributeType typeTag attributeIdentity : Payload)
@@ -1582,7 +1584,7 @@ mutual
         (sourceCollectionType operationName : Payload)
         (arguments : BoundList Payload) (typeTag : Payload)
     | iteratorB (source : BoundExpr Payload)
-        (sourceCollectionType operationName iteratorName : Payload)
+        (sourceCollectionType operationName iteratorName iteratorVariableType : Payload)
         (body : BoundExpr Payload) (typeTag : Payload)
 
   inductive BoundList (Payload : Type u) where
@@ -1598,8 +1600,8 @@ mutual
     | .notB body typeTag => .notE (alpha body) typeTag
     | .ifB condition thenBranch elseBranch typeTag =>
         .ifE (alpha condition) (alpha thenBranch) (alpha elseBranch) typeTag
-    | .letB variableName value body typeTag =>
-        .letE variableName (alpha value) (alpha body) typeTag
+    | .letB variableName value variableType body typeTag =>
+        .letE variableName (alpha value) variableType (alpha body) typeTag
     | .binaryB operator left right typeTag =>
         .binaryE operator (alpha left) (alpha right) typeTag
     | .attributePropertyB source attributeName attributeType typeTag attributeIdentity =>
@@ -1611,8 +1613,8 @@ mutual
     | .collectionOperationB source sourceCollectionType operationName arguments typeTag =>
         .collectionOperationE (alpha source) sourceCollectionType operationName
           (alphaList arguments) typeTag
-    | .iteratorB source sourceCollectionType operationName iteratorName body typeTag =>
-        .iteratorOperationE (alpha source) sourceCollectionType operationName iteratorName
+    | .iteratorB source sourceCollectionType operationName iteratorName iteratorVariableType body typeTag =>
+        .iteratorOperationE (alpha source) sourceCollectionType operationName iteratorName iteratorVariableType
           (alpha body) typeTag
 
   def alphaList : BoundList Payload -> JavaIrRefinement.ExprList Payload
@@ -1629,8 +1631,8 @@ mutual
     | .ifB condition thenBranch elseBranch typeTag =>
         algebra.iteOp typeTag (evalBound algebra condition) (evalBound algebra thenBranch)
           (evalBound algebra elseBranch)
-    | .letB variableName value body typeTag =>
-        algebra.letOp variableName typeTag (evalBound algebra value) (evalBound algebra body)
+    | .letB variableName value variableType body typeTag =>
+        algebra.letOp variableName variableType typeTag (evalBound algebra value) (evalBound algebra body)
     | .binaryB operator left right typeTag =>
         algebra.binaryOp operator typeTag (evalBound algebra left) (evalBound algebra right)
     | .attributePropertyB source attributeName attributeType typeTag attributeIdentity =>
@@ -1645,8 +1647,8 @@ mutual
     | .collectionOperationB source sourceCollectionType operationName arguments typeTag =>
         algebra.collectionOperationOp sourceCollectionType operationName typeTag
           (evalBound algebra source) (evalBoundList algebra arguments)
-    | .iteratorB source sourceCollectionType operationName iteratorName body typeTag =>
-        algebra.iteratorOperationOp sourceCollectionType operationName iteratorName typeTag
+    | .iteratorB source sourceCollectionType operationName iteratorName iteratorVariableType body typeTag =>
+        algebra.iteratorOperationOp sourceCollectionType operationName iteratorName iteratorVariableType typeTag
           (evalBound algebra source) (evalBound algebra body)
 
   def evalBoundList (algebra : JavaIrRefinement.Algebra Payload Value) :
@@ -1672,7 +1674,7 @@ mutual
         simp only [evalBound, alpha, JavaIrRefinement.eval]
         rw [bound_va_abstraction algebra condition, bound_va_abstraction algebra thenBranch,
           bound_va_abstraction algebra elseBranch]
-    | letB variableName value body typeTag =>
+    | letB variableName value variableType body typeTag =>
         simp only [evalBound, alpha, JavaIrRefinement.eval]
         rw [bound_va_abstraction algebra value, bound_va_abstraction algebra body]
     | binaryB operator left right typeTag =>
@@ -1690,7 +1692,7 @@ mutual
     | collectionOperationB source sourceCollectionType operationName arguments typeTag =>
         simp only [evalBound, alpha, JavaIrRefinement.eval]
         rw [bound_va_abstraction algebra source, bound_va_list_abstraction algebra arguments]
-    | iteratorB source sourceCollectionType operationName iteratorName body typeTag =>
+    | iteratorB source sourceCollectionType operationName iteratorName iteratorVariableType body typeTag =>
         simp only [evalBound, alpha, JavaIrRefinement.eval]
         rw [bound_va_abstraction algebra source, bound_va_abstraction algebra body]
 

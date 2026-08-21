@@ -41,7 +41,28 @@ public final class OclIr {
      * IR-level representation of a context invariant. The predicate evaluates
      * to a Boolean for each instance of {@code contextClassName}.
      */
-    public record InvariantQuery(String contextClassName, String invariantName, Expression predicate) {
+    public enum Stage {
+        SEMANTIC,
+        OPTIMIZED
+    }
+
+    public record InvariantQuery(String contextClassName, String invariantName, Expression predicate,
+                                 Stage stage, String producerVersion) {
+        public InvariantQuery(String contextClassName, String invariantName, Expression predicate) {
+            this(contextClassName, invariantName, predicate, Stage.SEMANTIC, "semantic-ir-v1");
+        }
+
+        public InvariantQuery {
+            if (contextClassName == null || contextClassName.isBlank()) {
+                throw new IllegalArgumentException("Invariant context class is required");
+            }
+            if (invariantName == null || invariantName.isBlank()) {
+                throw new IllegalArgumentException("Invariant name is required");
+            }
+            if (predicate == null || stage == null || producerVersion == null || producerVersion.isBlank()) {
+                throw new IllegalArgumentException("Invariant IR stage metadata is incomplete");
+            }
+        }
     }
 
     /**
@@ -91,7 +112,7 @@ public final class OclIr {
                      OclTypeBinding type) implements SemanticExpression, OptimizedExpression {
     }
 
-    public record Let(String variableName, Expression value, Expression body,
+    public record Let(String variableName, Expression value, OclTypeBinding variableType, Expression body,
                       OclTypeBinding type) implements SemanticExpression, OptimizedExpression {
     }
 
@@ -129,7 +150,7 @@ public final class OclIr {
     }
 
     public record IteratorOperation(Expression source, OclTypeBinding sourceCollectionType,
-                                    String operationName, String iteratorName,
+                                    String operationName, String iteratorName, OclTypeBinding iteratorVariableType,
                                     Expression body, OclTypeBinding type) implements SemanticExpression, OptimizedExpression {
     }
 

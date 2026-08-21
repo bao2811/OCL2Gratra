@@ -5,6 +5,7 @@ import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.Value;
 import org.tzi.use.api.UseSystemApi;
+import org.tzi.use.uml.mm.MAssociation;
 import org.tzi.use.uml.mm.MAttribute;
 import org.tzi.use.uml.ocl.type.Type;
 import org.tzi.use.uml.sys.MObject;
@@ -15,6 +16,7 @@ import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
 import org.uet.dse.neo4j.manager.WorkLogManager;
 import org.uet.dse.neo4j.repo.query.Neo4jObjectQuery;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
 
 import java.util.ArrayList;
@@ -46,7 +48,8 @@ public class ObjectPullService {
         continue;
 
       try {
-        systemApi.deleteLink(ls.assocName, ls.participants.toArray(new String[0]), qualifierExpressions(ls.qualifierValues));
+        systemApi.deleteLink(ls.assocName, ls.participants.toArray(new String[0]),
+            qualifierExpressions(ls.assocName, ls.qualifierValues));
         WorkLogManager.getInstance().log("LINK_PULL_DELETE", "Removed link: " + ls.getIdentity());
       } catch (Exception e) {
         WorkLogManager.getInstance().log("LINK_DELETE_ERROR", "Failed to remove link " + linkId + ": " + e.getMessage());
@@ -167,10 +170,11 @@ public class ObjectPullService {
   }
 
   private void pullBinaryLinks(Session session, UseSystemApi api) {
-    session.run(Neo4jObjectQuery.PULL_BINARY_LINKS).forEachRemaining(rec -> {
+    session.run(Neo4jObjectQuery.PULL_BINARY_LINKS,
+        Map.of("modelName", system.model().name())).forEachRemaining(rec -> {
       String assocName = rec.get("assocName").asString();
       String[] ends = { rec.get("src").asString(), rec.get("tgt").asString() };
-      String[][] qualifiers = qualifierExpressions(List.of(
+      String[][] qualifiers = qualifierExpressions(assocName, List.of(
           rec.get("sourceQualifiers").asList(v -> v.isNull() ? null : v.asString()),
           rec.get("targetQualifiers").asList(v -> v.isNull() ? null : v.asString())
       ));
@@ -179,7 +183,8 @@ public class ObjectPullService {
   }
 
   private void pullTernaryLinks(Session session, UseSystemApi api) {
-    session.run(Neo4jObjectQuery.PULL_TERNARY_LINKS).forEachRemaining(rec -> {
+    session.run(Neo4jObjectQuery.PULL_TERNARY_LINKS,
+        Map.of("modelName", system.model().name())).forEachRemaining(rec -> {
       String assocName = rec.get("assocName").asString();
       String[] objNames = extractTernaryParticipants(rec);
       createLinkSafely(api, assocName, objNames);
@@ -192,7 +197,8 @@ public class ObjectPullService {
   }
 
   private void pullLinkObjects(Session session, UseSystemApi api) {
-    session.run(Neo4jObjectQuery.PULL_LINK_OBJECTS).forEachRemaining(rec -> {
+    session.run(Neo4jObjectQuery.PULL_LINK_OBJECTS,
+        Map.of("modelName", system.model().name())).forEachRemaining(rec -> {
       String acName = rec.get("acName").asString();
       String loName = rec.get("loName").asString();
       String[] participants = rec.get("participants").asList(Value::asString).toArray(new String[0]);
@@ -225,14 +231,38 @@ public class ObjectPullService {
     }
   }
 
-  private String[][] qualifierExpressions(List<List<String>> qualifierValues) {
+  private String[][] qualifierExpressions(String associationName, List<List<String>> qualifierValues) {
     if (qualifierValues == null || qualifierValues.isEmpty()) {
       return new String[0][];
+    }
+    MAssociation association = system.model().getAssociation(associationName);
+    if (association == null) {
+      throw new IllegalArgumentException("Unknown association for qualifier decoding: " + associationName);
+    }
+    if (qualifierValues.size() > association.associationEnds().size()) {
+      throw new IllegalArgumentException("Qualifier end count exceeds association arity: " + associationName);
     }
     String[][] expressions = new String[qualifierValues.size()][];
     for (int i = 0; i < qualifierValues.size(); i++) {
       List<String> endValues = qualifierValues.get(i);
-      expressions[i] = endValues == null ? new String[0] : endValues.toArray(new String[0]);
+      var definitions = association.associationEnds().get(i).getQualifiers();
+      if (endValues == null || endValues.isEmpty()) {
+        if (!definitions.isEmpty()) {
+          throw new IllegalArgumentException("Missing qualifier payloads for association end " + i
+              + " of " + associationName);
+        }
+        expressions[i] = new String[0];
+        continue;
+      }
+      if (endValues.size() != definitions.size()) {
+        throw new IllegalArgumentException("Qualifier arity mismatch at association end " + i
+            + " of " + associationName);
+      }
+      expressions[i] = new String[endValues.size()];
+      for (int j = 0; j < endValues.size(); j++) {
+        Object decoded = CanonicalScalarValueCodec.decode(endValues.get(j), definitions.get(j).type());
+        expressions[i][j] = UmlTypeTranslator.toTypedOclLiteral(decoded, definitions.get(j).type());
+      }
     }
     return expressions;
   }

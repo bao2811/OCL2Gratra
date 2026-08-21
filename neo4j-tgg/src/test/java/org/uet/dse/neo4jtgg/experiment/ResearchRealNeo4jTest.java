@@ -19,6 +19,7 @@ import org.uet.dse.neo4j.sync.model.CoreModelPushService;
 import org.uet.dse.neo4j.sync.object.ObjectDiff;
 import org.uet.dse.neo4j.sync.object.ObjectPushService;
 import org.uet.dse.neo4j.sync.object.ObjectSnapshotCompare;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 import java.io.PrintWriter;
@@ -250,8 +251,9 @@ class ResearchRealNeo4jTest {
             session.run("""
                     MATCH (o:Object {modelKey: $modelKey, use_id: 'research_adult'})
                           -[:ObjectHasAttribute]->(v:AttributeValue {attributeKey: $attributeKey})
-                    SET v.value = '10'
-                    """, Map.of("modelKey", modelKey, "attributeKey", ageKey)).consume();
+                    SET v.value = $mutatedAge
+                    """, Map.of("modelKey", modelKey, "attributeKey", ageKey,
+                    "mutatedAge", CanonicalScalarValueCodec.encode(10L, "Integer"))).consume();
             Set<String> dataMutantIds = execute(adult.cypher(), adult.parameters());
             result.add(new ScientificEvaluationReport.MutationObservation(
                     "change-adult-age-to-10", ScientificEvaluationReport.MutationCategory.DATA,
@@ -262,8 +264,9 @@ class ResearchRealNeo4jTest {
                 session.run("""
                         MATCH (o:Object {modelKey: $modelKey, use_id: 'research_adult'})
                               -[:ObjectHasAttribute]->(v:AttributeValue {attributeKey: $attributeKey})
-                        SET v.value = '30'
-                        """, Map.of("modelKey", modelKey, "attributeKey", ageKey)).consume();
+                        SET v.value = $restoredAge
+                        """, Map.of("modelKey", modelKey, "attributeKey", ageKey,
+                        "restoredAge", CanonicalScalarValueCodec.encode(30L, "Integer"))).consume();
             }
         }
         return List.copyOf(result);
@@ -319,9 +322,12 @@ class ResearchRealNeo4jTest {
         String neo4jVersion;
         try (Session session = Neo4jDriverManager.getInstance().openSession()) {
             neo4jVersion = session.run("CALL dbms.components() YIELD name, versions "
-                            + "RETURN versions[0] AS version ORDER BY name LIMIT 1")
+                            + "WHERE name CONTAINS 'Neo4j Kernel' AND size(versions) > 0 "
+                            + "RETURN versions[0] AS version")
                     .single().get("version").asString();
         }
+        assertEquals(Cypher5ValAssumptionMatrix.NEO4J_KERNEL, neo4jVersion,
+                "Research evidence must record the selected Neo4j Kernel profile");
         return new ScientificEvaluationReport.ReproducibilityManifest(
                 "research-company-boundary-v1", 42L, sha256(MODEL), sha256(OCL_SUITE),
                 CanonicalGraphSchema.VERSION, neo4jVersion, "5", config.database(),

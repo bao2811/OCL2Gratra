@@ -2,6 +2,8 @@ package org.uet.dse.neo4jtgg.ocl.ir;
 
 import org.uet.dse.neo4jtgg.ocl.OclTypeBinding;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,11 +25,19 @@ import java.util.Objects;
  * </pre>
  */
 public class OclIrOptimizer {
+    public static final String VERSION = "ocl-ir-optimizer-v2-capture-safe";
+
     public OclIr.InvariantQuery optimizeInvariant(OclIr.InvariantQuery invariantQuery) {
         return new OclIr.InvariantQuery(
                 invariantQuery.contextClassName(),
                 invariantQuery.invariantName(),
-                optimizeExpression(OclSemanticIr.requireSemantic(invariantQuery.predicate())));
+                optimizeExpression(OclSemanticIr.requireSemantic(invariantQuery)),
+                OclIr.Stage.OPTIMIZED,
+                VERSION);
+    }
+
+    public OclOptimizedIr.Artifact optimizeForPlanning(OclIr.SemanticExpression expression) {
+        return OclOptimizedIr.artifact(optimizeExpression(expression), VERSION);
     }
 
     public OclIr.OptimizedExpression optimizeExpression(OclIr.SemanticExpression expression) {
@@ -70,18 +80,23 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.Let letExpression) {
             OclIr.Expression optimizedValue = optimizeExpression(letExpression.value(), bindings);
             int uses = countVariableUses(letExpression.body(), letExpression.variableName());
+            Map<String, OclIr.Expression> bodyBindings = new LinkedHashMap<>(bindings);
+            bodyBindings.remove(letExpression.variableName());
             if (uses == 0) {
-                return optimizeExpression(letExpression.body(), bindings);
+                return optimizeExpression(letExpression.body(), bodyBindings);
             }
-            if (uses == 1 || isCheap(optimizedValue)) {
-                Map<String, OclIr.Expression> childBindings = new LinkedHashMap<>(bindings);
+            if (letExpression.variableType().equals(optimizedValue.type())
+                    && isCheap(optimizedValue)
+                    && canInlineWithoutCapture(optimizedValue, letExpression.body())) {
+                Map<String, OclIr.Expression> childBindings = new LinkedHashMap<>(bodyBindings);
                 childBindings.put(letExpression.variableName(), optimizedValue);
                 return optimizeExpression(letExpression.body(), childBindings);
             }
             return new OclIr.Let(
                     letExpression.variableName(),
                     optimizedValue,
-                    optimizeExpression(letExpression.body(), bindings),
+                    letExpression.variableType(),
+                    optimizeExpression(letExpression.body(), bodyBindings),
                     letExpression.type());
         }
         if (expression instanceof OclIr.Binary binary) {
@@ -152,7 +167,8 @@ public class OclIrOptimizer {
                     iteratorOperation.iteratorName(), optimizedBody, iteratorOperation.type());
             return optimized != null ? optimized : new OclIr.IteratorOperation(
                     optimizedSource, iteratorOperation.sourceCollectionType(), iteratorOperation.operationName(),
-                    iteratorOperation.iteratorName(), optimizedBody, iteratorOperation.type());
+                    iteratorOperation.iteratorName(), iteratorOperation.iteratorVariableType(),
+                    optimizedBody, iteratorOperation.type());
         }
         return expression;
     }
@@ -173,43 +189,94 @@ public class OclIrOptimizer {
         Object leftValue = leftLiteral.value();
         Object rightValue = rightLiteral.value();
         return switch (operator) {
-            case "=" -> new OclIr.Literal(Objects.equals(normalizeNumber(leftValue), normalizeNumber(rightValue)), type);
-            case "<>" -> new OclIr.Literal(!Objects.equals(normalizeNumber(leftValue), normalizeNumber(rightValue)), type);
+            case "=" -> foldEquality(false, leftLiteral, rightLiteral, type);
+            case "<>" -> foldEquality(true, leftLiteral, rightLiteral, type);
             case "and" -> new OclIr.Literal(toBoolean(leftValue) && toBoolean(rightValue), type);
             case "or" -> new OclIr.Literal(toBoolean(leftValue) || toBoolean(rightValue), type);
             case "xor" -> new OclIr.Literal(toBoolean(leftValue) ^ toBoolean(rightValue), type);
             case "implies" -> new OclIr.Literal(!toBoolean(leftValue) || toBoolean(rightValue), type);
-            case ">", "<", ">=", "<=" -> foldComparison(operator, leftValue, rightValue, type);
-            case "+", "-", "*", "/" -> foldArithmetic(operator, leftValue, rightValue, type);
+            case ">", "<", ">=", "<=" -> foldComparison(operator, leftLiteral, rightLiteral, type);
+            case "+", "-", "*", "/" -> foldArithmetic(operator, leftLiteral, rightLiteral, type);
             default -> null;
         };
     }
 
-    private OclIr.Expression foldComparison(String operator, Object leftValue, Object rightValue, OclTypeBinding type) {
-        if (!(leftValue instanceof Number leftNumber) || !(rightValue instanceof Number rightNumber)) {
+    private OclIr.Expression foldEquality(boolean negate, OclIr.Literal left, OclIr.Literal right,
+                                          OclTypeBinding resultType) {
+        Boolean numericEquality = compareNumericLiterals("=", left, right);
+        boolean equal;
+        if (numericEquality != null) {
+            equal = numericEquality;
+        } else if (left.value() instanceof Number && right.value() instanceof Number) {
             return null;
+        } else {
+            equal = Objects.equals(left.value(), right.value());
         }
-        double left = leftNumber.doubleValue();
-        double right = rightNumber.doubleValue();
-        boolean result = switch (operator) {
-            case ">" -> left > right;
-            case "<" -> left < right;
-            case ">=" -> left >= right;
-            case "<=" -> left <= right;
-            default -> false;
-        };
-        return new OclIr.Literal(result, type);
+        return new OclIr.Literal(negate ? !equal : equal, resultType);
     }
 
-    private OclIr.Expression foldArithmetic(String operator, Object leftValue, Object rightValue, OclTypeBinding type) {
-        if (!(leftValue instanceof Number leftNumber) || !(rightValue instanceof Number rightNumber)) {
+    private OclIr.Expression foldComparison(String operator, OclIr.Literal leftLiteral,
+                                             OclIr.Literal rightLiteral, OclTypeBinding type) {
+        Boolean result = compareNumericLiterals(operator, leftLiteral, rightLiteral);
+        return result == null ? null : new OclIr.Literal(result, type);
+    }
+
+    private Boolean compareNumericLiterals(String operator, OclIr.Literal leftLiteral,
+                                           OclIr.Literal rightLiteral) {
+        if (!(leftLiteral.value() instanceof Number leftNumber)
+                || !(rightLiteral.value() instanceof Number rightNumber)) {
             return null;
         }
-        if ("/".equals(operator) && rightNumber.doubleValue() == 0d) {
+        if (isInteger(leftLiteral.type()) && isInteger(rightLiteral.type())) {
+            BigInteger left = exactInteger(leftNumber);
+            BigInteger right = exactInteger(rightNumber);
+            if (left == null || right == null) return null;
+            int comparison = left.compareTo(right);
+            return comparisonResult(operator, comparison);
+        }
+        if (!hasExactRealCoercion(leftLiteral) || !hasExactRealCoercion(rightLiteral)) return null;
+        double left = canonicalRealZero(leftNumber.doubleValue());
+        double right = canonicalRealZero(rightNumber.doubleValue());
+        if (!Double.isFinite(left) || !Double.isFinite(right)) return null;
+        return comparisonResult(operator, Double.compare(left, right));
+    }
+
+    private Boolean comparisonResult(String operator, int comparison) {
+        return switch (operator) {
+            case "=" -> comparison == 0;
+            case ">" -> comparison > 0;
+            case "<" -> comparison < 0;
+            case ">=" -> comparison >= 0;
+            case "<=" -> comparison <= 0;
+            default -> null;
+        };
+    }
+
+    private OclIr.Expression foldArithmetic(String operator, OclIr.Literal leftLiteral,
+                                            OclIr.Literal rightLiteral, OclTypeBinding type) {
+        if (!(leftLiteral.value() instanceof Number leftNumber)
+                || !(rightLiteral.value() instanceof Number rightNumber)) {
             return null;
         }
-        double left = leftNumber.doubleValue();
-        double right = rightNumber.doubleValue();
+        if (isInteger(type) && !"/".equals(operator)) {
+            BigInteger left = exactInteger(leftNumber);
+            BigInteger right = exactInteger(rightNumber);
+            if (left == null || right == null) return null;
+            BigInteger result = switch (operator) {
+                case "+" -> left.add(right);
+                case "-" -> left.subtract(right);
+                case "*" -> left.multiply(right);
+                default -> null;
+            };
+            if (result == null || result.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0
+                    || result.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) return null;
+            return new OclIr.Literal(result.longValue(), type);
+        }
+        if (!hasExactRealCoercion(leftLiteral) || !hasExactRealCoercion(rightLiteral)) return null;
+        double left = canonicalRealZero(leftNumber.doubleValue());
+        double right = canonicalRealZero(rightNumber.doubleValue());
+        if (!Double.isFinite(left) || !Double.isFinite(right)
+                || ("/".equals(operator) && right == 0.0d)) return null;
         double result = switch (operator) {
             case "+" -> left + right;
             case "-" -> left - right;
@@ -217,22 +284,53 @@ public class OclIrOptimizer {
             case "/" -> left / right;
             default -> 0d;
         };
-        if ("Integer".equals(type.typeName()) && Math.rint(result) == result) {
-            return new OclIr.Literal((long) result, type);
-        }
-        return new OclIr.Literal(result, type);
+        return Double.isFinite(result)
+                ? new OclIr.Literal(canonicalRealZero(result), type)
+                : null;
+    }
+
+    /** Real64 has one semantic zero even though IEEE 754 stores two zero signs. */
+    private double canonicalRealZero(double value) {
+        return value == 0.0d ? 0.0d : value;
     }
 
     private boolean toBoolean(Object value) {
         return value instanceof Boolean bool && bool;
     }
 
-    private Object normalizeNumber(Object value) {
-        return value instanceof Number number ? number.doubleValue() : value;
+    private boolean hasExactRealCoercion(OclIr.Literal literal) {
+        if (!isInteger(literal.type())) return literal.value() instanceof Number;
+        BigInteger integer = literal.value() instanceof Number number ? exactInteger(number) : null;
+        return integer != null && integer.abs().compareTo(BigInteger.ONE.shiftLeft(53)) <= 0;
+    }
+
+    private BigInteger exactInteger(Number number) {
+        try {
+            if (number instanceof BigInteger integer) return integer;
+            if (number instanceof BigDecimal decimal) return decimal.toBigIntegerExact();
+            if (number instanceof Byte || number instanceof Short
+                    || number instanceof Integer || number instanceof Long) {
+                return BigInteger.valueOf(number.longValue());
+            }
+            double value = number.doubleValue();
+            if (!Double.isFinite(value) || Math.rint(value) != value) return null;
+            return BigDecimal.valueOf(value).toBigIntegerExact();
+        } catch (ArithmeticException exception) {
+            return null;
+        }
+    }
+
+    private boolean isInteger(OclTypeBinding type) {
+        return type != null && !type.isCollection() && "Integer".equals(type.typeName());
     }
 
     private boolean isCheap(OclIr.Expression expression) {
         return expression instanceof OclIr.Literal || expression instanceof OclIr.Variable;
+    }
+
+    private boolean canInlineWithoutCapture(OclIr.Expression value, OclIr.Expression body) {
+        return !(value instanceof OclIr.Variable variable)
+                || !containsBinderNamed(body, variable.name());
     }
 
     private int countVariableUses(OclIr.Expression expression, String variableName) {
@@ -334,8 +432,9 @@ public class OclIrOptimizer {
     }
 
     private OclIr.Expression optimizeIterator(String operation, OclIr.Expression source, String iteratorName,
-                                              OclIr.Expression body, OclTypeBinding type) {
-        if (source instanceof OclIr.NavigationAccess navigationAccess) {
+                                               OclIr.Expression body, OclTypeBinding type) {
+        if (source instanceof OclIr.NavigationAccess navigationAccess
+                && !containsNestedIteratorOrNavigationQuery(body)) {
             return switch (operation.toLowerCase()) {
                 case "exists" -> OclOptimizedIr.navigationPredicateCheck(navigationAccess, iteratorName, body,
                         OclIr.NavigationPredicateKind.EXISTS, type);
@@ -361,6 +460,60 @@ public class OclIrOptimizer {
             };
         }
         return null;
+    }
+
+    /**
+     * Keeps an outer navigation iterator materialized when its predicate
+     * already contains an iterator or an optimized navigation subquery. This
+     * prevents the planner from receiving deeply correlated EXISTS/COLLECT
+     * shapes while preserving the direct rewrite for simple predicates.
+     */
+    private boolean containsNestedIteratorOrNavigationQuery(OclIr.Expression expression) {
+        if (expression instanceof OclIr.IteratorOperation
+                || expression instanceof OclIr.NavigationPredicateCheck
+                || expression instanceof OclIr.NavigationCountComparison
+                || expression instanceof OclIr.NavigationAggregation
+                || expression instanceof OclIr.NavigationUniquenessCheck) {
+            return true;
+        }
+        if (expression instanceof OclIr.SetLiteral setLiteral) {
+            return setLiteral.elements().stream().anyMatch(this::containsNestedIteratorOrNavigationQuery);
+        }
+        if (expression instanceof OclIr.Not not) {
+            return containsNestedIteratorOrNavigationQuery(not.expression());
+        }
+        if (expression instanceof OclIr.If ifExpression) {
+            return containsNestedIteratorOrNavigationQuery(ifExpression.condition())
+                    || containsNestedIteratorOrNavigationQuery(ifExpression.thenBranch())
+                    || containsNestedIteratorOrNavigationQuery(ifExpression.elseBranch());
+        }
+        if (expression instanceof OclIr.Let letExpression) {
+            return containsNestedIteratorOrNavigationQuery(letExpression.value())
+                    || containsNestedIteratorOrNavigationQuery(letExpression.body());
+        }
+        if (expression instanceof OclIr.Binary binary) {
+            return containsNestedIteratorOrNavigationQuery(binary.left())
+                    || containsNestedIteratorOrNavigationQuery(binary.right());
+        }
+        if (expression instanceof OclIr.AttributeAccess attributeAccess) {
+            return containsNestedIteratorOrNavigationQuery(attributeAccess.source());
+        }
+        if (expression instanceof OclIr.NavigationAccess navigationAccess) {
+            return containsNestedIteratorOrNavigationQuery(navigationAccess.source())
+                    || navigationAccess.qualifiers().stream()
+                    .anyMatch(this::containsNestedIteratorOrNavigationQuery);
+        }
+        if (expression instanceof OclIr.MethodCall methodCall) {
+            return containsNestedIteratorOrNavigationQuery(methodCall.source())
+                    || methodCall.arguments().stream()
+                    .anyMatch(this::containsNestedIteratorOrNavigationQuery);
+        }
+        if (expression instanceof OclIr.CollectionOperation collectionOperation) {
+            return containsNestedIteratorOrNavigationQuery(collectionOperation.source())
+                    || collectionOperation.arguments().stream()
+                    .anyMatch(this::containsNestedIteratorOrNavigationQuery);
+        }
+        return false;
     }
 
     private OclIr.Expression optimizeCollectionOperation(String operation, OclIr.Expression source, OclTypeBinding type) {
@@ -542,16 +695,16 @@ public class OclIrOptimizer {
      * for a formerly free occurrence of the source name. The test is
      * deliberately conservative: when such a binder exists anywhere in the
      * predicate, optimization falls back to the general iterator IR instead of
-     * risking variable capture. The three disjuncts are mirrored by Lean's
-     * {@code NamedBridge.JavaCaptureGuard}: identical names, no free source
-     * use, or no target-named binder. The Lean theorem covers the Boolean
-     * binder kernel; exhaustive Java-constructor-to-kernel correspondence is a
-     * separate proof obligation.
+     * risking variable capture. In addition to the binder guard represented by
+     * Lean's {@code NamedBridge.JavaCaptureGuard}, production must establish
+     * that the target name has no distinct free observation in the predicate;
+     * otherwise renaming would conflate that value with the iterator.
      */
     private boolean canRenameWithoutCapture(OclIr.Expression expression, String from, String to) {
         return from.equals(to)
                 || countVariableUses(expression, from) == 0
-                || !containsBinderNamed(expression, to);
+                || (!containsBinderNamed(expression, to)
+                    && countVariableUses(expression, to) == 0);
     }
 
     private boolean containsBinderNamed(OclIr.Expression expression, String name) {
@@ -658,11 +811,13 @@ public class OclIrOptimizer {
         if (expression instanceof OclIr.Let letExpression) {
             OclIr.Expression renamedValue = renameVariable(letExpression.value(), from, to);
             if (from.equals(letExpression.variableName())) {
-                return new OclIr.Let(letExpression.variableName(), renamedValue, letExpression.body(), letExpression.type());
+                return new OclIr.Let(letExpression.variableName(), renamedValue, letExpression.variableType(),
+                        letExpression.body(), letExpression.type());
             }
             return new OclIr.Let(
                     letExpression.variableName(),
                     renamedValue,
+                    letExpression.variableType(),
                     renameVariable(letExpression.body(), from, to),
                     letExpression.type());
         }
@@ -711,6 +866,7 @@ public class OclIrOptimizer {
                         iteratorOperation.sourceCollectionType(),
                         iteratorOperation.operationName(),
                         iteratorOperation.iteratorName(),
+                        iteratorOperation.iteratorVariableType(),
                         iteratorOperation.body(),
                         iteratorOperation.type());
             }
@@ -719,6 +875,7 @@ public class OclIrOptimizer {
                     iteratorOperation.sourceCollectionType(),
                     iteratorOperation.operationName(),
                     iteratorOperation.iteratorName(),
+                    iteratorOperation.iteratorVariableType(),
                     renameVariable(iteratorOperation.body(), from, to),
                     iteratorOperation.type());
         }
@@ -799,9 +956,11 @@ public class OclIrOptimizer {
 
     private Long extractWholeNumber(OclIr.Expression expression) {
         if (expression instanceof OclIr.Literal literal && literal.value() instanceof Number number) {
-            double value = number.doubleValue();
-            if (Math.rint(value) == value) {
-                return number.longValue();
+            BigInteger integer = exactInteger(number);
+            if (integer != null
+                    && integer.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) >= 0
+                    && integer.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) <= 0) {
+                return integer.longValue();
             }
         }
         return null;

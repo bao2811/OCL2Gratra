@@ -127,7 +127,13 @@ public record AdapterAdequacyCertificate(
             if (!compiled.parameters().containsValue(contextKey)) {
                 details.add(rule + " missing canonical context classKey parameter");
             }
-            if (!cypher.contains("MATCH (self:Object)-[:ObjectInstanceOf]->(cls:UmlClass {classKey: $")) {
+            String modelKey = CanonicalGraphEncoding.modelKey(modelName);
+            if (!compiled.parameters().containsValue(modelKey)) {
+                details.add(rule + " missing canonical modelKey parameter");
+            }
+            if (!cypher.contains("MATCH (self:Object {modelKey: $")
+                    || !cypher.contains("-[:ObjectInstanceOf]->(cls:UmlClass {modelKey: $")
+                    || !cypher.contains("classKey: $")) {
                 details.add(rule + " does not use the canonical context accessor");
             }
             if (cypher.contains("ENDS WITH") || cypher.contains(".associationName")
@@ -147,7 +153,8 @@ public record AdapterAdequacyCertificate(
                     || cypher.contains(".targetQualifiers["))) {
                 details.add(rule + " missing direction-specific qualifier accessor");
             }
-            if (needs.allInstances() && (!cypher.contains(":UmlClass {classKey: $")
+            if (needs.allInstances() && (!cypher.contains(":UmlClass {modelKey: $")
+                    || !cypher.contains("classKey: $")
                     || !cypher.contains("RETURN DISTINCT"))) {
                 details.add(rule + " missing canonical allInstances accessor");
             }

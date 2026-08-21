@@ -2,8 +2,9 @@ package org.uet.dse.neo4j.repo;
 
 import org.neo4j.driver.*;
 import org.uet.dse.neo4j.repo.query.Neo4jObjectQuery;
-import org.uet.dse.neo4j.sync.helper.OclSerializer;
 import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
+import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
 
 import java.util.*;
 
@@ -15,9 +16,9 @@ public class Neo4jObjectRepository {
     List<String> classKeys = classNames.stream()
         .map(name -> CanonicalGraphEncoding.classKey(modelName, name)).distinct().toList();
     long count = tx.run(
-        "MATCH (cls:UmlClass) WHERE cls.classKey IN $classKeys "
+        "MATCH (cls:UmlClass {modelKey:$modelName}) WHERE cls.classKey IN $classKeys "
             + "RETURN count(DISTINCT cls.classKey) AS count",
-        Map.of("classKeys", classKeys)).single().get("count").asLong();
+        Map.of("modelName", modelName, "classKeys", classKeys)).single().get("count").asLong();
     return count == classKeys.size();
   }
 
@@ -109,7 +110,11 @@ public class Neo4jObjectRepository {
     boolean isColl = (boolean) metadata.get("isCollection");
 
     Object valueForNeo4j = "Undefined";
-    if (value != null && !"Undefined".equals(value)) {
+    if (!isNested && !isColl && !isObjRef) {
+      String databaseType = Objects.toString(metadata.get("type"), null);
+      String oclType = UmlTypeTranslator.toUmlTypeString(databaseType);
+      valueForNeo4j = CanonicalScalarValueCodec.encode(value, oclType);
+    } else if (value != null) {
       if (isNested) {
         valueForNeo4j = "NESTED_COLLECTION";
       } else if (isColl && value instanceof Map) {
@@ -128,15 +133,23 @@ public class Neo4jObjectRepository {
         }
       } else if (isObjRef) {
         valueForNeo4j = "Object";
-      } else {
-        valueForNeo4j = OclSerializer.serialize(value);
       }
+    } else {
+      valueForNeo4j = "Undefined";
     }
 
     //tx.run(Neo4jObjectQuery.DELETE_ATTRIBUTE_VALUE, Map.of("vId", valNodeId));
-    tx.run("MATCH (o {use_id: $objName})-[:ObjectHasAttribute]->(val:AttributeValue {name: $valId}) " +
-        "OPTIONAL MATCH (val)-[:HasNestedCollectionValue*1..5]->(n) " +
-        "DETACH DELETE val, n", Map.of("objName", objName, "valId", valNodeId));
+    String deleteOldValue = modelName == null
+        ? "MATCH (o {use_id:$objName})-[:ObjectHasAttribute]->(val:AttributeValue {name:$valId}) "
+        : "MATCH (o:Object {modelKey:$modelName,use_id:$objName})-[:ObjectHasAttribute]->"
+            + "(val:AttributeValue {modelKey:$modelName,name:$valId}) ";
+    deleteOldValue += "OPTIONAL MATCH (val)-[:HasNestedCollectionValue*1..5]->(n) "
+        + "DETACH DELETE val, n";
+    Map<String, Object> deleteParameters = new HashMap<>();
+    deleteParameters.put("objName", objName);
+    deleteParameters.put("valId", valNodeId);
+    if (modelName != null) deleteParameters.put("modelName", modelName);
+    tx.run(deleteOldValue, deleteParameters);
 
     String createAttributeQuery = modelName == null
         ? Neo4jObjectQuery.CREATE_ATTRIBUTE_VALUE

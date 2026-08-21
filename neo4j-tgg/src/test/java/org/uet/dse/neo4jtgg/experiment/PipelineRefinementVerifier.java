@@ -51,6 +51,7 @@ final class PipelineRefinementVerifier {
             assertTrue(va instanceof OclIr.Let);
             OclIr.Let target = (OclIr.Let) va;
             assertEquals(source.ast().variableName, target.variableName());
+            assertEquals(source.variableType(), target.variableType());
             verifyBoundToVa(source.value(), target.value());
             verifyBoundToVa(source.body(), target.body());
         } else if (bound instanceof OclSemanticBinder.BoundBinary source) {
@@ -80,6 +81,7 @@ final class PipelineRefinementVerifier {
             assertEquals(source.ast().operation, target.operationName());
             assertEquals(source.ast().iteratorName, target.iteratorName());
             assertEquals(source.sourceCollectionType(), target.sourceCollectionType());
+            assertEquals(source.iteratorVariableType(), target.iteratorVariableType());
             verifyBoundToVa(source.source(), target.source());
             verifyBoundToVa(source.body(), target.body());
         } else {
@@ -136,6 +138,7 @@ final class PipelineRefinementVerifier {
             assertTrue(target instanceof OclCypherPlan.LetPlan);
             OclCypherPlan.LetPlan plan = (OclCypherPlan.LetPlan) target;
             assertEquals(value.variableName(), plan.variableName());
+            assertEquals(value.variableType(), plan.variableType());
             verifyOptimizedToPlan(value.value(), plan.value());
             verifyOptimizedToPlan(value.body(), plan.body());
         } else if (source instanceof OclIr.Binary value) {
@@ -176,6 +179,7 @@ final class PipelineRefinementVerifier {
             assertEquals(value.operationName(), plan.operationName());
             assertEquals(value.iteratorName(), plan.iteratorName());
             assertEquals(value.sourceCollectionType(), plan.sourceCollectionType());
+            assertEquals(value.iteratorVariableType(), plan.iteratorVariableType());
             verifyOptimizedToPlan(value.source(), plan.source());
             verifyOptimizedToPlan(value.body(), plan.body());
         } else if (source instanceof OclIr.NavigationPredicateCheck value) {

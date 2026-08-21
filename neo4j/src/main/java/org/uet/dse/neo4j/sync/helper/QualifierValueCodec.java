@@ -17,7 +17,7 @@ public final class QualifierValueCodec {
         }
         for (Value qualifierValue : qualifierValues) {
             Object mapped = ValueMapper.mapUseValue(qualifierValue);
-            encoded.add(OclSerializer.serialize(mapped));
+            encoded.add(CanonicalScalarValueCodec.encode(mapped, qualifierValue.type()));
         }
         return encoded;
     }

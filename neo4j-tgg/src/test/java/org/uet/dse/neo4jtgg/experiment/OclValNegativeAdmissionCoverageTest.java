@@ -66,6 +66,40 @@ class OclValNegativeAdmissionCoverageTest {
                 c("incompatible if branches", "context Person inv Bad: (if self.age >= 18 then self.name else self.age endif) = self.name", false, OclDiagnosticPhase.SEMANTIC),
                 c("non-Boolean select body", "context Company inv Bad: self.employee->select(p | p.name)->notEmpty()", false, OclDiagnosticPhase.SEMANTIC),
                 c("wrong qualifier type", "context Library inv Bad: self.book[1]->notEmpty()", false, OclDiagnosticPhase.SEMANTIC),
+                certified("typed iterator requires element conformance",
+                        "context Company inv Bad: self.employee->exists(p : String | true)",
+                        OclDiagnosticCode.ITERATOR_TYPE_MISMATCH),
+                certified("typed let requires initializer conformance",
+                        "context Person inv Bad: let x : String = self.age in x = x",
+                        OclDiagnosticCode.LET_TYPE_MISMATCH),
+                certified("implicit collection property projection is outside OCL_val",
+                        "context Company inv Bad: self.employee.name->includes('Ada')"),
+                certified("class reference cannot be used as a value",
+                        "context Person inv Bad: Person = Person"),
+                certified("class reference cannot be stored in a Set",
+                        "context Person inv Bad: Set{Person}->includes(Person)",
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT),
+                certified("allInstances rejects ignored arguments",
+                        "context Person inv Bad: Person.allInstances(1)->notEmpty()",
+                        OclDiagnosticCode.INVALID_METHOD_ARGUMENT),
+                certified("size rejects ignored arguments",
+                        "context Person inv Bad: Set{1}->size(2) = 1",
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT),
+                certified("asSet rejects ignored arguments",
+                        "context Person inv Bad: Set{1}->asSet(2)->notEmpty()",
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT),
+                certified("oclIsKindOf requires one class argument",
+                        "context Person inv Bad: self.oclIsKindOf()",
+                        OclDiagnosticCode.INVALID_METHOD_ARGUMENT),
+                certified("oclIsKindOf requires an entity receiver",
+                        "context Person inv Bad: 1.oclIsKindOf(Person)",
+                        OclDiagnosticCode.INVALID_METHOD_RECEIVER),
+                certified("includes requires a compatible element",
+                        "context Person inv Bad: Set{1}->includes('one')",
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT),
+                certified("includesAll requires a collection argument",
+                        "context Person inv Bad: Set{1}->includesAll(1)",
+                        OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT),
                 certified("scalar attribute is not a collection source",
                         "context Person inv Bad: self.age->isEmpty()"),
                 certified("native-scalar to-one navigation is not a direct iterator source",
@@ -258,6 +292,10 @@ class OclValNegativeAdmissionCoverageTest {
 
     private RejectedCase certified(String name, String ocl) {
         return c(name, ocl, true, null, OclDiagnosticCode.OCL_VAL_EXCLUDED_CONSTRUCT);
+    }
+
+    private RejectedCase certified(String name, String ocl, OclDiagnosticCode expectedCode) {
+        return c(name, ocl, true, null, expectedCode);
     }
 
     private MModel model() {

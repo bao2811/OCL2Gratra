@@ -12,7 +12,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
-import org.uet.dse.neo4j.sync.helper.OclSerializer;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
@@ -2522,7 +2522,9 @@ class OclDualCheckTest {
                 return false;
             }
             for (int i = 0; i < storedQualifiers.size(); i++) {
-                if (!Objects.equals(storedQualifiers.get(i), OclSerializer.serialize(requestedQualifiers.get(i)))) {
+                Object requested = requestedQualifiers.get(i);
+                if (requested == null || !Objects.equals(storedQualifiers.get(i),
+                        encodeTestQualifier(requested))) {
                     return false;
                 }
             }
@@ -2598,10 +2600,21 @@ class OclDualCheckTest {
         private List<String> serializeQualifiers(List<Object> qualifiers) {
             List<String> values = new ArrayList<>(qualifiers.size());
             for (Object qualifier : qualifiers) {
-                values.add(OclSerializer.serialize(qualifier));
+                values.add(encodeTestQualifier(qualifier));
             }
             return values;
         }
+    }
+
+    private static String encodeTestQualifier(Object value) {
+        String typeName;
+        if (value instanceof Byte || value instanceof Short
+                || value instanceof Integer || value instanceof Long) typeName = "Integer";
+        else if (value instanceof Float || value instanceof Double) typeName = "Real";
+        else if (value instanceof Boolean) typeName = "Boolean";
+        else if (value instanceof String text && text.startsWith("#")) typeName = "TestEnum";
+        else typeName = "String";
+        return CanonicalScalarValueCodec.encode(value, typeName);
     }
 
     private record QualifiedTargets(List<String> qualifiers, List<TestObject> targets) {

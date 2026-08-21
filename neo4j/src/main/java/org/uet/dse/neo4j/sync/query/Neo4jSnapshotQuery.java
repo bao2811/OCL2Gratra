@@ -5,14 +5,14 @@ public class Neo4jSnapshotQuery {
 
     public static final String CLASSES_AND_FEATURES =
         "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-            "MATCH (inst)-[:InstanceOf]->(meta)  WHERE meta.name IN " +
+            "MATCH (inst {modelKey:$modelName})-[:InstanceOf]->(meta)  WHERE meta.name IN " +
                     "  ['NodeConcreteClass','NodeAbstractClass','NodeAssociationClass','NodeEnumeration'] " +
                     "MATCH (inst)-[:InstanceOf]->(meta) " +
                     "WITH inst, meta, labels(inst)[0] AS classType " +
 
                     // ── Attributes + nested-collection chain ─────────────────────────
-                    "OPTIONAL MATCH (inst)-[:HasAttribute]->(a) " +
-                    "OPTIONAL MATCH (a)-[rRef]->(aRef) WHERE type(rRef) = 'ReferenceType' " +
+                    "OPTIONAL MATCH (inst)-[:HasAttribute]->(a {modelKey:$modelName}) " +
+                    "OPTIONAL MATCH (a)-[rRef]->(aRef {modelKey:$modelName}) WHERE type(rRef) = 'ReferenceType' " +
                     "OPTIONAL MATCH p = (a)-[:HasNestedCollection*]->(n:NestedCollection) " +
                     "WITH inst, meta, classType, a, aRef, p ORDER BY length(p) DESC " +
                     "WITH inst, meta, classType, a, aRef, head(collect(p)) AS longestPath " +
@@ -25,24 +25,24 @@ public class Neo4jSnapshotQuery {
                     "}) AS attrs " +
 
                     // ── Invariants ───────────────────────────────────────────────────
-                    "OPTIONAL MATCH (inst)-[:HasInvariant]->(inv) " +
+                    "OPTIONAL MATCH (inst)-[:HasInvariant]->(inv {modelKey:$modelName}) " +
                     "WITH inst, meta, classType, attrs, " +
                     "     collect(DISTINCT {name: inv.invName, expr: inv.expression, exist: inv.isExistential}) AS invariants " +
 
                     // ── Association-class ends ────────────────────────────────────────
-                    "OPTIONAL MATCH (src)-[s:sourceAssoClass]->(inst) " +
-                    "OPTIONAL MATCH (inst)-[t:targetAssoClass]->(tgt) " +
+                    "OPTIONAL MATCH (src {modelKey:$modelName})-[s:sourceAssoClass]->(inst) " +
+                    "OPTIONAL MATCH (inst)-[t:targetAssoClass]->(tgt {modelKey:$modelName}) " +
                     "WITH inst, meta, classType, attrs, invariants, " +
                     "     {name: src.name, role: s.role, mult: s.multiplicity} AS acSrc, " +
                     "     {name: tgt.name, role: t.role, mult: t.multiplicity} AS acTgt " +
 
                     // ── Operations + params + pre/post conditions ─────────────────────
-                    "OPTIONAL MATCH (inst)-[:HasOperation]->(o) " +
-                    "OPTIONAL MATCH (o)-[:HasParam]->(p) " +
-                    "OPTIONAL MATCH (p)-[r2]->(pRef)   WHERE type(r2)  = 'ReferenceType' " +
-                    "OPTIONAL MATCH (o)-[r3]->(retRef)  WHERE type(r3)  = 'ReferenceReturnType' " +
-                    "OPTIONAL MATCH (o)-[:HasPreCondition]->(pre) " +
-                    "OPTIONAL MATCH (o)-[:HasPostCondition]->(post) " +
+                    "OPTIONAL MATCH (inst)-[:HasOperation]->(o {modelKey:$modelName}) " +
+                    "OPTIONAL MATCH (o)-[:HasParam]->(p {modelKey:$modelName}) " +
+                    "OPTIONAL MATCH (p)-[r2]->(pRef {modelKey:$modelName})   WHERE type(r2)  = 'ReferenceType' " +
+                    "OPTIONAL MATCH (o)-[r3]->(retRef {modelKey:$modelName})  WHERE type(r3)  = 'ReferenceReturnType' " +
+                    "OPTIONAL MATCH (o)-[:HasPreCondition]->(pre {modelKey:$modelName}) " +
+                    "OPTIONAL MATCH (o)-[:HasPostCondition]->(post {modelKey:$modelName}) " +
                     "WITH inst, meta, classType, attrs, invariants, acSrc, acTgt, o, retRef, " +
                     "     collect(DISTINCT {pName: p.pName, pType: p.type, pOrder: p.order, pRef: pRef.name}) AS opParams, " +
                     "     collect(DISTINCT {name: pre.condName,  expr: pre.expression})  AS opPres, " +
@@ -57,33 +57,34 @@ public class Neo4jSnapshotQuery {
 
     public static final String GENERALIZATIONS =
         "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-            "MATCH (c)-[:InstanceOf]->(meta) " +
-            "MATCH (c)-[:Extends]->(p) RETURN c.name AS child, p.name AS parent";
+            "MATCH (c {modelKey:$modelName})-[:InstanceOf]->(meta) " +
+            "MATCH (c)-[:Extends]->(p {modelKey:$modelName}) RETURN c.name AS child, p.name AS parent";
 
     public static final String BINARY_ASSOCIATIONS =
         "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-            "MATCH (s)-[:InstanceOf]->(meta) " +
-            "MATCH (s)-[r]->(t) " +
-                    "WHERE type(r) IN ['AssociateWith','ComposeOf','Aggregates'] " +
+            "MATCH (s {modelKey:$modelName})-[:InstanceOf]->(meta) " +
+            "MATCH (s)-[r]->(t {modelKey:$modelName}) " +
+                    "WHERE r.modelKey=$modelName AND type(r) IN ['AssociateWith','ComposeOf','Aggregates'] " +
                     "RETURN r.associationName AS name, type(r) AS type, " +
                     "       s.name AS src, r.sourceClassrole AS sRole, r.sourceMultiplicity AS sMult, " +
                     "       t.name AS tgt, r.targerClassrole   AS tRole, r.targetMultiplicity AS tMult";
 
     public static final String TERNARY_ASSOCIATIONS =
         "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode {name: 'NodeTernaryAssociation'}) " +
-            "MATCH (hub)-[:InstanceOf]->(meta) " +
-            "MATCH (c)-[r]->(hub) " +
-            "WHERE r.isTernary = true " +
+            "MATCH (hub {modelKey:$modelName})-[:InstanceOf]->(meta) " +
+            "MATCH (c {modelKey:$modelName})-[r]->(hub) " +
+            "WHERE r.modelKey=$modelName AND r.isTernary = true " +
             "RETURN hub.name AS assocName, " +
             "       collect({cls: c.name, role: r.sourceClassrole, " +
             "                mult: r.sourceMultiplicity, idx: r.index, type: type(r)}) AS participants";
 
     public static final String OBJECTS_AND_ATTRIBUTES =
         "MATCH (o:Object {modelKey:$modelName}) " +
-            "MATCH (cls:UmlClass {classKey:o.runtimeClassKey}) " +
-            "OPTIONAL MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue)-[:InstanceOf]->(attrDef) " +
+            "MATCH (cls:UmlClass {modelKey:$modelName,classKey:o.runtimeClassKey}) " +
+            "OPTIONAL MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue {modelKey:$modelName})" +
+            "-[:InstanceOf]->(attrDef:Attribute {modelKey:$modelName}) " +
             "OPTIONAL MATCH path = (val)-[:HasNestedCollectionValue*0..5]->(leaf) " +
-            "OPTIONAL MATCH (leaf)-[r:objectReference|HasReferenceValue]->(target) " +
+            "OPTIONAL MATCH (leaf)-[r:objectReference|HasReferenceValue]->(target:Object {modelKey:$modelName}) " +
             "RETURN o.use_id AS name, cls.name AS className, " +
             "  collect({ " +
             "  attr:  attrDef.attrName, " +
@@ -106,7 +107,7 @@ public class Neo4jSnapshotQuery {
         "MATCH (o:Object {modelKey:$modelName})" +
             "-[r:LinkAssociateWith|LinkAggregates|LinkComposeOf]->" +
             "(b:Object {modelKey:$modelName}) " +
-            "WHERE true " +
+            "WHERE r.modelKey=$modelName " +
             "  AND NOT coalesce(r.isTernary,        false) " +
             "  AND NOT coalesce(r.isLinkObjectPart, false) " +
             "RETURN r.name AS assocName, type(r) AS label, " +
@@ -116,9 +117,10 @@ public class Neo4jSnapshotQuery {
 
     public  static final String LINK_OBJECTS =
         "MATCH (lo:Object {modelKey:$modelName}) " +
-            "MATCH (ac:UmlClass {classKey:lo.runtimeClassKey})-[:InstanceOf]->"
+            "MATCH (ac:UmlClass {modelKey:$modelName,classKey:lo.runtimeClassKey})-[:InstanceOf]->"
             + "(:MetaNode {name:'NodeAssociationClass'}) " +
-            "MATCH (lo)-[r]->(p) WHERE r.isLinkObjectPart = true " +
+            "MATCH (lo)-[r]->(p:Object {modelKey:$modelName}) " +
+            "WHERE r.modelKey=$modelName AND r.isLinkObjectPart = true " +
             "RETURN lo.use_id AS loName, ac.name AS acName, " +
             "       collect({p: p.use_id, idx: r.index}) AS parts";
 

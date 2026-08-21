@@ -73,9 +73,12 @@ class OcliteTypedIteratorTest {
     }
 
     @Test
-    void multiIteratorSyntaxIsStillRejectedByGrammar() {
-        assertThrows(IllegalArgumentException.class,
-                () -> parse("self->forAll(e1:Integer, e2:Integer | e1 <> e2)"));
+    void multiIteratorSyntaxIsPreservedBySurfaceAstButRejectedByEvaluatorBinder() {
+        ASTNode ast = parse("self->forAll(e1:Integer, e2:Integer | e1 <> e2)");
+        assertTrue(ast instanceof ASTIterator);
+        ASTIterator iterator = (ASTIterator) ast;
+        assertEquals(2, iterator.iteratorVariables.size());
+        assertThrows(RuntimeException.class, () -> new ExpressionBinder("test").bind(ast));
     }
 
     @Test

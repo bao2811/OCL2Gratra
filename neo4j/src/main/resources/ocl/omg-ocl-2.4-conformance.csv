@@ -1,0 +1,23 @@
+omg_reference,omg_concept,plugin_grammar,plugin_ast,admission,binder_or_diagnostic,evidence
+9.3.4/9.3.7,simple and qualified names,qualifiedName,ASTVar or ASTEnumLiteral,ADMITTED_WHEN_OCL_VAL,OclSemanticBinder name resolution,OclAstParserConformanceTest
+9.3.8/9.3.15,literal expressions,literal,ASTIntegerLiteral/ASTRealLiteral/ASTStringLiteral/ASTBooleanLiteral,ADMITTED,OclSemanticBinder literal binding,OclValFragmentCoverageTest
+9.3.47,null literal,literal,ASTNullLiteral,ADMITTED,OclSemanticBinder Void binding,OclValFragmentCoverageTest
+9.3.48,invalid literal,literal,ASTInvalidLiteral,PARSED_EXCLUDED,OCL_VAL_EXCLUDED_CONSTRUCT,OclFrontendAdmissionBoundaryTest
+9.3.10-9.3.14,collection literals and ranges,collectionLiteral/collectionLiteralPart,ASTSetLiteral/ASTCollectionLiteral/ASTCollectionRange,SET_ITEMS_ADMITTED_OTHERWISE_EXCLUDED,OclSemanticBinder or OCL_VAL_EXCLUDED_CONSTRUCT,OclAstParserConformanceTest/OclFrontendAdmissionBoundaryTest
+9.3.23/9.3.34-9.3.40,feature operation property and qualified calls,postfixExpression/postfixPart,ASTProperty/ASTMethodCall/ASTCollectionOp,ADMITTED_BY_CLOSED_OPERATION_LIST,OclSemanticBinder feature resolution,OclSemanticBinderTest
+9.3.39,@pre marker,atPre,ASTProperty.atPre/ASTMethodCall.atPre,PARSED_EXCLUDED,OCL_VAL_EXCLUDED_CONSTRUCT,OclFrontendAdmissionBoundaryTest
+9.3.24/9.3.25,loop and iterator expressions,IteratorPostfix,ASTIterator,ADMITTED_BY_CLOSED_ITERATOR_LIST,OclSemanticBinder iterator binding,OclValFragmentCoverageTest
+9.3.26,iterate expression,IteratePostfix,ASTIterate,PARSED_EXCLUDED,OCL_VAL_EXCLUDED_CONSTRUCT,OclFrontendAdmissionBoundaryTest
+9.3.27/9.3.33,typed and multiple variable declarations,variableDeclaration/iteratorDeclarationList,ASTVariableDeclaration,PARSED_EXCLUDED_IN_OCL_VAL,OCL_VAL_EXCLUDED_CONSTRUCT,OclFrontendAdmissionBoundaryTest
+9.3.28/9.3.31,type and collection type,typeRef/collectionType,ASTTypeReference or retained spelling,PARSED,OclSemanticBinder resolves admitted annotations,OclAstParserConformanceTest
+9.3.41/9.3.42,let expression,letExpression/letBinding,ASTLet,UNTYPED_ADMITTED_TYPED_EXCLUDED,OclSemanticBinder let scope/OCL_VAL_EXCLUDED_CONSTRUCT,OclFrontendAdmissionBoundaryTest
+9.3.46,if expression,primaryExpression,ASTIf,ADMITTED,OclSemanticBinder branch typing,OclSemanticBinderTest
+7.4.8,operator precedence,impliesExpression through unaryExpression,ASTBinary/ASTNot/ASTUnary,BINARY_AND_NOT_ADMITTED_UNARY_SIGN_EXCLUDED,OclSemanticBinder operator typing/OCL_VAL_EXCLUDED_CONSTRUCT,OclAstParserConformanceTest
+9.3.49,comments,LINE_COMMENT/BLOCK_COMMENT,no AST node,PARSED,lexer skip,OclAstParserConformanceTest
+12.12.5/12.12.6,classifier invariant context,declaration,ASTContext,ADMITTED,OclSemanticBinder context binding,DefaultOclToCypherCompilerTest
+12.12.8/12.12.9,operation pre post body context,declaration,ASTOperationConstraint,GENERAL_PRE_POST_ONLY,OclSemanticBinder or UNSUPPORTED_RULE_KIND,DefaultOclToCypherCompilerTest
+12.12.3/12.12.4,property init derive context,declaration,ASTAttributeConstraint,PARSED_EXCLUDED,UNSUPPORTED_RULE_KIND,DefaultOclToCypherCompilerTest
+9.3.16,tuple literal,not implemented,none,NOT_YET_PARSED,PARSE_ERROR,scope ledger
+9.3.32,tuple type,not implemented,none,NOT_YET_PARSED,PARSE_ERROR,scope ledger
+9.3.43-9.3.45,message expressions,not implemented,none,NOT_YET_PARSED,PARSE_ERROR,scope ledger
+12.12.1,package declaration,not implemented,none,NOT_YET_PARSED,PARSE_ERROR,scope ledger

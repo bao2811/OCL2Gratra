@@ -306,7 +306,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Person inv Adult: self.age >= 18 and self.name <> ''");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("MATCH (self:Object)-[:ObjectInstanceOf]->(cls"));
+        assertTrue(result.getCypher().contains("MATCH (self:Object {modelKey:"));
+        assertTrue(result.getCypher().contains("(cls:UmlClass {modelKey:"));
         assertTrue(result.getCypher().contains("self.use_id AS useId"));
         assertFalse(result.getParameters().isEmpty());
     }
@@ -548,7 +549,7 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
-    void keepsReusedLetAsSingleReduceBindingInCypher() {
+    void keepsReusedLetAsSingleExpressionBindingInCypher() {
         String spec = """
                 model Demo
                 class Person
@@ -566,7 +567,7 @@ class DefaultOclToCypherCompilerTest {
                 "context Person inv ReusedLet: let threshold = self.age + 1 in threshold >= 18 and threshold <= 65");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("reduce("));
+        assertTrue(result.getCypher().contains("head([_let"));
         assertFalse(result.getCypher().contains("threshold"));
     }
 
@@ -594,7 +595,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Family inv AdultChildren: self.children->forall(c | c.age >= 18)");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("NOT EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("r.associationKey = $"));
     }
 
@@ -622,7 +624,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Family inv HasAdultChild: self.children->exists(c | c.age >= 18)");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("c.age") || result.getCypher().contains("ObjectHasAttribute"));
     }
 
@@ -648,7 +651,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Family inv HasChildren: self.children->notEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
     }
 
     @Test
@@ -705,7 +709,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv HasAdultChild: self.children->select(c | c.age >= 18)->notEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("ObjectHasAttribute"));
     }
 
@@ -731,7 +736,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Family inv HasChildren: self.children->size() > 0");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
     }
 
     @Test
@@ -756,7 +762,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Family inv NoChildren: self.children->size() = 0");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(nav)"));
+        assertTrue(result.getCypher().contains("NOT EXISTS {")
+                && result.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
     }
 
     @Test
@@ -784,7 +791,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv TwoAdults: self.children->select(c | c.age >= 18)->size() >= 2");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("COUNT { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("size(COLLECT {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("ObjectHasAttribute"));
     }
 
@@ -816,10 +824,12 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv ExactlyOneAdult: self.children->one(c | c.age >= 18)");
 
         assertTrue(exists.isSupported(), exists.getReason());
-        assertTrue(exists.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(exists.getCypher().contains("EXISTS {")
+                && exists.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(exists.getCypher().contains("AND coalesce("));
         assertTrue(one.isSupported(), one.getReason());
-        assertTrue(one.getCypher().contains("COUNT { MATCH (self)-[r]->(c)"));
+        assertTrue(one.getCypher().contains("size(COLLECT {")
+                && one.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(one.getCypher().contains("= $"));
     }
 
@@ -851,10 +861,12 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv OneMinorNamedLisa: self.children->reject(c | c.age >= 18)->one(c | c.name = 'Lisa')");
 
         assertTrue(empty.isSupported(), empty.getReason());
-        assertTrue(empty.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(empty.getCypher().contains("NOT EXISTS {")
+                && empty.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(empty.getCypher().contains("NOT coalesce("));
         assertTrue(one.isSupported(), one.getReason());
-        assertTrue(one.getCypher().contains("COUNT { MATCH (self)-[r]->(c)"));
+        assertTrue(one.getCypher().contains("size(COLLECT {")
+                && one.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(one.getCypher().contains("NOT coalesce("));
     }
 
@@ -884,7 +896,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv ChainedFilters: self.children->select(c | c.age >= 18)->reject(c | c.name = 'Bart')->exists(c | c.name = 'Lisa')");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("NOT coalesce("));
         assertTrue(result.getCypher().contains("AND coalesce("));
     }
@@ -913,7 +926,7 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile("context Person inv HasFamily: self.family->notEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("(self)<-[r]-(nav)"));
+        assertTrue(result.getCypher().contains(")<-[r]-(nav:Object {modelKey:"));
         assertTrue(result.getCypher().contains("r.sourceRole = $"));
         assertTrue(result.getCypher().contains("r.targetRole = $"));
     }
@@ -940,8 +953,8 @@ class DefaultOclToCypherCompilerTest {
 
         assertTrue(child.isSupported(), child.getReason());
         assertTrue(parent.isSupported(), parent.getReason());
-        assertTrue(child.getCypher().contains("(self)-[r]->(nav)"));
-        assertTrue(parent.getCypher().contains("(self)<-[r]-(nav)"));
+        assertTrue(child.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
+        assertTrue(parent.getCypher().contains(")<-[r]-(nav:Object {modelKey:"));
         assertTrue(child.getParameters().containsValue("parent"));
         assertTrue(child.getParameters().containsValue("child"));
         assertTrue(parent.getParameters().containsValue("parent"));
@@ -1016,7 +1029,7 @@ class DefaultOclToCypherCompilerTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("ObjectHasAttribute"));
-        assertTrue(result.getCypher().contains("(self)<-[r]-(nav)"));
+        assertTrue(result.getCypher().contains(")<-[r]-(nav:Object {modelKey:"));
         assertTrue(result.getParameters().containsValue(
                 CanonicalGraphEncoding.associationKey("Demo", "CompanyStaff")));
         assertTrue(result.getParameters().containsValue(
@@ -1234,15 +1247,15 @@ class DefaultOclToCypherCompilerTest {
                 "context Employee inv WrongCastBecomesUndefined: self.oclAsType(Manager).isUndefined()");
 
         assertTrue(castSuccess.isSupported(), castSuccess.getReason());
-        assertTrue(castSuccess.getCypher().contains("CASE WHEN"));
-        assertTrue(castSuccess.getCypher().contains("ELSE null END"));
+        assertTrue(castSuccess.getCypher().contains("COLLECT { WITH self.objectKey AS castRecv"));
+        assertTrue(castSuccess.getCypher().contains("Key IS NOT NULL MATCH (castRecv"));
         assertTrue(castSuccess.getCypher().contains("ObjectInstanceOf"));
-        assertTrue(castSuccess.getCypher().contains("(typeCls"), castSuccess.getCypher());
+        assertTrue(castSuccess.getCypher().contains("(castCls"), castSuccess.getCypher());
 
         assertTrue(castMismatch.isSupported(), castMismatch.getReason());
-        assertTrue(castMismatch.getCypher().contains("CASE WHEN"));
-        assertTrue(castMismatch.getCypher().contains("ELSE null END"));
-        assertTrue(castMismatch.getCypher().contains("(typeCls"), castMismatch.getCypher());
+        assertTrue(castMismatch.getCypher().contains("COLLECT { WITH self.objectKey AS castRecv"));
+        assertTrue(castMismatch.getCypher().contains("Key IS NOT NULL MATCH (castRecv"));
+        assertTrue(castMismatch.getCypher().contains("(castCls"), castMismatch.getCypher());
     }
 
     @Test
@@ -1275,7 +1288,9 @@ class DefaultOclToCypherCompilerTest {
         assertTrue(any.isSupported(), any.getReason());
         assertTrue(any.getCypher().contains("head(["));
         assertTrue(one.isSupported(), one.getReason());
-        assertTrue(one.getCypher().contains("COUNT { MATCH (self)-[r]->(c)") || one.getCypher().contains("single("));
+        assertTrue((one.getCypher().contains("size(COLLECT {")
+                && one.getCypher().contains(")-[r]->(c:Object {modelKey:"))
+                || one.getCypher().contains("single("));
     }
 
     @Test
@@ -1527,13 +1542,13 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv AdultScoreMax: self.children->select(c | c.age >= 18)->collect(c | c.score)->max() >= 0.0");
 
         assertTrue(sum.isSupported(), sum.getReason());
-        assertTrue(sum.getCypher().contains("[(self)-[r]->(c)"));
+        assertTrue(sum.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(sum.getCypher().contains("| acc"));
         assertTrue(sum.getCypher().contains("+ item"));
 
         assertTrue(max.isSupported(), max.getReason());
-        assertTrue(max.getCypher().contains("[(self)-[r]->(c)"));
-        assertTrue(max.getCypher().contains("AND coalesce("));
+        assertTrue(max.getCypher().contains(")-[r]->(c:Object {modelKey:"));
+        assertTrue(max.getCypher().contains("coalesce("));
         assertTrue(max.getCypher().contains("best"));
     }
 
@@ -1566,13 +1581,14 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv AdultScoreSum: self.children->select(a | a.age >= 18)->collect(b | b.score)->sum() >= 0.0");
 
         assertTrue(exists.isSupported(), exists.getReason());
-        assertTrue(exists.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(exists.getCypher().contains("EXISTS {")
+                && exists.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(exists.getCypher().contains("AND coalesce("));
 
         assertTrue(sum.isSupported(), sum.getReason());
-        assertTrue(sum.getCypher().contains("[(self)-[r]->(b)"));
+        assertTrue(sum.getCypher().contains(")-[r]->(b:Object {modelKey:"));
         assertTrue(sum.getCypher().contains("reduce("));
-        assertTrue(sum.getCypher().contains("AND coalesce("));
+        assertTrue(sum.getCypher().contains("coalesce("));
     }
 
     @Test
@@ -1601,10 +1617,10 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv UniqueAdultNames: self.children->select(c | c.age >= 18)->isUnique(c | c.name)");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("size(["));
+        assertTrue(result.getCypher().contains("size(reduce("));
         assertTrue(result.getCypher().contains("reduce("));
         assertTrue(result.getCypher().contains("any(existing"));
-        assertTrue(result.getCypher().contains("AND coalesce("));
+        assertTrue(result.getCypher().contains("coalesce("));
     }
 
     @Test
@@ -1635,7 +1651,7 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv UniqueChildAges: self.children->isUnique(c | c.age)");
 
         assertTrue(uniqueNames.isSupported(), uniqueNames.getReason());
-        assertTrue(uniqueNames.getCypher().contains("size(["));
+        assertTrue(uniqueNames.getCypher().contains("size(reduce("));
         assertTrue(uniqueNames.getCypher().contains("CASE WHEN any(existing"));
         assertTrue(uniqueAges.isSupported(), uniqueAges.getReason());
         assertTrue(uniqueAges.getCypher().contains(" = size("));
@@ -1825,7 +1841,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv FlattenedFamiliesExist: self.children->collect(c | c.family)->flatten()->notEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("size("));
     }
 
@@ -1852,7 +1869,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Family inv FlattenedFamiliesEmpty: self.children->collect(c | c.family)->flatten()->isEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(c)"));
+        assertTrue(result.getCypher().contains("NOT EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"));
         assertTrue(result.getCypher().contains("size("));
     }
 
@@ -1909,7 +1927,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Library inv HasBooks: self.book->notEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->("));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->("));
     }
 
     @Test
@@ -2083,7 +2102,8 @@ class DefaultOclToCypherCompilerTest {
                 "context Employee inv HasStartupEmployer: self.startupEmployer->notEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->("));
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->("));
     }
 
     @Test
@@ -3114,10 +3134,10 @@ class DefaultOclToCypherCompilerTest {
                 "context Person inv BadCount: self.name.split(',')->count() = 0");
 
         assertFalse(result.isSupported());
-        assertEquals("RENDERING", result.getDiagnostic().phase().name());
+        assertEquals("SEMANTIC", result.getDiagnostic().phase().name());
         assertEquals(OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT, result.getDiagnostic().code());
         assertEquals(2, result.getDiagnostics().size());
-        assertTrue(result.getDiagnostics().get(1).message().contains("invalid argument shape"));
+        assertTrue(result.getDiagnostics().get(1).message().contains("expects one collection argument"));
     }
 
     @Test

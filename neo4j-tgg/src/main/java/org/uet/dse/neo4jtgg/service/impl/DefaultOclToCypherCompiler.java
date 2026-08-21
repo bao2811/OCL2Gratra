@@ -34,11 +34,14 @@ import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCompilationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnostic;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticPhase;
+import org.uet.dse.neo4jtgg.ocl.ir.OclCertifiedModelValidator;
 import org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlanner;
 import org.uet.dse.neo4jtgg.ocl.ir.OclCypherRenderer;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIrBuilder;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIrOptimizer;
+import org.uet.dse.neo4jtgg.ocl.ir.OclMetamodelRefinement;
+import org.uet.dse.neo4jtgg.ocl.ir.OclOptimizedIr;
 import org.uet.dse.neo4jtgg.service.OclToCypherCompiler;
 import org.uet.dse.neo4jtgg.experiment.InstrumentedCompilationResult;
 import org.uet.dse.neo4jtgg.experiment.PipelineStageTimings;
@@ -98,7 +101,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         long responseStartedAt = System.nanoTime();
         long parseStartedAt = System.nanoTime();
         try {
-            ASTFile astFile = OclDocumentParser.parse(oclText);
+            ASTFile astFile = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
             long parseTimeMs = elapsedMillis(parseStartedAt);
             long compileStartedAt = System.nanoTime();
             OclFileCompilationResult result = compileFile(astFile);
@@ -202,7 +205,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
     /** Compiles one context invariant while retaining every research artifact. */
     public InstrumentedCompilationResult compileInvariantInstrumented(String oclText) {
         long parseStart = System.nanoTime();
-        ASTFile file = OclDocumentParser.parse(oclText);
+        ASTFile file = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
         long parseNs = System.nanoTime() - parseStart;
         if (file.invariants().size() != 1 || file.elements().size() != 1) {
             throw new IllegalArgumentException("Instrumented compilation requires exactly one context invariant.");
@@ -213,7 +216,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
     /** Compiles every context invariant in one OCL research suite. */
     public List<InstrumentedCompilationResult> compileInvariantsInstrumented(String oclText) {
         long parseStart = System.nanoTime();
-        ASTFile file = OclDocumentParser.parse(oclText);
+        ASTFile file = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
         long parseNs = System.nanoTime() - parseStart;
         if (file.invariants().isEmpty()) {
             throw new IllegalArgumentException("Research suite requires at least one context invariant.");
@@ -228,7 +231,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
 
     /** Parses the invariant suite once so callers can isolate per-rule failures. */
     public List<ASTContext> parseContextInvariants(String oclText) {
-        ASTFile file = OclDocumentParser.parse(oclText);
+        ASTFile file = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
         if (file.invariants().isEmpty()) {
             throw new IllegalArgumentException("Research suite requires at least one context invariant.");
         }
@@ -252,14 +255,23 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
 
         long vaStart = System.nanoTime();
         OclIr.InvariantQuery va = irBuilder.buildInvariant(bound);
+        OclCertifiedModelValidator.requireWfOva(va);
+        OclCertifiedModelValidator.requireCertifiedOva(va);
+        OclMetamodelRefinement.refineOva(va).requireValid("Ref_OVA_SEMANTIC");
         long vaNs = System.nanoTime() - vaStart;
 
         long normalizeStart = System.nanoTime();
         OclIr.InvariantQuery normalized = irOptimizer.optimizeInvariant(va);
+        OclCertifiedModelValidator.requireWfOva(normalized);
+        OclCertifiedModelValidator.requireCertifiedOva(normalized);
+        OclMetamodelRefinement.refineOva(normalized).requireValid("Ref_OVA_OPTIMIZED");
         long normalizeNs = System.nanoTime() - normalizeStart;
 
         long planStart = System.nanoTime();
         org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlan.InvariantPlan plan = cypherPlanner.planInvariant(normalized);
+        OclCertifiedModelValidator.requireWfCqm(plan);
+        OclCertifiedModelValidator.requireCertifiedCqm(plan);
+        OclMetamodelRefinement.refineCqm(plan).requireValid("Ref_CQM");
         long planNs = System.nanoTime() - planStart;
 
         long renderStart = System.nanoTime();
@@ -275,8 +287,9 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         try {
             OclSemanticBinder.BoundExpression boundExpression = binder.bind(expression, new OclSemanticBinder.Scope());
             OclIr.SemanticExpression semanticExpression = irBuilder.buildExpression(boundExpression);
-            OclIr.OptimizedExpression optimizedExpression = irOptimizer.optimizeExpression(semanticExpression);
-            org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlan.ExpressionPlan plan = cypherPlanner.planExpression(optimizedExpression);
+            OclOptimizedIr.Artifact optimizedExpression = irOptimizer.optimizeForPlanning(semanticExpression);
+            org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlan.ExpressionPlan plan =
+                    cypherPlanner.planExpression(optimizedExpression);
             OclCypherRenderer.RenderedTopLevelExpression renderedExpression =
                     cypherRenderer.renderTopLevelExpression(plan);
             return new CypherCompilationResult(true, renderedExpression.cypher(), renderedExpression.parameters(), "", false);
@@ -492,6 +505,22 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
                         "Hint: iterators require a collection source; convert or navigate to a collection before using exists/forall/select/collect.",
+                        primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
+                        primary.tokenText(), primary.sourceSnippet());
+            }
+            if (primary.code() == OclDiagnosticCode.UNKNOWN_DECLARED_TYPE) {
+                return new OclDiagnostic(
+                        OclDiagnosticPhase.SEMANTIC,
+                        primary.code(),
+                        "Hint: use a primitive, enumeration, collection, or class type declared by the active USE model.",
+                        primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
+                        primary.tokenText(), primary.sourceSnippet());
+            }
+            if (primary.code() == OclDiagnosticCode.LET_TYPE_MISMATCH) {
+                return new OclDiagnostic(
+                        OclDiagnosticPhase.SEMANTIC,
+                        primary.code(),
+                        "Hint: the initializer type must conform to the declared `let` variable type.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -759,6 +788,12 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         }
         if (message.contains("Iterator source must be a collection")) {
             return OclDiagnosticCode.INVALID_ITERATOR_SOURCE;
+        }
+        if (message.contains("Unknown or unsupported declared type")) {
+            return OclDiagnosticCode.UNKNOWN_DECLARED_TYPE;
+        }
+        if (message.contains("Let type mismatch")) {
+            return OclDiagnosticCode.LET_TYPE_MISMATCH;
         }
         if (message.contains("allInstances() must be called on a class name")) {
             return OclDiagnosticCode.INVALID_METHOD_RECEIVER;

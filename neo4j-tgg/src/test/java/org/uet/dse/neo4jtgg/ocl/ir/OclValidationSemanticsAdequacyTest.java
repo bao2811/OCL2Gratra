@@ -21,7 +21,7 @@ class OclValidationSemanticsAdequacyTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("CASE WHEN head(["), result.getCypher());
-        assertTrue(result.getCypher().contains("IS NULL"), result.getCypher());
+        assertTrue(result.getCypher().contains("= 'v1|V'"), result.getCypher());
         assertTrue(result.getCypher().contains("THEN null"), result.getCypher());
         assertTrue(result.getCypher().contains("IS NOT NULL"), result.getCypher());
         assertTrue(result.getCypher().contains("WHERE NOT coalesce("), result.getCypher());
@@ -45,8 +45,9 @@ class OclValidationSemanticsAdequacyTest {
                 "context Family inv FatherOptional: self.father->isEmpty()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(nav)"), result.getCypher());
-        assertTrue(result.getCypher().contains("WHERE NOT coalesce(NOT EXISTS"), result.getCypher());
+        assertTrue(result.getCypher().contains("NOT EXISTS {")
+                && result.getCypher().contains(")-[r]->(nav:Object {modelKey:"), result.getCypher());
+        assertTrue(result.getCypher().contains("WHERE NOT coalesce((NOT EXISTS"), result.getCypher());
     }
 
     @Test
@@ -57,7 +58,8 @@ class OclValidationSemanticsAdequacyTest {
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("NOT coalesce("), result.getCypher());
         assertTrue(result.getCypher().contains(" OR coalesce("), result.getCypher());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"), result.getCypher());
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(nav:Object {modelKey:"), result.getCypher());
     }
 
     @Test
@@ -70,7 +72,7 @@ class OclValidationSemanticsAdequacyTest {
 
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
 
-        assertTrue(rendered.cypher().contains("WHERE NOT coalesce($"), rendered.cypher());
+        assertTrue(rendered.cypher().contains("WHERE NOT coalesce(($"), rendered.cypher());
         assertTrue(rendered.parameters().containsValue(Boolean.FALSE), rendered.parameters().toString());
     }
 

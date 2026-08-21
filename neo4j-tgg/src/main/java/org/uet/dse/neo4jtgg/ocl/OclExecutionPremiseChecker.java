@@ -6,6 +6,7 @@ import org.tzi.use.uml.sys.MObject;
 import org.tzi.use.uml.sys.MSystem;
 import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
 import org.uet.dse.neo4j.helper.ValueMapper;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
 
 import java.util.ArrayList;
@@ -110,7 +111,22 @@ public final class OclExecutionPremiseChecker {
                                 + "(value:AttributeValue {modelKey:$modelKey, attributeKey:$attributeKey}) "
                                 + "RETURN value.value AS value",
                         Map.of("modelKey", modelKey, "attributeKey", attributeKey))
-                .list(record -> record.get("value").isNull()
-                        ? null : record.get("value").asObject());
+                .list(record -> decodeStoredScalar(attribute.type().shortName(),
+                        record.get("value").isNull() ? null : record.get("value").asObject()));
+    }
+
+    /** Decodes the typed canonical scalar slot representation before A8 is checked. */
+    static Object decodeStoredScalar(String typeName, Object storedValue) {
+        if (!(storedValue instanceof String raw)) {
+            return new UndecodableStoredScalar(typeName, String.valueOf(storedValue));
+        }
+        try {
+            return CanonicalScalarValueCodec.decode(raw, typeName);
+        } catch (IllegalArgumentException exception) {
+            return new UndecodableStoredScalar(typeName, raw);
+        }
+    }
+
+    private record UndecodableStoredScalar(String typeName, String payload) {
     }
 }

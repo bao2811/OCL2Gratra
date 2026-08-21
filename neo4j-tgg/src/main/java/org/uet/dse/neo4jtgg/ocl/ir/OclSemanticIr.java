@@ -23,4 +23,12 @@ public final class OclSemanticIr {
         throw new IllegalArgumentException(
                 "Expected OCL Semantic IR expression but got " + expression.getClass().getSimpleName());
     }
+
+    public static OclIr.SemanticExpression requireSemantic(OclIr.InvariantQuery query) {
+        if (query.stage() != OclIr.Stage.SEMANTIC) {
+            throw new IllegalArgumentException(
+                    "Expected Semantic IR invariant but got stage " + query.stage());
+        }
+        return requireSemantic(query.predicate());
+    }
 }

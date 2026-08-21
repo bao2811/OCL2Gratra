@@ -20,7 +20,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ComprehensiveUmlOclCaseStudyTest {
     static final Path CASE_STUDY = Path.of("..", "examples", "uml-ocl-comprehensive-case-study");
@@ -44,6 +46,11 @@ class ComprehensiveUmlOclCaseStudyTest {
             PipelineRefinementVerifier.verify(compiled);
             GeneratedCypherContractVerifier.verify(compiled, compiled.cypher(), compiled.parameters());
             FixturePremiseVerifier.verify(system, compiled);
+            if ("Department::HasMinimumWitness".equals(id)) {
+                assertTrue(compiled.cypher().contains("any("), compiled.cypher());
+                assertFalse(compiled.cypher().contains(
+                        "WHERE NOT coalesce(EXISTS { UNWIND COLLECT {"), compiled.cypher());
+            }
             assertNotNull(compiled.bound(), id);
             assertNotNull(compiled.validationAlgebra(), id);
             assertNotNull(compiled.normalizedValidationAlgebra(), id);

@@ -1,224 +1,331 @@
 package org.uet.dse.neo4j.oclite.ast;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import org.uet.dse.neo4j.OCLBaseVisitor;
-import org.uet.dse.neo4j.OCLBaseVisitor.*;
 import org.uet.dse.neo4j.OCLParser;
-import org.uet.dse.neo4j.OCLParser.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ASTVisitor extends OCLBaseVisitor<ASTNode> {
+/** Builds an unresolved, source-located surface AST from the plugin OCL grammar. */
+public final class ASTVisitor extends OCLBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitOclFile(OCLParser.OclFileContext ctx) {
-        ASTFile file = new ASTFile();
+        ASTFile file = at(new ASTFile(), ctx);
         for (OCLParser.DeclarationContext declaration : ctx.declaration()) {
             file.addElement(visit(declaration));
         }
-        for (OCLParser.ExpressionContext expression : ctx.expression()) {
-            file.addElement(visit(expression));
+        if (ctx.expression() != null) {
+            file.addElement(visit(ctx.expression()));
         }
         return file;
     }
 
-
-    @Override
-    public ASTNode visitLogicalExp(OCLParser.LogicalExpContext ctx) {
-        return new ASTBinary((ASTExpression)visit(ctx.left), ctx.op.getText(), (ASTExpression)visit(ctx.right));
-    }
-
-    @Override
-    public ASTNode visitComparisonExp(OCLParser.ComparisonExpContext ctx) {
-        return new ASTBinary((ASTExpression)visit(ctx.left), ctx.op.getText(), (ASTExpression)visit(ctx.right));
-    }
-
-    @Override
-    public ASTNode visitAdditiveExp(OCLParser.AdditiveExpContext ctx) {
-        return new ASTBinary((ASTExpression)visit(ctx.left), ctx.op.getText(), (ASTExpression)visit(ctx.right));
-    }
-
-    @Override
-    public ASTNode visitMultiplicativeExp(OCLParser.MultiplicativeExpContext ctx) {
-        return new ASTBinary((ASTExpression)visit(ctx.left), ctx.op.getText(), (ASTExpression)visit(ctx.right));
-    }
-
-    @Override
-    public ASTNode visitIdExpr(OCLParser.IdExprContext ctx) {
-        return new ASTVar(ctx.Identifier().getText());
-    }
-
-    @Override
-    public ASTNode visitEnumLiteralExpr(OCLParser.EnumLiteralExprContext ctx) {
-        return new ASTEnumLiteral(ctx.enumType.getText(), ctx.enumLiteral.getText());
-    }
-
-    @Override
-    public ASTNode visitNavigationExpr(OCLParser.NavigationExprContext ctx) {
-        List<ASTExpression> qualifiers = new ArrayList<>();
-        if (ctx.argList() != null) {
-            for (OCLParser.ExpressionContext arg : ctx.argList().expression()) {
-                qualifiers.add((ASTExpression) visit(arg));
-            }
-        }
-        return new ASTProperty((ASTExpression) visit(ctx.primary()), ctx.Identifier().getText(), qualifiers);
-    }
-
-    @Override
-    public ASTNode visitCollectionOpExpr(OCLParser.CollectionOpExprContext ctx) {
-        List<ASTExpression> args = new ArrayList<>();
-        if (ctx.argList() != null) {
-            for (OCLParser.ExpressionContext arg : ctx.argList().expression()) args.add((ASTExpression)visit(arg));
-        }
-        return new ASTCollectionOp((ASTExpression)visit(ctx.primary()), ctx.Identifier().getText(), args);
-    }
-
-    @Override
-    public ASTNode visitParenExpr(OCLParser.ParenExprContext ctx) {
-        return visit(ctx.expression());
-    }
-
-    @Override
-    public ASTNode visitSetLiteralExpr(OCLParser.SetLiteralExprContext ctx) {
-        List<ASTExpression> elements = new ArrayList<>();
-        if (ctx.argList() != null) {
-            for (OCLParser.ExpressionContext element : ctx.argList().expression()) {
-                elements.add((ASTExpression) visit(element));
-            }
-        }
-        return new ASTSetLiteral(elements);
-    }
-
-    @Override
-    public ASTNode visitIfExp(OCLParser.IfExpContext ctx) {
-        return new ASTIf(
-                (ASTExpression) visit(ctx.condition),
-                (ASTExpression) visit(ctx.thenBranch),
-                (ASTExpression) visit(ctx.elseBranch));
-    }
-
-    @Override
-    public ASTNode visitLetExpr(OCLParser.LetExprContext ctx) {
-        return new ASTLet(
-                ctx.varName.getText(),
-                (ASTExpression) visit(ctx.value),
-                (ASTExpression) visit(ctx.body));
-    }
-
-
-    @Override
-    public ASTNode visitLiteral(LiteralContext ctx) {
-        String text = ctx.getText();
-
-        if (text.equals("null")) {
-            return new ASTNullLiteral();
-        }
-
-        if (ctx.Number() != null) {
-            if (text.contains(".")) {
-                return new ASTRealLiteral(Double.parseDouble(text));
-            } else {
-                return new ASTIntegerLiteral(Long.parseLong(text));
-            }
-        }
-
-        if (ctx.StringLiteral() != null) {
-            return new ASTStringLiteral(text.substring(1, text.length() - 1));
-        }
-
-      return switch (text) {
-        case "true" -> new ASTBooleanLiteral(true);
-        case "false" -> new ASTBooleanLiteral(false);
-        case "self" -> new ASTVar("self");
-        default -> null;
-      };
-
-    }
-
-    @Override
-    public ASTNode visitIteratorExpr(OCLParser.IteratorExprContext ctx) {
-        ASTExpression source = (ASTExpression) visit(ctx.primary());
-        String op = ctx.iteratorOp.getText();
-        String var = ctx.iteratorVar.getText();
-        String typeName = ctx.iteratorType != null ? ctx.iteratorType.getText() : null;
-        ASTExpression body = (ASTExpression) visit(ctx.expression());
-
-        return new ASTIterator(source, op, var, typeName, body);
-    }
-    @Override
-    public ASTNode visitLogicalImpliesExp(OCLParser.LogicalImpliesExpContext ctx) {
-        return new ASTBinary(
-            (ASTExpression) visit(ctx.left),
-            "implies",
-            (ASTExpression) visit(ctx.right)
-        );
-    }
-    @Override
-    public ASTNode visitNotExp(OCLParser.NotExpContext ctx) {
-        ASTExpression inner = (ASTExpression) visit(ctx.expression());
-        return new ASTNot(inner);
-    }
-
-    @Override
-    public ASTNode visitMethodCallExpr(OCLParser.MethodCallExprContext ctx) {
-        ASTExpression source = (ASTExpression) visit(ctx.primary());
-
-        String methodName = ctx.Identifier().getText();
-
-        List<ASTExpression> args = new ArrayList<>();
-        if (ctx.argList() != null) {
-            for (OCLParser.ExpressionContext argCtx : ctx.argList().expression()) {
-                args.add((ASTExpression) visit(argCtx));
-            }
-        }
-
-        return new ASTMethodCall(source, methodName, args);
-    }
-
     @Override
     public ASTNode visitDeclaration(OCLParser.DeclarationContext ctx) {
-        ASTExpression expr = (ASTExpression) visit(ctx.expression());
-        if (ctx.invName != null || ctx.operationName == null && ctx.attributeName == null) {
-            String className = ctx.className.getText();
-            String invName = ctx.invName != null ? ctx.invName.getText() : "UnnamedInv";
-            return new ASTContext(className, invName, expr);
+        ASTExpression expression = expression(ctx.expression());
+        String className = ctx.contextType.getText();
+        if (ctx.INV() != null) {
+            String name = ctx.ruleName == null ? "UnnamedInv" : ctx.ruleName.getText();
+            return at(new ASTContext(className, name, expression), ctx);
         }
 
+        String kind = ctx.operationConstraintKind() != null
+                ? ctx.operationConstraintKind().getText()
+                : ctx.attributeConstraintKind().getText();
+        String name = ctx.ruleName == null ? defaultRuleName(kind) : ctx.ruleName.getText();
         if (ctx.operationName != null) {
             List<String> parameterNames = new ArrayList<>();
             List<String> parameterTypes = new ArrayList<>();
             if (ctx.paramList() != null) {
-                for (OCLParser.ParamDeclContext paramDeclContext : ctx.paramList().paramDecl()) {
-                    parameterNames.add(paramDeclContext.Identifier(0).getText());
-                    parameterTypes.add(paramDeclContext.Identifier().size() > 1
-                            ? paramDeclContext.Identifier(1).getText()
-                            : null);
+                for (OCLParser.ParamDeclContext parameter : ctx.paramList().paramDecl()) {
+                    parameterNames.add(parameter.name.getText());
+                    parameterTypes.add(parameter.type == null ? null : parameter.type.getText());
                 }
             }
-            String ruleName = ctx.ruleName != null ? ctx.ruleName.getText() : defaultRuleName(ctx.operationConstraintKind().getText());
-            return new ASTOperationConstraint(
-                    ctx.className.getText(),
+            return at(new ASTOperationConstraint(
+                    className,
                     ctx.operationName.getText(),
                     parameterNames,
                     parameterTypes,
-                    ctx.operationConstraintKind().getText(),
-                    ruleName,
-                    expr);
+                    ctx.returnType == null ? null : ctx.returnType.getText(),
+                    kind,
+                    name,
+                    expression), ctx);
         }
 
-        String ruleName = ctx.ruleName != null ? ctx.ruleName.getText() : defaultRuleName(ctx.attributeConstraintKind().getText());
-        return new ASTAttributeConstraint(
-                ctx.className.getText(),
+        return at(new ASTAttributeConstraint(
+                className,
                 ctx.attributeName.getText(),
-                ctx.attributeConstraintKind().getText(),
-                ruleName,
-                expr);
+                ctx.attributeType == null ? null : ctx.attributeType.getText(),
+                kind,
+                name,
+                expression), ctx);
+    }
+
+    @Override
+    public ASTNode visitExpression(OCLParser.ExpressionContext ctx) {
+        return visit(ctx.letExpression());
+    }
+
+    @Override
+    public ASTNode visitLetExpression(OCLParser.LetExpressionContext ctx) {
+        if (ctx.LET() == null) {
+            return visit(ctx.impliesExpression());
+        }
+        ASTExpression body = expression(ctx.expression());
+        List<OCLParser.LetBindingContext> bindings = ctx.letBinding();
+        for (int i = bindings.size() - 1; i >= 0; i--) {
+            OCLParser.LetBindingContext binding = bindings.get(i);
+            ASTLet let = new ASTLet(
+                    binding.name.getText(),
+                    binding.type == null ? null : binding.type.getText(),
+                    expression(binding.expression()),
+                    body);
+            body = at(let, binding.getStart(), ctx.getStop());
+        }
+        return body;
+    }
+
+    @Override
+    public ASTNode visitImpliesExpression(OCLParser.ImpliesExpressionContext ctx) {
+        ASTExpression left = expression(ctx.left);
+        if (ctx.right == null) {
+            return left;
+        }
+        return at(new ASTBinary(left, "implies", expression(ctx.right)), ctx);
+    }
+
+    @Override
+    public ASTNode visitOrExpression(OCLParser.OrExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitXorExpression(OCLParser.XorExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitAndExpression(OCLParser.AndExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitEqualityExpression(OCLParser.EqualityExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitRelationalExpression(OCLParser.RelationalExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitAdditiveExpression(OCLParser.AdditiveExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitMultiplicativeExpression(OCLParser.MultiplicativeExpressionContext ctx) {
+        return fold(ctx.first, ctx.operators, ctx.rest, ctx);
+    }
+
+    @Override
+    public ASTNode visitUnaryExpression(OCLParser.UnaryExpressionContext ctx) {
+        if (ctx.op == null) {
+            return visit(ctx.postfixExpression());
+        }
+        ASTExpression operand = expression(ctx.unaryExpression());
+        ASTExpression unary = "not".equals(ctx.op.getText())
+                ? new ASTNot(operand)
+                : new ASTUnary(ctx.op.getText(), operand);
+        return at(unary, ctx);
+    }
+
+    @Override
+    public ASTNode visitPostfixExpression(OCLParser.PostfixExpressionContext ctx) {
+        ASTExpression result = expression(ctx.primaryExpression());
+        for (OCLParser.PostfixPartContext part : ctx.postfixPart()) {
+            if (part instanceof OCLParser.DotPostfixContext dot) {
+                List<ASTExpression> qualifiers = new ArrayList<>();
+                for (OCLParser.QualifierListContext qualifier : dot.qualifierList()) {
+                    qualifiers.addAll(arguments(qualifier.argumentValues()));
+                }
+                boolean atPre = dot.atPre() != null;
+                if (dot.argumentList() == null) {
+                    result = at(new ASTProperty(result, dot.featureName.getText(), qualifiers, atPre),
+                            ctx.getStart(), dot.getStop());
+                } else {
+                    result = at(new ASTMethodCall(result, dot.featureName.getText(),
+                                    arguments(dot.argumentList().argumentValues()), atPre),
+                            ctx.getStart(), dot.getStop());
+                }
+                continue;
+            }
+            if (part instanceof OCLParser.IteratorPostfixContext iterator) {
+                List<ASTVariableDeclaration> variables = new ArrayList<>();
+                for (OCLParser.VariableDeclarationContext variable
+                        : iterator.iteratorDeclarationList().variableDeclaration()) {
+                    variables.add(new ASTVariableDeclaration(
+                            variable.name.getText(),
+                            variable.type == null ? null : variable.type.getText()));
+                }
+                result = at(new ASTIterator(result, iterator.operationName.getText(),
+                                variables, expression(iterator.expression())),
+                        ctx.getStart(), iterator.getStop());
+                continue;
+            }
+            if (part instanceof OCLParser.IteratePostfixContext iterate) {
+                List<ASTVariableDeclaration> variables = new ArrayList<>();
+                for (OCLParser.VariableDeclarationContext variable
+                        : iterate.iteratorDeclarationList().variableDeclaration()) {
+                    variables.add(new ASTVariableDeclaration(
+                            variable.name.getText(),
+                            variable.type == null ? null : variable.type.getText()));
+                }
+                OCLParser.LetBindingContext accumulator = iterate.accumulator;
+                result = at(new ASTIterate(
+                                result,
+                                iterate.operationName.getText(),
+                                variables,
+                                new ASTVariableDeclaration(
+                                        accumulator.name.getText(),
+                                        accumulator.type == null ? null : accumulator.type.getText()),
+                                expression(accumulator.expression()),
+                                expression(iterate.expression())),
+                        ctx.getStart(), iterate.getStop());
+                continue;
+            }
+            OCLParser.ArrowOperationPostfixContext operation =
+                    (OCLParser.ArrowOperationPostfixContext) part;
+            result = at(new ASTCollectionOp(result, operation.operationName.getText(),
+                            arguments(operation.argumentList().argumentValues())),
+                    ctx.getStart(), operation.getStop());
+        }
+        return result;
+    }
+
+    @Override
+    public ASTNode visitPrimaryExpression(OCLParser.PrimaryExpressionContext ctx) {
+        if (ctx.IF() != null) {
+            return at(new ASTIf(
+                    expression(ctx.condition),
+                    expression(ctx.thenBranch),
+                    expression(ctx.elseBranch)), ctx);
+        }
+        if (ctx.literal() != null) {
+            return visit(ctx.literal());
+        }
+        if (ctx.collectionLiteral() != null) {
+            return visit(ctx.collectionLiteral());
+        }
+        if (!ctx.expression().isEmpty()) {
+            return visit(ctx.expression(0));
+        }
+
+        List<Token> identifiers = ctx.qualifiedName().Identifier().stream()
+                .map(node -> node.getSymbol())
+                .toList();
+        if (identifiers.size() > 1) {
+            String typeName = identifiers.stream().limit(identifiers.size() - 1L)
+                    .map(Token::getText).reduce((left, right) -> left + "::" + right).orElse("");
+            return at(new ASTEnumLiteral(typeName, identifiers.get(identifiers.size() - 1).getText()), ctx);
+        }
+        return at(new ASTVar(identifiers.get(0).getText()), ctx);
+    }
+
+    @Override
+    public ASTNode visitCollectionLiteral(OCLParser.CollectionLiteralContext ctx) {
+        List<ASTExpression> elements = new ArrayList<>();
+        for (OCLParser.CollectionLiteralPartContext part : ctx.collectionLiteralPart()) {
+            elements.add(expression(part));
+        }
+        String kind = ctx.collectionKind().getText();
+        ASTExpression literal = "Set".equals(kind)
+                ? new ASTSetLiteral(elements)
+                : new ASTCollectionLiteral(kind, elements);
+        return at(literal, ctx);
+    }
+
+    @Override
+    public ASTNode visitCollectionLiteralPart(OCLParser.CollectionLiteralPartContext ctx) {
+        ASTExpression first = expression(ctx.first);
+        if (ctx.last == null) {
+            return first;
+        }
+        return at(new ASTCollectionRange(first, expression(ctx.last)), ctx);
+    }
+
+    @Override
+    public ASTNode visitLiteral(OCLParser.LiteralContext ctx) {
+        if (ctx.IntegerLiteral() != null) {
+            return at(new ASTIntegerLiteral(Long.parseLong(ctx.IntegerLiteral().getText())), ctx);
+        }
+        if (ctx.RealLiteral() != null) {
+            return at(new ASTRealLiteral(Double.parseDouble(ctx.RealLiteral().getText())), ctx);
+        }
+        if (ctx.StringLiteral() != null) {
+            String token = ctx.StringLiteral().getText();
+            return at(new ASTStringLiteral(token.substring(1, token.length() - 1).replace("''", "'")), ctx);
+        }
+        if (ctx.TRUE() != null) {
+            return at(new ASTBooleanLiteral(true), ctx);
+        }
+        if (ctx.FALSE() != null) {
+            return at(new ASTBooleanLiteral(false), ctx);
+        }
+        if (ctx.NULL() != null) {
+            return at(new ASTNullLiteral(), ctx);
+        }
+        return at(new ASTInvalidLiteral(), ctx);
+    }
+
+    private ASTExpression fold(
+            ParserRuleContext first,
+            List<Token> operators,
+            List<? extends ParserRuleContext> rest,
+            ParserRuleContext whole) {
+        ASTExpression result = expression(first);
+        for (int i = 0; i < operators.size(); i++) {
+            result = at(new ASTBinary(result, operators.get(i).getText(), expression(rest.get(i))),
+                    whole.getStart(), rest.get(i).getStop());
+        }
+        return result;
+    }
+
+    private List<ASTExpression> arguments(OCLParser.ArgumentValuesContext ctx) {
+        if (ctx == null) {
+            return List.of();
+        }
+        return ctx.expression().stream().map(this::expression).toList();
+    }
+
+    private ASTExpression expression(ParserRuleContext ctx) {
+        return (ASTExpression) visit(ctx);
+    }
+
+    private <T extends ASTNode> T at(T node, ParserRuleContext ctx) {
+        return at(node, ctx.getStart(), ctx.getStop());
+    }
+
+    private <T extends ASTNode> T at(T node, Token start, Token stop) {
+        int endOffset = stop.getStopIndex();
+        int endColumn = stop.getCharPositionInLine()
+                + Math.max(stop.getText() == null ? 0 : stop.getText().length() - 1, 0);
+        node.setSourceSpan(new SourceSpan(
+                start.getStartIndex(),
+                endOffset,
+                start.getLine(),
+                start.getCharPositionInLine(),
+                stop.getLine(),
+                endColumn));
+        return node;
     }
 
     private String defaultRuleName(String constraintKind) {
-        if (constraintKind == null || constraintKind.isBlank()) {
-            return "UnnamedRule";
-        }
         return switch (constraintKind) {
             case "pre" -> "UnnamedPre";
             case "post" -> "UnnamedPost";

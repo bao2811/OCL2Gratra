@@ -55,12 +55,19 @@ class ComprehensiveUmlOclRealNeo4jTest {
             ViolationSetOracle oracle = new ViolationSetOracle(
                     new UseObjectSideReferenceEvaluator(), this::execute);
             Map<BenchmarkVacuityStatus, Integer> vacuity = new EnumMap<>(BenchmarkVacuityStatus.class);
+            String selectedCase = System.getProperty("neo4j.comprehensive.case", "").trim();
+            int executedCases = 0;
 
             assertEquals(30, invariants.size());
             for (var invariant : invariants) {
+                String caseId = invariant.className + "::" + invariant.invName;
+                if (!selectedCase.isEmpty() && !selectedCase.equals(caseId)) continue;
+                executedCases++;
+                long caseStart = System.nanoTime();
+                System.out.println("COMPREHENSIVE_CASE=START id=" + caseId);
+                System.out.flush();
                 var compiled = compiler.compileInvariantInstrumented(invariant);
                 FixturePremiseVerifier.verify(system, compiled);
-                String caseId = invariant.className + "::" + invariant.invName;
                 ViolationOracleResult result = oracle.evaluate(caseId,
                         ComprehensiveUmlOclCaseStudyTest.contextIds(system, invariant.className),
                         system, invariant, compiled.cypher(), compiled.parameters());
@@ -68,11 +75,19 @@ class ComprehensiveUmlOclRealNeo4jTest {
                 assertTrue(result.equivalent(), () -> result.render() + "\nmemberships="
                         + memberships() + "\n" + compiled.cypher());
                 vacuity.merge(result.vacuityStatus(), 1, Integer::sum);
+                System.out.println("COMPREHENSIVE_CASE=PASS id=" + caseId
+                        + " elapsedMs=" + ((System.nanoTime() - caseStart) / 1_000_000L));
+                System.out.flush();
             }
-            assertEquals(26, vacuity.getOrDefault(BenchmarkVacuityStatus.NON_VACUOUS_MIXED, 0));
-            assertEquals(4, vacuity.getOrDefault(BenchmarkVacuityStatus.ALL_PASS, 0));
-            assertEquals(0, vacuity.getOrDefault(BenchmarkVacuityStatus.EMPTY_CONTEXT, 0));
-            System.out.println("COMPREHENSIVE_DIFFERENTIAL_ORACLE=PASS equivalent=" + invariants.size()
+            if (selectedCase.isEmpty()) {
+                assertEquals(30, executedCases);
+                assertEquals(26, vacuity.getOrDefault(BenchmarkVacuityStatus.NON_VACUOUS_MIXED, 0));
+                assertEquals(4, vacuity.getOrDefault(BenchmarkVacuityStatus.ALL_PASS, 0));
+                assertEquals(0, vacuity.getOrDefault(BenchmarkVacuityStatus.EMPTY_CONTEXT, 0));
+            } else {
+                assertEquals(1, executedCases, "Unknown comprehensive case: " + selectedCase);
+            }
+            System.out.println("COMPREHENSIVE_DIFFERENTIAL_ORACLE=PASS equivalent=" + executedCases
                     + " missing=0 spurious=0 vacuity=" + vacuity);
         } finally {
             cleanup(modelKey);

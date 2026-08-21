@@ -68,7 +68,7 @@ class OclCypherPlanFormalTreeAgreementTest {
                 text -> text.replace(")-[r]->(", ")<-[r]-("));
 
         OclCypherPlan.CountSubqueryComparisonPlan count = find(results, OclCypherPlan.CountSubqueryComparisonPlan.class);
-        assertMutationRejected(renderer, count, text -> text.replaceFirst("COUNT", "COLLECT"));
+        assertMutationRejected(renderer, count, text -> text.replaceFirst("size", "head"));
 
         OclCypherPlan.NotExistsSubqueryPlan notExists = find(results, OclCypherPlan.NotExistsSubqueryPlan.class);
         assertMutationRejected(renderer, notExists, text -> text.replaceFirst("NOT EXISTS", "EXISTS"));
@@ -115,6 +115,7 @@ class OclCypherPlanFormalTreeAgreementTest {
                 "Person", "ManualLetRendererWitness",
                 new OclCypherPlan.LetPlan("x",
                         new OclCypherPlan.LiteralPlan(true, bool),
+                        bool,
                         new OclCypherPlan.VariablePlan("x", bool), bool))));
         return List.copyOf(results);
     }

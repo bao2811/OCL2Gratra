@@ -27,7 +27,11 @@ public final class OclValBoundAdmissionPolicy {
 
     private static void verifyExpression(OclSemanticBinder.BoundExpression expression) {
         verifyType(expression.type(), expression.getClass().getSimpleName());
-        if (expression instanceof OclSemanticBinder.BoundVariable) {
+        if (expression instanceof OclSemanticBinder.BoundVariable variable) {
+            if (variable.type().isClassReference()) {
+                reject("UML class reference `" + variable.ast().name
+                        + "` is only valid as the receiver of allInstances() or as a type-operation argument");
+            }
             return;
         }
         if (expression instanceof OclSemanticBinder.BoundLiteral literal) {
@@ -49,6 +53,7 @@ public final class OclValBoundAdmissionPolicy {
             return;
         }
         if (expression instanceof OclSemanticBinder.BoundLet value) {
+            verifyType(value.variableType(), "let variable `" + value.ast().variableName + "`");
             verifyExpression(value.value()); verifyExpression(value.body());
             return;
         }
@@ -68,16 +73,18 @@ public final class OclValBoundAdmissionPolicy {
             return;
         }
         if (expression instanceof OclSemanticBinder.BoundMethodCall value) {
-            verifyExpression(value.source()); value.arguments().forEach(OclValBoundAdmissionPolicy::verifyExpression);
+            verifyCertifiedMethodCall(value);
             return;
         }
         if (expression instanceof OclSemanticBinder.BoundCollectionOperation value) {
             verifyCollectionSource(value.source(), value.sourceCollectionType(),
                     "collection operation `" + value.ast().opName + "`", value.ast().opName);
+            verifyCertifiedCollectionSignature(value);
             value.arguments().forEach(OclValBoundAdmissionPolicy::verifyExpression);
             return;
         }
         if (expression instanceof OclSemanticBinder.BoundIterator value) {
+            verifyType(value.iteratorVariableType(), "iterator variable `" + value.ast().iteratorName + "`");
             if (!value.source().type().isCollection()) {
                 reject("iterator `" + value.ast().operation
                         + "` requires a native collection source; use an explicit asSet() "
@@ -92,6 +99,52 @@ public final class OclValBoundAdmissionPolicy {
             return;
         }
         reject("unsupported bound constructor " + expression.getClass().getSimpleName());
+    }
+
+    private static void verifyCertifiedMethodCall(OclSemanticBinder.BoundMethodCall value) {
+        String methodName = value.ast().methodName;
+        if ("allInstances".equalsIgnoreCase(methodName)) {
+            if (!(value.source() instanceof OclSemanticBinder.BoundVariable)
+                    || !value.source().type().isClassReference()
+                    || !value.arguments().isEmpty()) {
+                reject("allInstances() requires one UML class receiver and no arguments");
+            }
+            return;
+        }
+        if ("oclIsKindOf".equalsIgnoreCase(methodName)
+                || "oclAsType".equalsIgnoreCase(methodName)) {
+            verifyExpression(value.source());
+            if (value.arguments().size() != 1
+                    || !(value.arguments().get(0) instanceof OclSemanticBinder.BoundVariable)
+                    || !value.arguments().get(0).type().isClassReference()) {
+                reject(methodName + "() requires exactly one UML class argument");
+            }
+            return;
+        }
+        reject("method `" + methodName + "` is outside the certified BoundOCL_val fragment");
+    }
+
+    private static void verifyCertifiedCollectionSignature(
+            OclSemanticBinder.BoundCollectionOperation value) {
+        String operation = value.ast().opName;
+        int arity = value.arguments().size();
+        switch (operation) {
+            case "size", "isEmpty", "notEmpty", "asSet" -> {
+                if (arity != 0) reject(operation + "() does not accept arguments");
+            }
+            case "includes", "excludes" -> {
+                if (arity != 1 || value.arguments().get(0).type().isCollection()) {
+                    reject(operation + "() requires exactly one scalar/entity element argument");
+                }
+            }
+            case "includesAll", "excludesAll", "union", "intersection" -> {
+                if (arity != 1 || !value.arguments().get(0).type().isCollection()) {
+                    reject(operation + "() requires exactly one collection argument");
+                }
+            }
+            default -> reject("collection operation `" + operation
+                    + "` is outside the certified BoundOCL_val fragment");
+        }
     }
 
     private static void verifyAttribute(OclSemanticBinder.BoundProperty property) {

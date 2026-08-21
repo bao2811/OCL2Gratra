@@ -122,7 +122,7 @@ try {
     $registry = (Read-Text $case.Registry) | ConvertFrom-Json
     $registry.claimPolicy.prototypeCorrectness = 'active'
     Write-Text $case.Registry ($registry | ConvertTo-Json -Depth 40)
-    Assert-Killed 'premature prototype correctness claim' $case 'Prototype correctness claim is active while required'
+    Assert-Killed 'premature prototype correctness claim' $case 'Prototype correctness claim is active while blocking'
 
     Write-Host "Machine verification mutation tests PASS: $passed/$total killed."
 } finally {

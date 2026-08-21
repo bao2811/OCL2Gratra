@@ -116,13 +116,12 @@ class OclValRealNeo4jCoverageTest {
                             + "self.employee->collect(p | p.age)->sum() >= 0",
                     "context Company inv T4NavigationUnique: "
                             + "self.employee->isUnique(p | p.name)",
-                    "context Person inv T4Let: let threshold = 18 in self.age >= threshold")) {
+                    "context Person inv T4Let: let measuredAge = self.age in measuredAge >= 18")) {
                 var invariant = compiler.parseContextInvariants(supplemental).get(0);
                 var bound = new OclSemanticBinder(new OclMetamodelIndex(model)).bindContext(invariant);
                 OclIr.InvariantQuery validationAlgebra = new OclIrBuilder().buildInvariant(bound);
                 OclIr.InvariantQuery optimized = new OclIrOptimizer().optimizeInvariant(validationAlgebra);
-                OclIr.InvariantQuery lowered = invariant.invName.equals("T4Let")
-                        ? validationAlgebra : optimized;
+                OclIr.InvariantQuery lowered = optimized;
                 var queryPlan = new OclCypherPlanner().planInvariant(lowered);
                 PipelineRefinementVerifier.verifyOptimizedToPlan(
                         lowered.predicate(), queryPlan.predicate());

@@ -8,7 +8,7 @@ import java.util.List;
 
 /** Installs the canonical lookup schema once per database and encoding version. */
 public final class CanonicalGraphSchema {
-    public static final String VERSION = "canonical-v7.1-binary-link-exactness";
+    public static final String VERSION = "canonical-v7.2-typed-scalars-model-isolation";
 
     private static final List<String> SCHEMA_STATEMENTS = List.of(
             "CREATE CONSTRAINT canonical_model_name IF NOT EXISTS "
@@ -17,10 +17,10 @@ public final class CanonicalGraphSchema {
                     + "FOR (n:Object) REQUIRE n.objectKey IS UNIQUE",
             "CREATE INDEX canonical_object_model IF NOT EXISTS "
                     + "FOR (n:Object) ON (n.modelKey)",
-            "CREATE INDEX canonical_attribute_key IF NOT EXISTS "
-                    + "FOR (n:Attribute) ON (n.attributeKey)",
-            "CREATE INDEX canonical_class_key IF NOT EXISTS "
-                    + "FOR (n:UmlClass) ON (n.classKey)",
+            "CREATE CONSTRAINT canonical_attribute_key IF NOT EXISTS "
+                    + "FOR (n:Attribute) REQUIRE n.attributeKey IS UNIQUE",
+            "CREATE CONSTRAINT canonical_class_key IF NOT EXISTS "
+                    + "FOR (n:UmlClass) REQUIRE n.classKey IS UNIQUE",
             "CREATE INDEX canonical_attribute_value_key IF NOT EXISTS "
                     + "FOR (n:AttributeValue) ON (n.attributeKey)",
             "CREATE CONSTRAINT canonical_attribute_slot_key IF NOT EXISTS "
@@ -63,7 +63,9 @@ public final class CanonicalGraphSchema {
                     java.util.Map.of("version", VERSION)).hasNext();
             if (current) return;
 
-            replaceObjectKeyIndexesWithConstraint(session);
+            replaceNodeKeyIndexesWithConstraint(session, "Object", "objectKey");
+            replaceNodeKeyIndexesWithConstraint(session, "UmlClass", "classKey");
+            replaceNodeKeyIndexesWithConstraint(session, "Attribute", "attributeKey");
             migrateAttributeSlotKeys(session);
             migrateBinaryLinkKeys(session);
             assertWellFormedBinaryLinks(session);
@@ -81,11 +83,13 @@ public final class CanonicalGraphSchema {
         }
     }
 
-    private static void replaceObjectKeyIndexesWithConstraint(Session session) {
+    private static void replaceNodeKeyIndexesWithConstraint(
+            Session session, String label, String property) {
         List<String> indexes = session.run(
                         "SHOW INDEXES YIELD name, labelsOrTypes, properties, owningConstraint "
-                                + "WHERE labelsOrTypes = ['Object'] AND properties = ['objectKey'] "
-                                + "AND owningConstraint IS NULL RETURN name")
+                                + "WHERE labelsOrTypes = [$label] AND properties = [$property] "
+                                + "AND owningConstraint IS NULL RETURN name",
+                        java.util.Map.of("label", label, "property", property))
                 .list(record -> record.get("name").asString());
         for (String index : indexes) {
             session.run("DROP INDEX `" + index.replace("`", "``") + "` IF EXISTS").consume();

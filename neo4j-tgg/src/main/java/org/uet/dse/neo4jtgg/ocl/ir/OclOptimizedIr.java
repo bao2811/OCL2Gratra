@@ -25,6 +25,37 @@ public final class OclOptimizedIr {
                 "Expected Optimized IR expression but got " + expression.getClass().getSimpleName());
     }
 
+    public static OclIr.OptimizedExpression requireOptimized(OclIr.InvariantQuery query) {
+        if (query.stage() != OclIr.Stage.OPTIMIZED
+                || !OclIrOptimizer.VERSION.equals(query.producerVersion())) {
+            throw new IllegalArgumentException(
+                    "Cypher planning requires an invariant produced by " + OclIrOptimizer.VERSION);
+        }
+        return requireOptimized(query.predicate());
+    }
+
+    /** Opaque public planning input; only the optimizer can construct it. */
+    public static final class Artifact {
+        private final OclIr.OptimizedExpression expression;
+        private final String producerVersion;
+
+        private Artifact(OclIr.OptimizedExpression expression, String producerVersion) {
+            this.expression = expression;
+            this.producerVersion = producerVersion;
+        }
+
+        OclIr.OptimizedExpression requireCurrent() {
+            if (!OclIrOptimizer.VERSION.equals(producerVersion)) {
+                throw new IllegalArgumentException("Stale Optimized IR artifact: " + producerVersion);
+            }
+            return expression;
+        }
+    }
+
+    static Artifact artifact(OclIr.OptimizedExpression expression, String producerVersion) {
+        return new Artifact(expression, producerVersion);
+    }
+
     public static OclIr.NavigationPredicateCheck navigationPredicateCheck(
             OclIr.NavigationAccess navigation,
             String iteratorName,

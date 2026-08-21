@@ -67,11 +67,13 @@ public final class OclCypherQueryModel {
 
     public static OclCypherPlan.LetPlan let(String variableName,
                                             OclCypherPlan.ExpressionPlan value,
+                                            OclTypeBinding variableType,
                                             OclCypherPlan.ExpressionPlan body,
                                             OclTypeBinding type) {
         return new OclCypherPlan.LetPlan(
                 nonBlank(variableName, "variableName"),
                 required(value, "value"),
+                required(variableType, "variableType"),
                 required(body, "body"),
                 required(type, "type"));
     }
@@ -139,6 +141,7 @@ public final class OclCypherQueryModel {
                                                                          OclTypeBinding sourceCollectionType,
                                                                          String operationName,
                                                                         String iteratorName,
+                                                                        OclTypeBinding iteratorVariableType,
                                                                         OclCypherPlan.ExpressionPlan body,
                                                                         OclTypeBinding type) {
         return new OclCypherPlan.IteratorOperationPlan(
@@ -146,6 +149,7 @@ public final class OclCypherQueryModel {
                 required(sourceCollectionType, "sourceCollectionType"),
                 nonBlank(operationName, "operationName"),
                 nonBlank(iteratorName, "iteratorName"),
+                required(iteratorVariableType, "iteratorVariableType"),
                 required(body, "body"),
                 required(type, "type"));
     }

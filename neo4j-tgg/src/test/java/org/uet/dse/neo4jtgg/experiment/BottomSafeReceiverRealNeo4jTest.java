@@ -9,6 +9,7 @@ import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.manager.SessionManager;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 import java.io.PrintWriter;
@@ -20,7 +21,11 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-/** Opt-in selected-runtime evidence for PO-12 receiver guards and alias correlation. */
+/**
+ * Opt-in selected-runtime evidence for PO-12 receiver guards, alias
+ * correlation, the C5a whole-collection-bottom boundary, and validation truth
+ * for a non-null bottom element token.
+ */
 class BottomSafeReceiverRealNeo4jTest {
     @Test
     void bottomAndEntityArmsExecuteWithExpectedViolationSets() throws Exception {
@@ -43,6 +48,27 @@ class BottomSafeReceiverRealNeo4jTest {
             assertEquals(Set.of("p2"), violations(session, compiler,
                     "context Person inv NestedAliases: Person.allInstances()->forAll(p | "
                             + "(if p.age > self.age then p else null endif).oclIsKindOf(Person) or p = self)"));
+            assertEquals(Set.of("p0"), violations(session, compiler,
+                    "context Person inv CollectionBottom: "
+                            + "(if self.age > 0 then null else Set{1} endif)->isEmpty()"));
+            assertEquals(Set.of(), violations(session, compiler,
+                    "context Person inv BottomBooleanElement: "
+                            + "Set{null, true}->exists(x | x)"));
+            assertEquals(Set.of(), violations(session, compiler,
+                    "context Person inv NullCollectionOperand: "
+                            + "Set{1}->includesAll(if self.age >= 0 then null else Set{1} endif)"));
+            assertEquals(Set.of(), violations(session, compiler,
+                    "context Person inv BottomElementEquality: "
+                            + "Set{null,1}->exists(x | x = null)"));
+            assertEquals(Set.of("p0", "p2"), violations(session, compiler,
+                    "context Person inv BottomElementOrdering: "
+                            + "Set{null,1}->forAll(x | x > 0)"));
+            assertEquals(Set.of(), violations(session, compiler,
+                    "context Person inv BottomElementArithmetic: "
+                            + "Set{null,1}->exists(x | x + 1 = 2)"));
+            assertEquals(Set.of(), violations(session, compiler,
+                    "context Person inv VoidEqualsEmptySet: "
+                            + "null = Set{1}->select(x | false)"));
         } finally {
             Neo4jDriverManager manager = Neo4jDriverManager.getInstance();
             if (manager != null) {
@@ -74,11 +100,13 @@ class BottomSafeReceiverRealNeo4jTest {
         session.run("CREATE (c:UmlClass {modelKey:$modelKey,classKey:$classKey}) "
                         + "CREATE (p0:Object {modelKey:$modelKey,objectKey:$p0Key,use_id:'p0'})-[:ObjectInstanceOf]->(c) "
                         + "CREATE (p2:Object {modelKey:$modelKey,objectKey:$p2Key,use_id:'p2'})-[:ObjectInstanceOf]->(c) "
-                        + "CREATE (a0:AttributeValue {modelKey:$modelKey,attributeKey:$attributeKey,value:'0'}) "
-                        + "CREATE (a2:AttributeValue {modelKey:$modelKey,attributeKey:$attributeKey,value:'2'}) "
+                        + "CREATE (a0:AttributeValue {modelKey:$modelKey,attributeKey:$attributeKey,value:$p0Age}) "
+                        + "CREATE (a2:AttributeValue {modelKey:$modelKey,attributeKey:$attributeKey,value:$p2Age}) "
                         + "CREATE (p0)-[:ObjectHasAttribute]->(a0) CREATE (p2)-[:ObjectHasAttribute]->(a2)",
                 Map.of("modelKey", modelKey, "classKey", classKey, "attributeKey", attributeKey,
-                        "p0Key", p0Key, "p2Key", p2Key)).consume();
+                        "p0Key", p0Key, "p2Key", p2Key,
+                        "p0Age", CanonicalScalarValueCodec.encode(0L, "Integer"),
+                        "p2Age", CanonicalScalarValueCodec.encode(2L, "Integer"))).consume();
     }
 
     private MModel model(String modelName) {

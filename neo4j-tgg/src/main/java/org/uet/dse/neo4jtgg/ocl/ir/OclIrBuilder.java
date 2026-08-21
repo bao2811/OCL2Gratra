@@ -55,6 +55,7 @@ public class OclIrBuilder {
             return new OclIr.Let(
                     letExpression.ast().variableName,
                     buildExpression(letExpression.value()),
+                    letExpression.variableType(),
                     buildExpression(letExpression.body()),
                     letExpression.type());
         }
@@ -97,6 +98,7 @@ public class OclIrBuilder {
                     iterator.sourceCollectionType(),
                     iterator.ast().operation,
                     iterator.ast().iteratorName,
+                    iterator.iteratorVariableType(),
                     buildExpression(iterator.body()),
                     iterator.type());
         }

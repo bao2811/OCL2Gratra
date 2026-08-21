@@ -23,18 +23,15 @@ public class OclCypherPlanner {
         return OclCypherQueryModel.invariant(
                 invariantQuery.contextClassName(),
                 invariantQuery.invariantName(),
-                planExpression(OclOptimizedIr.requireOptimized(invariantQuery.predicate())));
+                planOptimizedExpression(OclOptimizedIr.requireOptimized(invariantQuery)));
     }
 
-    public OclCypherPlan.ExpressionPlan planExpression(OclIr.OptimizedExpression expression) {
-        return planOptimizedExpression(expression);
+    public OclCypherPlan.ExpressionPlan planExpression(OclOptimizedIr.Artifact artifact) {
+        if (artifact == null) throw new IllegalArgumentException("Optimized IR artifact is required");
+        return planOptimizedExpression(artifact.requireCurrent());
     }
 
-    public OclCypherPlan.ExpressionPlan planExpression(OclIr.Expression expression) {
-        return planExpression(OclOptimizedIr.requireOptimized(expression));
-    }
-
-    private OclCypherPlan.ExpressionPlan planOptimizedExpression(OclIr.Expression expression) {
+    private OclCypherPlan.ExpressionPlan planExpressionInternal(OclIr.Expression expression) {
         if (expression instanceof OclIr.Variable variable) {
             return OclCypherQueryModel.variable(variable.name(), variable.type());
         }
@@ -43,36 +40,37 @@ public class OclCypherPlanner {
         }
         if (expression instanceof OclIr.SetLiteral setLiteral) {
             return OclCypherQueryModel.setLiteral(
-                    setLiteral.elements().stream().map(this::planExpression).toList(),
+                    setLiteral.elements().stream().map(this::planExpressionInternal).toList(),
                     setLiteral.type());
         }
         if (expression instanceof OclIr.Not not) {
-            return OclCypherQueryModel.not(planExpression(not.expression()), not.type());
+            return OclCypherQueryModel.not(planExpressionInternal(not.expression()), not.type());
         }
         if (expression instanceof OclIr.If ifExpression) {
             return OclCypherQueryModel.ifExpression(
-                    planExpression(ifExpression.condition()),
-                    planExpression(ifExpression.thenBranch()),
-                    planExpression(ifExpression.elseBranch()),
+                    planExpressionInternal(ifExpression.condition()),
+                    planExpressionInternal(ifExpression.thenBranch()),
+                    planExpressionInternal(ifExpression.elseBranch()),
                     ifExpression.type());
         }
         if (expression instanceof OclIr.Let letExpression) {
             return OclCypherQueryModel.let(
                     letExpression.variableName(),
-                    planExpression(letExpression.value()),
-                    planExpression(letExpression.body()),
+                    planExpressionInternal(letExpression.value()),
+                    letExpression.variableType(),
+                    planExpressionInternal(letExpression.body()),
                     letExpression.type());
         }
         if (expression instanceof OclIr.Binary binary) {
             return OclCypherQueryModel.binary(
                     binary.operator(),
-                    planExpression(binary.left()),
-                    planExpression(binary.right()),
+                    planExpressionInternal(binary.left()),
+                    planExpressionInternal(binary.right()),
                     binary.type());
         }
         if (expression instanceof OclIr.AttributeAccess attributeAccess) {
             return OclCypherQueryModel.attributeAccess(
-                    planExpression(attributeAccess.source()),
+                    planExpressionInternal(attributeAccess.source()),
                     attributeAccess.attributeName(),
                     attributeAccess.attributeType(),
                     attributeAccess.type(),
@@ -80,40 +78,41 @@ public class OclCypherPlanner {
         }
         if (expression instanceof OclIr.NavigationAccess navigationAccess) {
             return OclCypherQueryModel.navigationAccess(
-                    planExpression(navigationAccess.source()),
+                    planExpressionInternal(navigationAccess.source()),
                     navigationAccess.navigation(),
-                    navigationAccess.qualifiers().stream().map(this::planExpression).toList(),
+                    navigationAccess.qualifiers().stream().map(this::planExpressionInternal).toList(),
                     navigationAccess.type());
         }
         if (expression instanceof OclIr.MethodCall methodCall) {
             return OclCypherQueryModel.methodCall(
-                    planExpression(methodCall.source()),
+                    planExpressionInternal(methodCall.source()),
                     methodCall.methodName(),
-                    methodCall.arguments().stream().map(this::planExpression).toList(),
+                    methodCall.arguments().stream().map(this::planExpressionInternal).toList(),
                     methodCall.type());
         }
         if (expression instanceof OclIr.CollectionOperation collectionOperation) {
             return OclCypherQueryModel.collectionOperation(
-                    planExpression(collectionOperation.source()),
+                    planExpressionInternal(collectionOperation.source()),
                     collectionOperation.sourceCollectionType(),
                     collectionOperation.operationName(),
-                    collectionOperation.arguments().stream().map(this::planExpression).toList(),
+                    collectionOperation.arguments().stream().map(this::planExpressionInternal).toList(),
                     collectionOperation.type());
         }
         if (expression instanceof OclIr.IteratorOperation iteratorOperation) {
             return OclCypherQueryModel.iteratorOperation(
-                    planExpression(iteratorOperation.source()),
+                    planExpressionInternal(iteratorOperation.source()),
                     iteratorOperation.sourceCollectionType(),
                     iteratorOperation.operationName(),
                     iteratorOperation.iteratorName(),
-                    planExpression(iteratorOperation.body()),
+                    iteratorOperation.iteratorVariableType(),
+                    planExpressionInternal(iteratorOperation.body()),
                     iteratorOperation.type());
         }
         if (expression instanceof OclIr.NavigationPredicateCheck predicateCheck) {
             OclCypherPlan.NavigationMatchPlan matchPlan = createNavigationMatchPlan(
-                    requireNavigationPlan(planExpression(predicateCheck.navigation())),
+                    requireNavigationPlan(planExpressionInternal(predicateCheck.navigation())),
                     predicateCheck.iteratorName(),
-                    predicateCheck.predicate() != null ? planExpression(predicateCheck.predicate()) : null,
+                    predicateCheck.predicate() != null ? planExpressionInternal(predicateCheck.predicate()) : null,
                     predicateCheck.kind() == OclIr.NavigationPredicateKind.FORALL
                             ? OclCypherPlan.PredicateMode.NEGATED
                             : OclCypherPlan.PredicateMode.NORMAL);
@@ -124,33 +123,33 @@ public class OclCypherPlanner {
         }
         if (expression instanceof OclIr.NavigationCountComparison countComparison) {
             OclCypherPlan.NavigationMatchPlan matchPlan = createNavigationMatchPlan(
-                    requireNavigationPlan(planExpression(countComparison.navigation())),
+                    requireNavigationPlan(planExpressionInternal(countComparison.navigation())),
                     countComparison.iteratorName(),
-                    countComparison.predicate() != null ? planExpression(countComparison.predicate()) : null,
+                    countComparison.predicate() != null ? planExpressionInternal(countComparison.predicate()) : null,
                     OclCypherPlan.PredicateMode.NORMAL);
             return planCountComparison(matchPlan, countComparison.operator(), countComparison.literal(), countComparison.type());
         }
         if (expression instanceof OclIr.NavigationAggregation aggregation) {
             OclCypherPlan.NavigationMatchPlan matchPlan = createNavigationMatchPlan(
-                    requireNavigationPlan(planExpression(aggregation.navigation())),
+                    requireNavigationPlan(planExpressionInternal(aggregation.navigation())),
                     aggregation.iteratorName(),
-                    aggregation.predicate() != null ? planExpression(aggregation.predicate()) : null,
+                    aggregation.predicate() != null ? planExpressionInternal(aggregation.predicate()) : null,
                     OclCypherPlan.PredicateMode.NORMAL);
             return OclCypherQueryModel.navigationAggregation(
                     matchPlan,
-                    planExpression(aggregation.projection()),
+                    planExpressionInternal(aggregation.projection()),
                     aggregation.operationName(),
                     aggregation.type());
         }
         if (expression instanceof OclIr.NavigationUniquenessCheck uniquenessCheck) {
             OclCypherPlan.NavigationMatchPlan matchPlan = createNavigationMatchPlan(
-                    requireNavigationPlan(planExpression(uniquenessCheck.navigation())),
+                    requireNavigationPlan(planExpressionInternal(uniquenessCheck.navigation())),
                     uniquenessCheck.iteratorName(),
-                    uniquenessCheck.predicate() != null ? planExpression(uniquenessCheck.predicate()) : null,
+                    uniquenessCheck.predicate() != null ? planExpressionInternal(uniquenessCheck.predicate()) : null,
                     OclCypherPlan.PredicateMode.NORMAL);
             return OclCypherQueryModel.navigationUniqueness(
                     matchPlan,
-                    planExpression(uniquenessCheck.projection()),
+                    planExpressionInternal(uniquenessCheck.projection()),
                     uniquenessCheck.type());
         }
         throw new OclCodedUnsupportedOperationException(
@@ -163,6 +162,11 @@ public class OclCypherPlanner {
             return navigationAccessPlan;
         }
         throw new IllegalStateException("Expected navigation access plan but got " + expressionPlan.getClass().getSimpleName());
+    }
+
+    /** Named production witness retained for the constructor/refinement evidence matrices. */
+    private OclCypherPlan.ExpressionPlan planOptimizedExpression(OclIr.Expression expression) {
+        return planExpressionInternal(expression);
     }
 
     private OclCypherPlan.NavigationMatchPlan createNavigationMatchPlan(OclCypherPlan.NavigationAccessPlan navigationAccessPlan,

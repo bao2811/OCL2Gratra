@@ -12,6 +12,7 @@ import org.uet.dse.neo4j.manager.WorkLogManager;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
 import org.uet.dse.neo4j.repo.Neo4jObjectRepository;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4j.sync.helper.QualifierValueCodec;
 import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
 
@@ -168,19 +169,17 @@ public class ObjectPushService {
                                                     org.tzi.use.uml.mm.MAttribute attribute,
                                                     Object value, Map<String, Object> metadata) {
         boolean collection = (boolean) metadata.get("isCollection");
-        Object storedValue = "Undefined";
-        if (value != null && !"Undefined".equals(value)) {
-            if (collection && value instanceof Map<?, ?> map) {
+        Object storedValue;
+        if (!collection) {
+            storedValue = CanonicalScalarValueCodec.encode(value, attribute.type());
+        } else if (value instanceof Map<?, ?> map) {
                 Object rawItems = map.get("items");
                 List<?> items = rawItems instanceof List<?> list ? list : List.of();
                 storedValue = items.isEmpty() ? "COLLECTION_EMPTY" : items.stream()
                         .map(item -> item == null ? "null" : item.toString())
                         .collect(Collectors.joining(" | "));
-            } else {
-                // Canonical scalar payloads are unquoted strings. The renderer
-                // applies the static OCL type when reading them back.
-                storedValue = value.toString();
-            }
+        } else {
+            storedValue = "Undefined";
         }
         String modelName = system.model().name();
         return Map.of(

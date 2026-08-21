@@ -108,7 +108,7 @@ $report = [ordered]@{
     }
     claim = [ordered]@{
         prototypeCorrectness = [string]$registry.claimPolicy.prototypeCorrectness
-        blockingObligations = @($blocking.id)
+        blockingObligations = @($blocking | ForEach-Object { [string]$_.id })
     }
     obligations = [ordered]@{
         total = @($registry.proofObligations).Count

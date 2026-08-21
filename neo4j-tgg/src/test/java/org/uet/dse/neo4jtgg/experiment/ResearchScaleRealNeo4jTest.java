@@ -249,10 +249,12 @@ class ResearchScaleRealNeo4jTest {
             timings.add(batches.executeRange(session, "employment-links", 1, persons, EMPLOYMENT_LOAD,
                     Map.of("employees", employeesPerCompany, "modelKey", modelKey,
                             "objectKeyPrefix", objectKeyPrefix,
+                            "associationName", "CompanyEmployee",
                             "associationKey", CanonicalGraphEncoding.associationKey(modelName, "CompanyEmployee"))));
             timings.add(batches.executeOnce(session, "manager-links", companies, MANAGER_LOAD,
                     Map.of("companies", companies, "employees", employeesPerCompany,
                             "modelKey", modelKey, "objectKeyPrefix", objectKeyPrefix,
+                            "associationName", "CompanyManager",
                             "associationKey", CanonicalGraphEncoding.associationKey(modelName, "CompanyManager"))));
         }
         for (CanonicalBatchInsertExecutor.StageTiming timing : timings) {
@@ -271,6 +273,21 @@ class ResearchScaleRealNeo4jTest {
                     Map.of("modelKey", modelKey)).single().get("n").asLong();
             assertEquals(objects, actualObjects);
             assertEquals(links, actualLinks);
+            long malformedSlots = session.run("MATCH (v:AttributeValue {modelKey:$modelKey}) "
+                            + "WHERE v.slotKey IS NULL OR NOT v.value STARTS WITH 'v1|' RETURN count(v) AS n",
+                    Map.of("modelKey", modelKey)).single().get("n").asLong();
+            assertEquals(0L, malformedSlots, "Scale fixture must use canonical typed scalar slots");
+            var linkShape = session.run("MATCH ()-[r:LinkAssociateWith {modelKey:$modelKey}]->() "
+                            + "RETURN count(r) AS links, count(DISTINCT r.linkKey) AS uniqueKeys, "
+                            + "count(CASE WHEN r.linkKey IS NULL OR r.associationKey IS NULL "
+                            + "OR r.sourceRole IS NULL OR r.targetRole IS NULL "
+                            + "OR r.sourceQualifiers IS NULL OR r.targetQualifiers IS NULL "
+                            + "THEN 1 END) AS malformed",
+                    Map.of("modelKey", modelKey)).single();
+            assertEquals(actualLinks, linkShape.get("uniqueKeys").asLong(),
+                    "Scale fixture linkKey values must be injective");
+            assertEquals(0L, linkShape.get("malformed").asLong(),
+                    "Scale fixture must use canonical binary-link metadata");
         }
     }
 
@@ -493,7 +510,8 @@ class ResearchScaleRealNeo4jTest {
                 objectKey:$objectKeyPrefix+'scale_company_'+toString(c), modelKey:$modelKey,
                 runtimeClassKey:$classKey})-[:ObjectInstanceOf]->(cls)
             CREATE (v:AttributeValue {name:'scale_company_'+toString(c)+'_name', modelKey:$modelKey,
-                attributeKey:$attributeKey, type:'String', value:"'Company_"+toString(c)+"'",
+                attributeKey:$attributeKey, slotKey:o.objectKey+'::slot::'+$attributeKey,
+                type:'String', value:'v1|S|Company_'+toString(c),
                 isCollection:false, collectionType:'None', isNestedCollection:false})
             CREATE (o)-[:ObjectHasAttribute]->(v)-[:InstanceOf]->(def)
             """;
@@ -508,13 +526,16 @@ class ResearchScaleRealNeo4jTest {
                 objectKey:$objectKeyPrefix+'scale_person_'+toString(p), modelKey:$modelKey,
                 runtimeClassKey:$classKey})-[:ObjectInstanceOf]->(cls)
             CREATE (age:AttributeValue {name:'scale_person_'+toString(p)+'_age', modelKey:$modelKey,
-                attributeKey:$ageKey, type:'Integer', value:"'"+toString(18+(p%45))+"'",
+                attributeKey:$ageKey, slotKey:o.objectKey+'::slot::'+$ageKey,
+                type:'Integer', value:'v1|I|'+toString(18+(p%45)),
                 isCollection:false, collectionType:'None', isNestedCollection:false})
             CREATE (firstName:AttributeValue {name:'scale_person_'+toString(p)+'_firstName', modelKey:$modelKey,
-                attributeKey:$firstNameKey, type:'String', value:"'P"+toString(p)+"'",
+                attributeKey:$firstNameKey, slotKey:o.objectKey+'::slot::'+$firstNameKey,
+                type:'String', value:'v1|S|P'+toString(p),
                 isCollection:false, collectionType:'None', isNestedCollection:false})
             CREATE (salary:AttributeValue {name:'scale_person_'+toString(p)+'_salary', modelKey:$modelKey,
-                attributeKey:$salaryKey, type:'Integer', value:"'"+toString(2000+((p*137)%7000))+"'",
+                attributeKey:$salaryKey, slotKey:o.objectKey+'::slot::'+$salaryKey,
+                type:'Integer', value:'v1|I|'+toString(2000+((p*137)%7000)),
                 isCollection:false, collectionType:'None', isNestedCollection:false})
             CREATE (o)-[:ObjectHasAttribute]->(age)-[:InstanceOf]->(ageDef)
             CREATE (o)-[:ObjectHasAttribute]->(firstName)-[:InstanceOf]->(nameDef)
@@ -526,7 +547,11 @@ class ResearchScaleRealNeo4jTest {
             WITH p, toInteger((p-1)/$employees)+1 AS c
             MATCH (company:Object {objectKey:$objectKeyPrefix+'scale_company_'+toString(c)})
             MATCH (person:Object {objectKey:$objectKeyPrefix+'scale_person_'+toString(p)})
-            CREATE (company)-[:LinkAssociateWith {name:'CompanyEmployee', associationKey:$associationKey,
+            CREATE (company)-[:LinkAssociateWith {name:$associationName, associationKey:$associationKey,
+                linkKey:$modelKey+'::link::association='+toString(size($associationName))+':'+$associationName+
+                    '::source='+toString(size(company.use_id))+':'+company.use_id+
+                    '::target='+toString(size(person.use_id))+':'+person.use_id+
+                    '::sourceQualifiers=0:::targetQualifiers=0:',
                 modelKey:$modelKey, sourceRole:'employer', targetRole:'employee', isTernary:false,
                 sourceQualifiers:[], targetQualifiers:[]}]->(person)
             """;
@@ -536,7 +561,11 @@ class ResearchScaleRealNeo4jTest {
             WITH c, ((c-1)*$employees)+1 AS p
             MATCH (company:Object {objectKey:$objectKeyPrefix+'scale_company_'+toString(c)})
             MATCH (person:Object {objectKey:$objectKeyPrefix+'scale_person_'+toString(p)})
-            CREATE (company)-[:LinkAssociateWith {name:'CompanyManager', associationKey:$associationKey,
+            CREATE (company)-[:LinkAssociateWith {name:$associationName, associationKey:$associationKey,
+                linkKey:$modelKey+'::link::association='+toString(size($associationName))+':'+$associationName+
+                    '::source='+toString(size(company.use_id))+':'+company.use_id+
+                    '::target='+toString(size(person.use_id))+':'+person.use_id+
+                    '::sourceQualifiers=0:::targetQualifiers=0:',
                 modelKey:$modelKey, sourceRole:'managedCompany', targetRole:'manager', isTernary:false,
                 sourceQualifiers:[], targetQualifiers:[]}]->(person)
             """;

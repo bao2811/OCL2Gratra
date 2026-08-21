@@ -49,48 +49,90 @@ class OclIrPlanPayloadRefinementTest {
     void payloadAndLoweringMutationsAreRejected() {
         List<Witness> witnesses = witnesses();
 
-        OclIr.Variable variable = find(witnesses, OclIr.Variable.class);
-        OclCypherPlan.VariablePlan variablePlan = (OclCypherPlan.VariablePlan) planner.planExpression(variable);
+        Witness variableWitness = findWitness(witnesses, OclIr.Variable.class);
+        OclIr.Variable variable = find(variableWitness.source(), OclIr.Variable.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+        OclCypherPlan.VariablePlan variablePlan =
+                (OclCypherPlan.VariablePlan) find(variableWitness.target(), OclCypherPlan.VariablePlan.class,
+                        Collections.newSetFromMap(new IdentityHashMap<>()));
         reject(variable, new OclCypherPlan.VariablePlan(variablePlan.name() + "_mut", variablePlan.type()));
 
-        OclIr.Literal literal = find(witnesses, OclIr.Literal.class);
-        OclCypherPlan.LiteralPlan literalPlan = (OclCypherPlan.LiteralPlan) planner.planExpression(literal);
+        Witness letWitness = findWitness(witnesses, OclIr.Let.class);
+        OclIr.Let let = find(letWitness.source(), OclIr.Let.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+        OclCypherPlan.LetPlan letPlan = (OclCypherPlan.LetPlan) find(
+                letWitness.target(), OclCypherPlan.LetPlan.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+        reject(let, new OclCypherPlan.LetPlan(
+                letPlan.variableName(), letPlan.value(), OclTypeBinding.scalar("String"),
+                letPlan.body(), letPlan.type()));
+
+        Witness literalWitness = findWitness(witnesses, OclIr.Literal.class);
+        OclIr.Literal literal = find(literalWitness.source(), OclIr.Literal.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+        OclCypherPlan.LiteralPlan literalPlan =
+                (OclCypherPlan.LiteralPlan) find(literalWitness.target(), OclCypherPlan.LiteralPlan.class,
+                        Collections.newSetFromMap(new IdentityHashMap<>()));
         reject(literal, new OclCypherPlan.LiteralPlan("mutated", literalPlan.type()));
 
-        OclIr.AttributeAccess attribute = find(witnesses, OclIr.AttributeAccess.class);
+        Witness attributeWitness = findWitness(witnesses, OclIr.AttributeAccess.class);
+        OclIr.AttributeAccess attribute = find(attributeWitness.source(), OclIr.AttributeAccess.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
         OclCypherPlan.AttributeAccessPlan attributePlan =
-                (OclCypherPlan.AttributeAccessPlan) planner.planExpression(attribute);
+                (OclCypherPlan.AttributeAccessPlan) find(
+                        attributeWitness.target(), OclCypherPlan.AttributeAccessPlan.class,
+                        Collections.newSetFromMap(new IdentityHashMap<>()));
         reject(attribute, new OclCypherPlan.AttributeAccessPlan(
                 attributePlan.source(), attributePlan.attributeName() + "_mut",
                 attributePlan.attributeType(), attributePlan.type(), attributePlan.attribute()));
 
-        OclIr.IteratorOperation iterator = find(witnesses, OclIr.IteratorOperation.class);
+        Witness iteratorWitness = findWitness(witnesses, OclIr.IteratorOperation.class);
+        OclIr.IteratorOperation iterator = find(iteratorWitness.source(), OclIr.IteratorOperation.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
         OclCypherPlan.IteratorOperationPlan iteratorPlan =
-                (OclCypherPlan.IteratorOperationPlan) planner.planExpression(iterator);
+                (OclCypherPlan.IteratorOperationPlan) find(
+                        iteratorWitness.target(), OclCypherPlan.IteratorOperationPlan.class,
+                        Collections.newSetFromMap(new IdentityHashMap<>()));
         reject(iterator, new OclCypherPlan.IteratorOperationPlan(
                 iteratorPlan.source(), iteratorPlan.sourceCollectionType(),
                 iteratorPlan.operationName(), iteratorPlan.iteratorName() + "_mut",
+                iteratorPlan.iteratorVariableType(),
                 iteratorPlan.body(), iteratorPlan.type()));
         reject(iterator, new OclCypherPlan.IteratorOperationPlan(
                 iteratorPlan.source(), OclTypeBinding.scalar("Integer"),
                 iteratorPlan.operationName(), iteratorPlan.iteratorName(),
+                iteratorPlan.iteratorVariableType(),
                 iteratorPlan.body(), iteratorPlan.type()));
+        reject(iterator, new OclCypherPlan.IteratorOperationPlan(
+                iteratorPlan.source(), iteratorPlan.sourceCollectionType(),
+                iteratorPlan.operationName(), iteratorPlan.iteratorName(),
+                OclTypeBinding.scalar("String"), iteratorPlan.body(), iteratorPlan.type()));
 
-        OclIr.NavigationPredicateCheck predicate = find(witnesses, OclIr.NavigationPredicateCheck.class);
+        Witness predicateWitness = findWitness(witnesses, OclIr.NavigationPredicateCheck.class);
+        OclIr.NavigationPredicateCheck predicate = find(
+                predicateWitness.source(), OclIr.NavigationPredicateCheck.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
         OclIr.NavigationPredicateKind mutatedKind = predicate.kind() == OclIr.NavigationPredicateKind.EXISTS
                 ? OclIr.NavigationPredicateKind.NOT_EXISTS : OclIr.NavigationPredicateKind.EXISTS;
         OclIr.NavigationPredicateCheck predicateMutant = new OclIr.NavigationPredicateCheck(
                 predicate.navigation(), predicate.iteratorName(), predicate.predicate(), mutatedKind, predicate.type());
-        reject(predicateMutant, planner.planExpression(predicate));
+        reject(predicateMutant, predicateWitness.target());
 
-        OclIr.NavigationCountComparison count = find(witnesses, OclIr.NavigationCountComparison.class);
+        Witness countWitness = findWitness(witnesses, OclIr.NavigationCountComparison.class);
+        OclIr.NavigationCountComparison count = find(
+                countWitness.source(), OclIr.NavigationCountComparison.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
         OclIr.NavigationCountComparison countMutant = new OclIr.NavigationCountComparison(
                 count.navigation(), count.iteratorName(), count.predicate(), "=", 0L, count.type());
-        reject(countMutant, planner.planExpression(count));
+        reject(countMutant, countWitness.target());
 
-        OclIr.NavigationAggregation aggregation = find(witnesses, OclIr.NavigationAggregation.class);
+        Witness aggregationWitness = findWitness(witnesses, OclIr.NavigationAggregation.class);
+        OclIr.NavigationAggregation aggregation = find(
+                aggregationWitness.source(), OclIr.NavigationAggregation.class,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
         OclCypherPlan.NavigationAggregationPlan aggregationPlan =
-                (OclCypherPlan.NavigationAggregationPlan) planner.planExpression(aggregation);
+                find(aggregationWitness.target(), OclCypherPlan.NavigationAggregationPlan.class,
+                        Collections.newSetFromMap(new IdentityHashMap<>()));
         reject(aggregation, new OclCypherPlan.NavigationAggregationPlan(
                 aggregationPlan.match(), aggregationPlan.projection(),
                 aggregationPlan.operationName() + "_mut", aggregationPlan.type()));
@@ -115,10 +157,8 @@ class OclIrPlanPayloadRefinementTest {
         result.add(compileGeneral(
                 "context Company inv UniqueNames: self.employee->isUnique(p | p.name)"));
 
-        OclTypeBinding bool = OclTypeBinding.scalar("Boolean");
-        OclIr.Let let = new OclIr.Let("manualPayload",
-                new OclIr.Literal(true, bool), new OclIr.Variable("manualPayload", bool), bool);
-        result.add(new Witness(let, planner.planExpression(let)));
+        result.add(compileGeneral(
+                "context Person inv RetainedLet: let measuredAge = self.age in measuredAge >= 18"));
         return List.copyOf(result);
     }
 
@@ -153,6 +193,12 @@ class OclIrPlanPayloadRefinementTest {
         return witnesses.stream().map(Witness::source).map(value -> find(value, type,
                         Collections.newSetFromMap(new IdentityHashMap<>())))
                 .filter(java.util.Objects::nonNull).findFirst().orElseThrow();
+    }
+
+    private static Witness findWitness(List<Witness> witnesses, Class<?> type) {
+        return witnesses.stream().filter(witness -> find(witness.source(), type,
+                        Collections.newSetFromMap(new IdentityHashMap<>())) != null)
+                .findFirst().orElseThrow();
     }
 
     private static <T> T find(Object value, Class<T> type, Set<Object> seen) {

@@ -1,0 +1,11 @@
+id,area,status,rationale,next_action
+DEV-001,Complete OCL package declarations,NOT_IMPLEMENTED,Current compiler accepts class operation and attribute context rules only,Add package AST and namespace-aware binder
+DEV-002,Tuple literals and tuple types,NOT_IMPLEMENTED,No BoundOCL or Cypher representation exists,Design tuple type binding and backend encoding before admission
+DEV-003,OCL message expressions,NOT_IMPLEMENTED,Outside validation-query research scope,Keep parse error until an explicit profile is approved
+DEV-004,UnlimitedNatural literal star,NOT_IMPLEMENTED,No scalar encoding or proof rule exists,Define lexical context and Bound type semantics
+DEV-005,Escaped identifiers,NOT_IMPLEMENTED,Identifier policy is ASCII simple-name plus qualified path,Choose an OMG issue-resolved quoting policy
+DEV-006,Block comments,IMPLEMENTED_EXTENSION,Accepted by the plugin lexer for tooling compatibility,Keep outside conformance claim wording
+DEV-007,Typed let and iterator declarations,PARSED_NOT_ADMITTED,Surface AST retains annotations but OCL_val derives iterator types,Extend proof profile before admission
+DEV-008,Multiple iterator variables,PARSED_NOT_ADMITTED,Surface AST is broad but current binder/proof rules are single-variable,Add explicit multi-variable semantic rule
+DEV-009,Non-Set collection literals and ranges,PARSED_NOT_ADMITTED,Certified graph semantics currently freezes finite Set behavior,Extend BoundOCL and proof semantics first
+DEV-010,@pre and iterate,PARSED_NOT_ADMITTED,Required syntax is retained but backend snapshot/accumulator semantics are absent,Add semantic IR and proof cases before admission

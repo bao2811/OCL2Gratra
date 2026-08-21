@@ -18,9 +18,20 @@ import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclCypherPlannerTest {
+    @Test
+    void refusesSemanticInvariantThatDidNotPassThroughTheOptimizer() {
+        OclIr.InvariantQuery semantic = new OclIr.InvariantQuery(
+                "Person", "Unnormalized", new OclIr.Literal(
+                        true, org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Boolean")));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new OclCypherPlanner().planInvariant(semantic));
+    }
+
     @Test
     void plansOptimizedNavigationNodesIntoDedicatedPlanTypes() {
         String spec = """

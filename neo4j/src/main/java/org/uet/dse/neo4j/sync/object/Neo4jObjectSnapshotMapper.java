@@ -3,6 +3,7 @@ package org.uet.dse.neo4j.sync.object;
 import org.neo4j.driver.Record;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,9 +45,10 @@ public class Neo4jObjectSnapshotMapper {
       else if (!isObjRef && isColl && leafVal != null && !leafVal.toString().equals("NESTED_COLLECTION")) {
         attrStructureHelper.get(attrName).put(pathIdx, decodePrimitiveCollection(leafVal.toString()));
       }
-      else if (!isObjRef && !isColl && leafVal != null && !leafVal.toString().equals("NESTED_COLLECTION") && !leafVal.toString().equals("Undefined")) {
-
-        os.primitiveValues.putIfAbsent(attrName, leafVal);
+      else if (!isObjRef && !isColl && leafVal != null
+          && !leafVal.toString().equals("NESTED_COLLECTION")) {
+        Object decoded = decodeScalarValue(leafVal, (String) item.get("type"));
+        if (decoded != null) os.primitiveValues.putIfAbsent(attrName, decoded);
       }
     }
 
@@ -108,6 +110,18 @@ public class Neo4jObjectSnapshotMapper {
         .map(s -> s.trim().equals("null") ? null : convertStringToTypedObject(s.trim()))
         .collect(Collectors.toList());
   }
+
+  static Object decodeScalarValue(Object raw, String typeName) {
+    if (raw == null || "Undefined".equals(raw)) return null;
+    if (raw instanceof String payload && payload.startsWith("v1|")) {
+      if (typeName == null || typeName.isBlank()) {
+        throw new IllegalArgumentException("A typed canonical scalar payload is missing val.type");
+      }
+      return CanonicalScalarValueCodec.decode(payload, typeName);
+    }
+    return raw;
+  }
+
   private static Object convertStringToTypedObject(String s) {
     try {
       if (s.contains(".")) return Double.parseDouble(s);

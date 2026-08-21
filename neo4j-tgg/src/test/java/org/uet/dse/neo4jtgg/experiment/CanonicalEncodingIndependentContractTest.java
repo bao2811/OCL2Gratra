@@ -82,6 +82,16 @@ class CanonicalEncodingIndependentContractTest {
     }
 
     @Test
+    void schemaMakesCanonicalClassAndAttributeKeysGloballyUnique() {
+        assertTrue(CanonicalGraphSchema.statements().contains(
+                "CREATE CONSTRAINT canonical_class_key IF NOT EXISTS "
+                        + "FOR (n:UmlClass) REQUIRE n.classKey IS UNIQUE"));
+        assertTrue(CanonicalGraphSchema.statements().contains(
+                "CREATE CONSTRAINT canonical_attribute_key IF NOT EXISTS "
+                        + "FOR (n:Attribute) REQUIRE n.attributeKey IS UNIQUE"));
+    }
+
+    @Test
     void batchObjectWriterReplacesStaleTypesAndMaterializesEveryConformingClassKey() {
         String batch = Neo4jObjectQuery.upsertObjectNodesBatchInModel("Employee");
 
@@ -98,7 +108,7 @@ class CanonicalEncodingIndependentContractTest {
 
         String query = Neo4jObjectQuery.upsertObjectNodeInModel("Person");
         assertTrue(query.contains("(obj)-[:ObjectInstanceOf]->(cls)"));
-        assertTrue(query.contains("(cls)-[:InstanceOf]->(meta)"));
+        assertTrue(query.contains("(cls {modelKey:$modelName})-[:InstanceOf]->(meta)"));
         assertFalse(query.contains("(obj)-[:InstanceOf]->(cls)"));
     }
 

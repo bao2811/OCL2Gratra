@@ -34,8 +34,11 @@ final class GeneratedCypherContractVerifier {
         assertFalse(cypher.matches("(?s).*<[A-Za-z_][A-Za-z0-9_]*>.*"), "Unexpanded placeholder");
 
         OclCypherPlan.InvariantPlan invariant = result.queryPlan();
-        assertTrue(cypher.contains("(cls:UmlClass {classKey: $"),
-                "Context must use the canonical UmlClass label and exact classKey lookup");
+        assertTrue(Pattern.compile("(?s)MATCH \\(self:Object \\{modelKey: \\$[^}]+}\\)"
+                        + "-\\[:ObjectInstanceOf]->\\(cls:UmlClass "
+                        + "\\{modelKey: \\$[^,}]+, classKey: \\$[^}]+}\\)")
+                        .matcher(cypher).find(),
+                "Context must use model-scoped Object/UmlClass nodes and exact classKey lookup");
         assertTrue(hasCanonicalParameter(parameters, "::class::" + invariant.contextClassName()),
                 "Missing canonical context classKey parameter for " + invariant.contextClassName());
 
@@ -100,20 +103,24 @@ final class GeneratedCypherContractVerifier {
             if ("allInstances".equalsIgnoreCase(call.methodName())) {
                 assertTrue(hasCanonicalParameter(parameters, "::class::" + call.source().type().typeName()),
                         "Missing canonical allInstances classKey parameter");
-                assertTrue(Pattern.compile("(?s)COLLECT \\{ MATCH \\(obj\\d+\\)-\\[:ObjectInstanceOf\\]->"
-                                + "\\(cls\\d+:UmlClass \\{classKey: \\$[^}]+}\\) RETURN DISTINCT obj\\d+ \\}")
+                assertTrue(Pattern.compile("(?s)COLLECT \\{ MATCH \\(obj\\d+:Object "
+                                + "\\{modelKey: \\$[^}]+}\\)-\\[:ObjectInstanceOf\\]->"
+                                + "\\(cls\\d+:UmlClass \\{modelKey: \\$[^,}]+, classKey: \\$[^}]+}\\) "
+                                + "RETURN DISTINCT obj\\d+ \\}")
                                 .matcher(cypher).find(),
-                        "allInstances must use canonical UmlClass/ObjectInstanceOf/classKey lookup with local DISTINCT");
+                        "allInstances must use model-scoped canonical Object/UmlClass lookup with local DISTINCT");
             }
             if ("oclIsKindOf".equalsIgnoreCase(call.methodName())
                     || "oclAsType".equalsIgnoreCase(call.methodName())) {
                 assertTrue(Pattern.compile("(?s)(?:EXISTS \\{|COLLECT \\{) WITH .*? AS "
                                 + "(?:typeRecv|castRecv)\\d+Key WHERE (?:typeRecv|castRecv)\\d+Key IS NOT NULL "
-                                + "MATCH \\((?:typeRecv|castRecv)\\d+:Object \\{objectKey: (?:typeRecv|castRecv)\\d+Key}\\)"
+                                + "MATCH \\((?:typeRecv|castRecv)\\d+:Object \\{modelKey: \\$[^,}]+, "
+                                + "objectKey: (?:typeRecv|castRecv)\\d+Key}\\)"
                                 + "-\\[:ObjectInstanceOf\\]->"
-                                + "\\((?:typeCls|castCls)\\d+:UmlClass \\{classKey: \\$[^}]+}\\)")
+                                + "\\((?:typeCls|castCls)\\d+:UmlClass \\{modelKey: \\$[^,}]+, "
+                                + "classKey: \\$[^}]+}\\)")
                                 .matcher(cypher).find(),
-                        "Type accessor must guard canonical receiver identity before exact UmlClass/ObjectInstanceOf/classKey lookup");
+                        "Type accessor must guard and model-scope canonical receiver/class identity");
                 assertTrue(hasCanonicalParameter(parameters,
                                 "::class::" + call.arguments().get(0).type().typeName()),
                         "Missing canonical type-operation classKey parameter");

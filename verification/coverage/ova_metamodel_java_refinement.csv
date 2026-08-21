@@ -1,0 +1,22 @@
+metamodel_classifier;java_target;status;refinement_condition
+ValidationModule;List<OclIr.InvariantQuery>;CERTIFIED;module order is observationally irrelevant and every invariant refines
+Invariant;OclIr.InvariantQuery;CERTIFIED;context name invariant name stage producer version and Boolean predicate agree
+TypeDescriptor;OclTypeBinding;CERTIFIED;kind type name finite-set collection kind and element type agree
+VariableDeclaration;String+OclTypeBinding;CERTIFIED;binder name and declared type are retained by Let or IteratorOperation
+VariableExpression;OclIr.Variable;CERTIFIED;resolved visible name and type agree
+LiteralExpression;OclIr.Literal;CERTIFIED;typed literal value agrees
+SetExpression;OclIr.SetLiteral;CERTIFIED;children and finite-set result type agree
+UnaryExpression;OclIr.Not;CERTIFIED;the only certified unary operator is NOT
+BinaryExpression;OclIr.Binary;CERTIFIED;operator children and result type agree
+IfExpression;OclIr.If;CERTIFIED;condition branches and result type agree
+LetExpression;OclIr.Let;CERTIFIED;binder value body declared type and result type agree capture-free
+AttributeReference;MAttribute+Type;CERTIFIED;resolved defining attribute and declared scalar type agree
+AttributeAccessExpression;OclIr.AttributeAccess;CERTIFIED;source resolved attribute metadata and result type agree
+NavigationReference;OclMetamodelIndex.NavigationInfo;CERTIFIED;binary association roles direction target type and qualifier signature agree
+NavigationAccessExpression;OclIr.NavigationAccess;CERTIFIED;source navigation metadata ordered qualifiers and result kind agree
+CallExpression;OclIr.MethodCall|OclIr.CollectionOperation;CERTIFIED;CallKind selects the matching Java record and certified operation allowlist
+IteratorExpression;OclIr.IteratorOperation;CERTIFIED;iterator kind source type binder body and result type agree
+NavigationPredicateExpression;OclIr.NavigationPredicateCheck;CERTIFIED;optimized stage kind optional predicate and navigation agree
+NavigationCountExpression;OclIr.NavigationCountComparison;CERTIFIED;optimized stage comparison literal predicate and navigation agree
+NavigationUniquenessExpression;OclIr.NavigationUniquenessCheck;CERTIFIED;optimized stage predicate projection and navigation agree
+-;OclIr.NavigationAggregation;EXCLUDED;general backend constructor has no classifier in OCL_VAL_FINITE_SET_V1

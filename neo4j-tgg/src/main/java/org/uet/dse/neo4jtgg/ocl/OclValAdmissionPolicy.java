@@ -3,12 +3,16 @@ package org.uet.dse.neo4jtgg.ocl;
 import org.uet.dse.neo4j.oclite.ast.ASTBinary;
 import org.uet.dse.neo4j.oclite.ast.ASTBooleanLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTCollectionOp;
+import org.uet.dse.neo4j.oclite.ast.ASTCollectionLiteral;
+import org.uet.dse.neo4j.oclite.ast.ASTCollectionRange;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTEnumLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTExpression;
 import org.uet.dse.neo4j.oclite.ast.ASTIf;
+import org.uet.dse.neo4j.oclite.ast.ASTInvalidLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTIntegerLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTIterator;
+import org.uet.dse.neo4j.oclite.ast.ASTIterate;
 import org.uet.dse.neo4j.oclite.ast.ASTLet;
 import org.uet.dse.neo4j.oclite.ast.ASTMethodCall;
 import org.uet.dse.neo4j.oclite.ast.ASTNot;
@@ -18,6 +22,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTRealLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTSetLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTStringLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTVar;
+import org.uet.dse.neo4j.oclite.ast.ASTUnary;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
@@ -65,6 +70,19 @@ public final class OclValAdmissionPolicy {
             setLiteral.elements.forEach(OclValAdmissionPolicy::verifyExpression);
             return;
         }
+        if (expression instanceof ASTCollectionLiteral collectionLiteral) {
+            reject("collection literal kind `" + collectionLiteral.kind
+                    + "`; OCL_val currently admits finite Set literals only");
+        }
+        if (expression instanceof ASTCollectionRange) {
+            reject("collection literal range");
+        }
+        if (expression instanceof ASTInvalidLiteral) {
+            reject("invalid literal");
+        }
+        if (expression instanceof ASTUnary unary) {
+            reject("unary operator `" + unary.operator + "`");
+        }
         if (expression instanceof ASTNot not) {
             verifyExpression(not.expression);
             return;
@@ -86,15 +104,25 @@ public final class OclValAdmissionPolicy {
             return;
         }
         if (expression instanceof ASTProperty property) {
+            if (property.atPre) {
+                reject("property call `" + property.name + "@pre`");
+            }
             verifyExpression(property.source);
             property.qualifiers.forEach(OclValAdmissionPolicy::verifyExpression);
             return;
         }
         if (expression instanceof ASTIterator iterator) {
             requireAdmitted("iterator", iterator.operation, ITERATORS);
+            if (iterator.iteratorVariables.size() != 1) {
+                reject("iterator `" + iterator.operation + "` with "
+                        + iterator.iteratorVariables.size() + " variables");
+            }
             verifyExpression(iterator.source);
             verifyExpression(iterator.body);
             return;
+        }
+        if (expression instanceof ASTIterate) {
+            reject("iterate expression");
         }
         if (expression instanceof ASTCollectionOp collectionOperation) {
             requireAdmitted("collection operation", collectionOperation.opName, COLLECTION_OPERATIONS);
@@ -103,6 +131,9 @@ public final class OclValAdmissionPolicy {
             return;
         }
         if (expression instanceof ASTMethodCall methodCall) {
+            if (methodCall.atPre) {
+                reject("operation call `" + methodCall.methodName + "@pre`");
+            }
             if ("oclIsTypeOf".equalsIgnoreCase(methodCall.methodName)) {
                 throw new OclCodedUnsupportedOperationException(
                         OclDiagnosticCode.OCL_IS_TYPE_OF_OUTSIDE_CERTIFIED_FRAGMENT,

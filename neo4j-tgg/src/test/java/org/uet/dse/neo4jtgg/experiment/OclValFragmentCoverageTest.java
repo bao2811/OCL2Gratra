@@ -142,6 +142,26 @@ class OclValFragmentCoverageTest {
     }
 
     @Test
+    void typedLetAndTypedIteratorTraverseTheCertifiedPipeline() {
+        List<String> cases = List.of(
+                "context Person inv TypedLet: let threshold : Real = self.age in threshold >= 0.0",
+                "context Person inv TypedSetLet: let xs : Set(Real) = Set{self.age, 17} in xs->includes(17.0)",
+                "context Employee inv TypedClassLet: let p : Person = self in p.age >= 0",
+                "context Person inv TypedIterator: Employee.allInstances()->forAll(e : Person | e.age >= 0)",
+                "context Person inv TypedNumericIterator: Set{self.age, 17}->forAll(x : Real | x >= 0.0)");
+
+        for (String source : cases) {
+            InstrumentedCompilationResult compiled = assertDoesNotThrow(
+                    () -> compiler.compileInvariantInstrumented(source), source);
+            PipelineRefinementVerifier.verify(compiled);
+            GeneratedCypherContractVerifier.verify(compiled, compiled.cypher(), compiled.parameters());
+            if (source.contains("Real")) {
+                assertTrue(compiled.cypher().contains("toFloat("), compiled.cypher());
+            }
+        }
+    }
+
+    @Test
     void nativeUseAndBoundTreeAgreeOnToOneTypeBeforeCollectionView() throws Exception {
         MClass person = fixtureModel.getClass("Person");
         Symtable variables = new Symtable();

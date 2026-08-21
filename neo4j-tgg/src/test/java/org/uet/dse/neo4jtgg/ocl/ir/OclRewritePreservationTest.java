@@ -63,7 +63,8 @@ class OclRewritePreservationTest {
                 "context Family inv AdultChildren: self.children->forAll(c | c.age >= 18)");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(c)"), result.getCypher());
+        assertTrue(result.getCypher().contains("NOT EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"), result.getCypher());
         assertTrue(result.getCypher().contains("NOT coalesce("), result.getCypher());
         assertTrue(result.getCypher().contains("AND (NOT coalesce("), result.getCypher());
     }
@@ -180,7 +181,8 @@ class OclRewritePreservationTest {
                 "context Family inv HasAdultBart: self.children->exists(c | c.age >= 18 and c.name = 'Bart')");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("EXISTS { MATCH (self)-[r]->(c)"), result.getCypher());
+        assertTrue(result.getCypher().contains("EXISTS {")
+                && result.getCypher().contains(")-[r]->(c:Object {modelKey:"), result.getCypher());
         assertTrue(result.getCypher().contains("AND coalesce("), result.getCypher());
     }
 

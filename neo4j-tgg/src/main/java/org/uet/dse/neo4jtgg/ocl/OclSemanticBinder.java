@@ -13,12 +13,16 @@ import org.tzi.use.uml.ocl.type.Type;
 import org.uet.dse.neo4j.oclite.ast.ASTBinary;
 import org.uet.dse.neo4j.oclite.ast.ASTBooleanLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTCollectionOp;
+import org.uet.dse.neo4j.oclite.ast.ASTCollectionLiteral;
+import org.uet.dse.neo4j.oclite.ast.ASTCollectionRange;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTEnumLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTExpression;
 import org.uet.dse.neo4j.oclite.ast.ASTIf;
+import org.uet.dse.neo4j.oclite.ast.ASTInvalidLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTIntegerLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTIterator;
+import org.uet.dse.neo4j.oclite.ast.ASTIterate;
 import org.uet.dse.neo4j.oclite.ast.ASTLet;
 import org.uet.dse.neo4j.oclite.ast.ASTMethodCall;
 import org.uet.dse.neo4j.oclite.ast.ASTNot;
@@ -29,6 +33,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTRealLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTStringLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTSetLiteral;
 import org.uet.dse.neo4j.oclite.ast.ASTVar;
+import org.uet.dse.neo4j.oclite.ast.ASTUnary;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
@@ -91,6 +96,21 @@ public class OclSemanticBinder {
     }
 
     public BoundExpression bind(ASTExpression expression, Scope scope) {
+        if (expression instanceof ASTInvalidLiteral) {
+            throw unsupportedSurfaceConstruct("invalid literal");
+        }
+        if (expression instanceof ASTUnary unary) {
+            throw unsupportedSurfaceConstruct("unary operator `" + unary.operator + "`");
+        }
+        if (expression instanceof ASTCollectionLiteral collectionLiteral) {
+            throw unsupportedSurfaceConstruct("collection literal kind `" + collectionLiteral.kind + "`");
+        }
+        if (expression instanceof ASTCollectionRange) {
+            throw unsupportedSurfaceConstruct("collection literal range");
+        }
+        if (expression instanceof ASTIterate) {
+            throw unsupportedSurfaceConstruct("iterate expression");
+        }
         if (expression instanceof ASTVar var) {
             OclTypeBinding variableType = scope.lookup(var.name);
             if (variableType != null) {
@@ -149,10 +169,18 @@ public class OclSemanticBinder {
 
         if (expression instanceof ASTLet letExpression) {
             BoundExpression value = bind(letExpression.value, scope);
-            scope.enter(letExpression.variableName, value.type());
+            OclTypeBinding variableType = resolveOptionalDeclaredType(
+                    letExpression.variableTypeName, value.type(), "let variable `" + letExpression.variableName + "`");
+            if (!conformsTo(value.type(), variableType)) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.LET_TYPE_MISMATCH,
+                        "Let type mismatch for `" + letExpression.variableName + "`: initializer has "
+                                + describeType(value.type()) + " but declared type is " + describeType(variableType));
+            }
+            scope.enter(letExpression.variableName, variableType);
             BoundExpression body = bind(letExpression.body, scope);
             scope.exit();
-            return new BoundLet(letExpression, value, body, body.type());
+            return new BoundLet(letExpression, value, variableType, body, body.type());
         }
 
         if (expression instanceof ASTBinary binary) {
@@ -162,8 +190,17 @@ public class OclSemanticBinder {
         }
 
         if (expression instanceof ASTProperty property) {
+            if (property.atPre) {
+                throw unsupportedSurfaceConstruct("property call `" + property.name + "@pre`");
+            }
             BoundExpression source = bind(property.source, scope);
             if (source.type().isCollection()) {
+                if (certifiedFiniteSetSemantics) {
+                    throw new OclCodedUnsupportedOperationException(
+                            OclDiagnosticCode.OCL_VAL_EXCLUDED_CONSTRUCT,
+                            "Implicit collection property projection `collection."
+                                    + property.name + "` is outside OCL_val; use an explicit collect iterator.");
+                }
                 return bindCollectionPropertyProjection(property, source, scope);
             }
             if (!source.type().isNode()) {
@@ -175,6 +212,9 @@ public class OclSemanticBinder {
         }
 
         if (expression instanceof ASTMethodCall methodCall) {
+            if (methodCall.atPre) {
+                throw unsupportedSurfaceConstruct("operation call `" + methodCall.methodName + "@pre`");
+            }
             BoundExpression source = bind(methodCall.source, scope);
             List<BoundExpression> arguments = bindArguments(methodCall.args, scope);
             return new BoundMethodCall(methodCall, source, arguments, inferMethodType(methodCall.methodName, source.type(), arguments));
@@ -189,6 +229,10 @@ public class OclSemanticBinder {
         }
 
         if (expression instanceof ASTIterator iterator) {
+            if (iterator.iteratorVariables.size() != 1) {
+                throw unsupportedSurfaceConstruct("iterator `" + iterator.operation + "` with "
+                        + iterator.iteratorVariables.size() + " variables");
+            }
             BoundExpression source = bind(iterator.source, scope);
             OclTypeBinding sourceCollectionType = collectionSourceType(source);
             if (!sourceCollectionType.isCollection()) {
@@ -196,11 +240,14 @@ public class OclSemanticBinder {
                         OclDiagnosticCode.INVALID_ITERATOR_SOURCE,
                         "Iterator source must be a collection: " + iterator.operation);
             }
-            validateIteratorType(iterator, sourceCollectionType.elementType());
-            scope.enter(iterator.iteratorName, sourceCollectionType.elementType());
+            OclTypeBinding iteratorVariableType = resolveOptionalDeclaredType(
+                    iterator.iteratorTypeName, sourceCollectionType.elementType(),
+                    "iterator variable `" + iterator.iteratorName + "`");
+            validateIteratorType(iterator, sourceCollectionType.elementType(), iteratorVariableType);
+            scope.enter(iterator.iteratorName, iteratorVariableType);
             BoundExpression body = bind(iterator.body, scope);
             scope.exit();
-            return new BoundIterator(iterator, source, sourceCollectionType, body,
+            return new BoundIterator(iterator, source, sourceCollectionType, iteratorVariableType, body,
                     inferIteratorType(iterator.operation, sourceCollectionType, body.type()));
         }
 
@@ -233,7 +280,7 @@ public class OclSemanticBinder {
         projectionScope.exit();
 
         ASTIterator collectAst = new ASTIterator(property.source, "collect", iteratorName, projectedPropertyAst);
-        BoundIterator collectBound = new BoundIterator(collectAst, source, source.type(), body,
+        BoundIterator collectBound = new BoundIterator(collectAst, source, source.type(), elementType, body,
                 inferIteratorType("collect", source.type(), body.type()));
         if (!body.type().isCollection()) {
             return collectBound;
@@ -515,6 +562,11 @@ public class OclSemanticBinder {
                     OclDiagnosticCode.INVALID_METHOD_RECEIVER,
                     "allInstances() must be called on a class name.");
             }
+            if (!arguments.isEmpty()) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_METHOD_ARGUMENT,
+                        "allInstances() does not accept arguments.");
+            }
             return OclTypeBinding.nodeCollection(sourceType.typeName(), OclTypeBinding.CollectionKind.SET);
         }
         if ("split".equalsIgnoreCase(methodName)) {
@@ -551,19 +603,21 @@ public class OclSemanticBinder {
                             + "conformance semantics are intended.");
         }
         if ("oclIsKindOf".equalsIgnoreCase(methodName)) {
+            if (!sourceType.isNode() && !isVoidType(sourceType)) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.INVALID_METHOD_RECEIVER,
+                        "oclIsKindOf() requires an object-or-bottom source.");
+            }
+            requireSingleClassReferenceArgument("oclIsKindOf", arguments);
             return OclTypeBinding.scalar("Boolean");
         }
         if ("oclAsType".equalsIgnoreCase(methodName)) {
-            if (!sourceType.isNode()) {
+            if (!sourceType.isNode() && !isVoidType(sourceType)) {
                 throw new OclCodedUnsupportedOperationException(
                         OclDiagnosticCode.INVALID_METHOD_RECEIVER,
-                        "oclAsType() requires an object source.");
+                        "oclAsType() requires an object-or-bottom source.");
             }
-            if (arguments.size() != 1 || !arguments.get(0).type().isClassReference()) {
-                throw new OclCodedUnsupportedOperationException(
-                        OclDiagnosticCode.INVALID_METHOD_ARGUMENT,
-                        "oclAsType() requires a single type argument.");
-            }
+            requireSingleClassReferenceArgument("oclAsType", arguments);
             return OclTypeBinding.node(arguments.get(0).type().typeName());
         }
         throw new OclCodedUnsupportedOperationException(
@@ -573,8 +627,27 @@ public class OclSemanticBinder {
 
     private OclTypeBinding inferCollectionOpType(String opName, OclTypeBinding sourceType, List<BoundExpression> arguments) {
         return switch (opName) {
-            case "size", "count" -> OclTypeBinding.scalar("Integer");
-            case "isEmpty", "notEmpty", "includes", "excludes", "includesAll", "excludesAll" -> OclTypeBinding.scalar("Boolean");
+            case "size" -> {
+                requireNoCollectionArguments("size", arguments);
+                yield OclTypeBinding.scalar("Integer");
+            }
+            case "count" -> {
+                requireSingleElementArgument("count", sourceType, arguments);
+                yield OclTypeBinding.scalar("Integer");
+            }
+            case "isEmpty", "notEmpty" -> {
+                requireNoCollectionArguments(opName, arguments);
+                yield OclTypeBinding.scalar("Boolean");
+            }
+            case "includes", "excludes" -> {
+                requireSingleElementArgument(opName, sourceType, arguments);
+                yield OclTypeBinding.scalar("Boolean");
+            }
+            case "includesAll", "excludesAll" -> {
+                OclTypeBinding argumentType = requireSingleCollectionArgument(opName, arguments);
+                setJoin(sourceType.elementType(), argumentType.elementType(), opName + "()");
+                yield OclTypeBinding.scalar("Boolean");
+            }
             case "including" -> inferIncludingType(sourceType, arguments);
             case "excluding" -> inferExcludingType(sourceType, arguments);
             case "append" -> inferOrderedElementMutationType("append", sourceType, arguments);
@@ -586,7 +659,10 @@ public class OclSemanticBinder {
             case "intersection" -> inferIntersectionType(sourceType, arguments);
             case "flatten" -> inferFlattenType(sourceType);
             case "asBag" -> sourceType.withCollectionKind(OclTypeBinding.CollectionKind.BAG);
-            case "asSet" -> sourceType.withCollectionKind(OclTypeBinding.CollectionKind.SET);
+            case "asSet" -> {
+                requireNoCollectionArguments("asSet", arguments);
+                yield sourceType.withCollectionKind(OclTypeBinding.CollectionKind.SET);
+            }
             case "asOrderedSet" -> sourceType.withCollectionKind(OclTypeBinding.CollectionKind.ORDERED_SET);
             case "at", "first", "last" -> inferPositionalAccessType(sourceType, opName);
             default -> throw new OclCodedUnsupportedOperationException(
@@ -738,6 +814,12 @@ public class OclSemanticBinder {
                         + describeType(left) + " and " + describeType(right) + ".");
     }
 
+    private OclCodedUnsupportedOperationException unsupportedSurfaceConstruct(String construct) {
+        return new OclCodedUnsupportedOperationException(
+                OclDiagnosticCode.UNSUPPORTED_AST_NODE,
+                "Parsed OCL construct is not implemented by the semantic binder: " + construct);
+    }
+
     private OclTypeBinding requireSingleCollectionArgument(String operationName, List<BoundExpression> arguments) {
         if (arguments.size() != 1 || !arguments.get(0).type().isCollection()) {
             throw new OclCodedUnsupportedOperationException(
@@ -822,6 +904,16 @@ public class OclSemanticBinder {
                     OclDiagnosticCode.INVALID_COLLECTION_ARGUMENT,
                     operationName + "() requires a single argument.");
         }
+        setJoin(sourceType.elementType(), arguments.get(0).type(), operationName + "()");
+    }
+
+    private void requireSingleClassReferenceArgument(String operationName,
+                                                     List<BoundExpression> arguments) {
+        if (arguments.size() != 1 || !arguments.get(0).type().isClassReference()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.INVALID_METHOD_ARGUMENT,
+                    operationName + "() requires exactly one UML class argument.");
+        }
     }
 
     private OclTypeBinding requireNumericCollectionElement(String operationName, OclTypeBinding sourceType) {
@@ -886,15 +978,103 @@ public class OclSemanticBinder {
         };
     }
 
-    private void validateIteratorType(ASTIterator iterator, OclTypeBinding elementType) {
-        if (iterator.iteratorTypeName == null || iterator.iteratorTypeName.isBlank()) {
-            return;
-        }
-        if (!iterator.iteratorTypeName.equals(elementType.typeName())) {
+    private void validateIteratorType(ASTIterator iterator, OclTypeBinding elementType,
+                                      OclTypeBinding iteratorVariableType) {
+        if (!conformsTo(elementType, iteratorVariableType)) {
             throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.ITERATOR_TYPE_MISMATCH,
-                    "Iterator type mismatch: expected " + elementType.typeName() + " but found " + iterator.iteratorTypeName);
+                    "Iterator type mismatch for `" + iterator.iteratorName + "`: source elements have "
+                            + describeType(elementType) + " but declared type is " + describeType(iteratorVariableType));
         }
+    }
+
+    private OclTypeBinding resolveOptionalDeclaredType(String typeName, OclTypeBinding inferredType,
+                                                       String declaration) {
+        if (typeName == null || typeName.isBlank()) {
+            return inferredType;
+        }
+        OclTypeBinding resolved = resolveDeclaredType(typeName.trim());
+        if (resolved == null || resolved.isClassReference()) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNKNOWN_DECLARED_TYPE,
+                    "Unknown or unsupported declared type `" + typeName + "` for " + declaration);
+        }
+        return resolved;
+    }
+
+    private OclTypeBinding resolveDeclaredType(String typeName) {
+        int open = typeName.indexOf('(');
+        if (open > 0 && typeName.endsWith(")")) {
+            String kindName = typeName.substring(0, open);
+            String elementText = typeName.substring(open + 1, typeName.length() - 1);
+            OclTypeBinding elementType = resolveDeclaredType(elementText);
+            OclTypeBinding.CollectionKind collectionKind = switch (kindName) {
+                case "Collection" -> OclTypeBinding.CollectionKind.COLLECTION;
+                case "Set" -> OclTypeBinding.CollectionKind.SET;
+                case "Bag" -> OclTypeBinding.CollectionKind.BAG;
+                case "Sequence" -> OclTypeBinding.CollectionKind.SEQUENCE;
+                case "OrderedSet" -> OclTypeBinding.CollectionKind.ORDERED_SET;
+                default -> null;
+            };
+            return elementType == null || collectionKind == null
+                    ? null : OclTypeBinding.collectionOf(elementType, collectionKind);
+        }
+
+        return switch (typeName) {
+            case "Boolean", "Integer", "Real", "String", "Void", "OclAny", "UnlimitedNatural" ->
+                    OclTypeBinding.scalar(typeName);
+            default -> {
+                String localName = typeName.contains("::")
+                        ? typeName.substring(typeName.lastIndexOf("::") + 2) : typeName;
+                if (metamodelIndex.getClassInfo(typeName) != null) {
+                    yield OclTypeBinding.node(typeName);
+                }
+                if (metamodelIndex.getClassInfo(localName) != null) {
+                    yield OclTypeBinding.node(localName);
+                }
+                if (metamodelIndex.getModel().enumType(typeName) != null) {
+                    yield OclTypeBinding.scalar(typeName);
+                }
+                if (metamodelIndex.getModel().enumType(localName) != null) {
+                    yield OclTypeBinding.scalar(localName);
+                }
+                yield null;
+            }
+        };
+    }
+
+    private boolean conformsTo(OclTypeBinding actual, OclTypeBinding declared) {
+        if (actual == null || declared == null) {
+            return false;
+        }
+        if (!actual.isCollection() && "Void".equals(actual.typeName())) {
+            return true;
+        }
+        if (!declared.isCollection() && !declared.isNode() && "OclAny".equals(declared.typeName())) {
+            return true;
+        }
+        if (actual.isCollection() || declared.isCollection()) {
+            if (!actual.isCollection() || !declared.isCollection()) {
+                return false;
+            }
+            boolean compatibleKind = declared.collectionKind() == OclTypeBinding.CollectionKind.COLLECTION
+                    || actual.collectionKind() == declared.collectionKind();
+            return compatibleKind && conformsTo(actual.elementType(), declared.elementType());
+        }
+        if (actual.isNode() || declared.isNode()) {
+            if (!actual.isNode() || !declared.isNode()) {
+                return false;
+            }
+            MClass actualClass = metamodelIndex.requireClass(actual.typeName());
+            MClass declaredClass = metamodelIndex.requireClass(declared.typeName());
+            return actualClass.equals(declaredClass) || actualClass.allParents().contains(declaredClass);
+        }
+        if (actual.kind() != declared.kind()) {
+            return false;
+        }
+        return actual.typeName().equals(declared.typeName())
+                || ("Integer".equals(actual.typeName()) && "Real".equals(declared.typeName()))
+                || ("UnlimitedNatural".equals(actual.typeName()) && "Integer".equals(declared.typeName()));
     }
 
     private Map<String, OclTypeBinding> resolveOperationParameters(ASTOperationConstraint constraint) {
@@ -955,7 +1135,7 @@ public class OclSemanticBinder {
                           BoundExpression elseBranch, OclTypeBinding type) implements BoundExpression {
     }
 
-    public record BoundLet(ASTLet ast, BoundExpression value, BoundExpression body,
+    public record BoundLet(ASTLet ast, BoundExpression value, OclTypeBinding variableType, BoundExpression body,
                            OclTypeBinding type) implements BoundExpression {
     }
 
@@ -981,7 +1161,7 @@ public class OclSemanticBinder {
     }
 
     public record BoundIterator(ASTIterator ast, BoundExpression source, OclTypeBinding sourceCollectionType,
-                                BoundExpression body,
+                                OclTypeBinding iteratorVariableType, BoundExpression body,
                                 OclTypeBinding type) implements BoundExpression {
     }
 

@@ -33,7 +33,22 @@ public final class OclCypherPlan {
      * Query model for invariant validation. Rendering this plan returns
      * violating objects, not satisfying objects.
      */
-    public record InvariantPlan(String contextClassName, String invariantName, ExpressionPlan predicate) {
+    public record InvariantPlan(String contextClassName, String invariantName, ExpressionPlan predicate,
+                                ViolationPolicy violationPolicy) {
+        public InvariantPlan(String contextClassName, String invariantName, ExpressionPlan predicate) {
+            this(contextClassName, invariantName, predicate, ViolationPolicy.NOT_VALIDATION_TRUE);
+        }
+
+        public InvariantPlan {
+            if (violationPolicy == null) {
+                throw new IllegalArgumentException("Invariant violation policy is required");
+            }
+        }
+    }
+
+    /** Only Boolean true satisfies a certified invariant; every other value is a violation. */
+    public enum ViolationPolicy {
+        NOT_VALIDATION_TRUE
     }
 
     /**
@@ -66,7 +81,7 @@ public final class OclCypherPlan {
                          OclTypeBinding type) implements ExpressionPlan {
     }
 
-    public record LetPlan(String variableName, ExpressionPlan value, ExpressionPlan body,
+    public record LetPlan(String variableName, ExpressionPlan value, OclTypeBinding variableType, ExpressionPlan body,
                           OclTypeBinding type) implements ExpressionPlan {
     }
 
@@ -93,7 +108,7 @@ public final class OclCypherPlan {
     }
 
     public record IteratorOperationPlan(ExpressionPlan source, OclTypeBinding sourceCollectionType,
-                                         String operationName, String iteratorName,
+                                         String operationName, String iteratorName, OclTypeBinding iteratorVariableType,
                                          ExpressionPlan body, OclTypeBinding type) implements ExpressionPlan {
     }
 

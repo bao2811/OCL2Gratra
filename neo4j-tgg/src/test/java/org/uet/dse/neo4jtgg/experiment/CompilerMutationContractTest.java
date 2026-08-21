@@ -75,10 +75,11 @@ class CompilerMutationContractTest {
                 text("wrong-reverse-qualifier-side", qualifiedIncoming,
                         qualifiedIncoming.cypher().replace("r.targetQualifiers[0]", "r.sourceQualifiers[0]")),
                 text("allinstances-bag-duplicates", allInstancesResult,
-                        allInstancesResult.cypher().replaceFirst("RETURN DISTINCT obj", "RETURN obj")),
+                        allInstancesResult.cypher().replaceAll(
+                                "RETURN DISTINCT (obj\\d+)", "RETURN $1")),
                 text("allinstances-display-class", allInstancesResult,
-                        allInstancesResult.cypher().replaceFirst(
-                                "(cls\\d+:UmlClass )\\{classKey:", "$1{name:")),
+                        allInstancesResult.cypher().replaceAll(
+                                "(cls\\d+:UmlClass \\{modelKey: \\$[^,}]+, )classKey:", "$1name:")),
                 text("schema-instanceof-for-kindof", kindOfResult,
                         kindOfResult.cypher().replaceFirst(
                                 "\\[:ObjectInstanceOf\\](?=->\\(typeCls)", "[:InstanceOf]")));

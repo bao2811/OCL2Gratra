@@ -1,6 +1,7 @@
 package org.uet.dse.neo4jtgg.ocl;
 
 import org.tzi.use.uml.mm.MAssociation;
+import org.tzi.use.uml.mm.MAssociationClass;
 import org.tzi.use.uml.mm.MAssociationEnd;
 import org.tzi.use.uml.mm.MAttribute;
 import org.tzi.use.uml.mm.MClassifier;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class OclMetamodelIndex {
+
     private final MModel model;
     private final Map<String, ClassInfo> classes;
 
@@ -133,7 +135,7 @@ public class OclMetamodelIndex {
     }
 
     private void countNavigableRole(MClass sourceClass, MAssociationEnd sourceEnd,
-                                    MAssociationEnd targetEnd, Map<String, Integer> roleCounts) {
+            MAssociationEnd targetEnd, Map<String, Integer> roleCounts) {
         if (sourceClass.equals(sourceEnd.cls()) || sourceClass.allParents().contains(sourceEnd.cls())) {
             roleCounts.merge(targetEnd.nameAsRolename(), 1, Integer::sum);
         }
@@ -146,8 +148,8 @@ public class OclMetamodelIndex {
         Type type = sourceEnd != null && targetEnd != null
                 ? targetEnd.getType(sourceClass, sourceEnd, false)
                 : navigableElement instanceof MAssociationEnd associationEnd
-                ? associationEnd.getType()
-                : navigableElement.cls();
+                        ? associationEnd.getType()
+                        : navigableElement.cls();
         OclTypeBinding binding = toBindingInternal(type, navigableElement.cls().name());
         return new NavigationInfo(
                 roleName,
@@ -229,10 +231,11 @@ public class OclMetamodelIndex {
     }
 
     public record ClassInfo(MClass modelClass,
-                            Map<String, MAttribute> attributes,
-                            Map<String, NavigationInfo> navigations,
-                            Set<String> ambiguousNavigations,
-                            Map<String, java.util.List<MOperation>> operations) {
+            Map<String, MAttribute> attributes,
+            Map<String, NavigationInfo> navigations,
+            Set<String> ambiguousNavigations,
+            Map<String, java.util.List<MOperation>> operations) {
+
     }
 
     public record NavigationInfo(
@@ -245,8 +248,13 @@ public class OclMetamodelIndex {
             MAssociationEnd targetEnd,
             NavigationDirection direction,
             MNavigableElement navigableElement) {
+
         public boolean isBinaryAssociation() {
             return targetEnd != null && targetEnd.association() != null && targetEnd.association().associationEnds().size() == 2;
+        }
+
+        public boolean isAssociationClassNavigation() {
+            return targetEnd != null && targetEnd.association() instanceof MAssociationClass;
         }
 
         public boolean hasQualifiers() {
@@ -269,6 +277,7 @@ public class OclMetamodelIndex {
 
         public boolean supportsDirectCypherNavigation() {
             return isBinaryAssociation()
+                    && !isAssociationClassNavigation()
                     && direction != NavigationDirection.UNDIRECTED
                     && sourceRoleName() != null
                     && targetRoleName() != null;
@@ -278,11 +287,17 @@ public class OclMetamodelIndex {
             if (!isBinaryAssociation()) {
                 return "Only resolved binary UML associations are admitted for Cypher navigation: " + roleName;
             }
+            if (isAssociationClassNavigation()) {
+                return "Association-class navigation uses link-object/spoke encoding and is outside "
+                        + "the certified direct-relationship profile: " + roleName;
+            }
             return "Navigation direction or association roles could not be resolved uniquely: " + roleName;
         }
 
         public OclDiagnosticCode unsupportedCode() {
-            return OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED;
+            return isAssociationClassNavigation()
+                    ? OclDiagnosticCode.ASSOCIATION_CLASS_UNSUPPORTED
+                    : OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED;
         }
 
         public String sourceRoleName() {

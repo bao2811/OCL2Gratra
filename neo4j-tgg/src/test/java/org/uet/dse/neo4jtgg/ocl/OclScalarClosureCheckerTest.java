@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
 
 import java.math.BigInteger;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +43,35 @@ class OclScalarClosureCheckerTest {
         OclIr.Expression mixed = arithmetic("+",
                 literal(9_007_199_254_740_993L, INTEGER), literal(0.5d, REAL), REAL);
         assertEquals(OclScalarClosureChecker.Status.FAIL, check(mixed).status());
+    }
+
+    @Test
+    void rejectsInexactCoercionInComparisonAndSetCommonType() {
+        OclIr.Expression equality = new OclIr.Binary("=",
+                literal(9_007_199_254_740_993L, INTEGER), literal(9_007_199_254_740_992.0d, REAL),
+                OclTypeBinding.scalar("Boolean"));
+        OclIr.Expression mixedSet = new OclIr.SetLiteral(List.of(
+                literal(9_007_199_254_740_993L, INTEGER), literal(0.5d, REAL)),
+                OclTypeBinding.scalarCollection("Real", OclTypeBinding.CollectionKind.SET));
+
+        assertEquals(OclScalarClosureChecker.Status.FAIL, check(equality).status());
+        assertEquals(OclScalarClosureChecker.Status.FAIL, check(mixedSet).status());
+    }
+
+    @Test
+    void decodesStoredNumericPayloadBeforeCheckingReachableArithmetic() {
+        Object decoded = OclExecutionPremiseChecker.decodeStoredScalar("Integer", "v1|I|42");
+        Object malformed = OclExecutionPremiseChecker.decodeStoredScalar("Integer", "42");
+        Object ordinaryUndefined = OclExecutionPremiseChecker.decodeStoredScalar(
+                "String", "v1|S|Undefined");
+
+        assertEquals(42L, decoded);
+        assertEquals("Undefined", ordinaryUndefined);
+        assertEquals(OclScalarClosureChecker.Status.FAIL,
+                check(arithmetic("/", literal(decoded, INTEGER), literal(0L, INTEGER), REAL)).status());
+        assertEquals(OclScalarClosureChecker.Status.FAIL,
+                OclScalarClosureChecker.checkValues(Collections.singletonList(malformed),
+                        "stored Integer").status());
     }
 
     @Test

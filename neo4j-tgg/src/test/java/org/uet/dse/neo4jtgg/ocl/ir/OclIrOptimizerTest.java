@@ -23,6 +23,108 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclIrOptimizerTest {
+    private static final org.uet.dse.neo4jtgg.ocl.OclTypeBinding INTEGER =
+            org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Integer");
+    private static final org.uet.dse.neo4jtgg.ocl.OclTypeBinding REAL =
+            org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Real");
+    private static final org.uet.dse.neo4jtgg.ocl.OclTypeBinding BOOLEAN =
+            org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Boolean");
+
+    @Test
+    void foldsPureInt64WithoutPassingThroughDouble() {
+        OclIr.Expression difference = new OclIr.Binary(
+                "-", new OclIr.Literal(9_007_199_254_740_993L, INTEGER),
+                new OclIr.Literal(9_007_199_254_740_992L, INTEGER), INTEGER);
+        OclIr.Expression equality = new OclIr.Binary(
+                "=", new OclIr.Literal(9_007_199_254_740_993L, INTEGER),
+                new OclIr.Literal(9_007_199_254_740_992L, INTEGER), BOOLEAN);
+
+        OclIr.Expression optimizedDifference = new OclIrOptimizer().optimizeExpression(difference);
+        OclIr.Expression optimizedEquality = new OclIrOptimizer().optimizeExpression(equality);
+
+        assertTrue(optimizedDifference instanceof OclIr.Literal);
+        assertEquals(1L, ((OclIr.Literal) optimizedDifference).value());
+        assertTrue(optimizedEquality instanceof OclIr.Literal);
+        assertEquals(Boolean.FALSE, ((OclIr.Literal) optimizedEquality).value());
+    }
+
+    @Test
+    void leavesOverflowAndInexactMixedNumericConstantsForScalarClosed() {
+        OclIr.Expression overflow = new OclIr.Binary(
+                "+", new OclIr.Literal(Long.MAX_VALUE, INTEGER),
+                new OclIr.Literal(1L, INTEGER), INTEGER);
+        OclIr.Expression inexactMixedEquality = new OclIr.Binary(
+                "=", new OclIr.Literal(9_007_199_254_740_993L, INTEGER),
+                new OclIr.Literal(9_007_199_254_740_992.0d, REAL), BOOLEAN);
+
+        assertTrue(new OclIrOptimizer().optimizeExpression(overflow) instanceof OclIr.Binary);
+        assertTrue(new OclIrOptimizer().optimizeExpression(inexactMixedEquality) instanceof OclIr.Binary);
+    }
+
+    @Test
+    void identifiesAndCanonicalizesSignedZeroDuringNestedRealFolding() {
+        OclIr.Expression negativeOne = new OclIr.Binary(
+                "-", new OclIr.Literal(0L, INTEGER),
+                new OclIr.Literal(1L, INTEGER), INTEGER);
+        OclIr.Expression negativeZero = new OclIr.Binary(
+                "/", new OclIr.Literal(0.0d, REAL), negativeOne, REAL);
+        OclIr.Expression equality = new OclIr.Binary(
+                "=", negativeZero, new OclIr.Literal(0.0d, REAL), BOOLEAN);
+
+        OclIr.Expression optimizedZero = new OclIrOptimizer().optimizeExpression(negativeZero);
+        OclIr.Expression optimizedEquality = new OclIrOptimizer().optimizeExpression(equality);
+
+        assertTrue(optimizedZero instanceof OclIr.Literal);
+        assertEquals(Double.doubleToRawLongBits(0.0d),
+                Double.doubleToRawLongBits((Double) ((OclIr.Literal) optimizedZero).value()));
+        assertTrue(optimizedEquality instanceof OclIr.Literal);
+        assertEquals(Boolean.TRUE, ((OclIr.Literal) optimizedEquality).value());
+    }
+
+    @Test
+    void retainedLetRemovesShadowedOuterInliningBinding() {
+        OclIr.Expression innerBody = new OclIr.Binary("and",
+                new OclIr.Binary(">", new OclIr.Variable("x", INTEGER),
+                        new OclIr.Literal(0L, INTEGER), BOOLEAN),
+                new OclIr.Binary("<", new OclIr.Variable("x", INTEGER),
+                        new OclIr.Literal(10L, INTEGER), BOOLEAN), BOOLEAN);
+        OclIr.Expression inner = new OclIr.Let("x",
+                new OclIr.Binary("+", new OclIr.Variable("n", INTEGER),
+                        new OclIr.Literal(1L, INTEGER), INTEGER), INTEGER, innerBody, BOOLEAN);
+        OclIr.Expression expression = new OclIr.Let("x", new OclIr.Literal(1L, INTEGER),
+                INTEGER,
+                new OclIr.Binary("and",
+                        new OclIr.Binary("=", new OclIr.Variable("x", INTEGER),
+                                new OclIr.Literal(1L, INTEGER), BOOLEAN),
+                        inner, BOOLEAN), BOOLEAN);
+
+        OclIr.Expression optimized = new OclIrOptimizer().optimizeExpression(expression);
+
+        assertTrue(optimized instanceof OclIr.Binary);
+        OclIr.Expression right = ((OclIr.Binary) optimized).right();
+        assertTrue(right instanceof OclIr.Let);
+        assertTrue(((OclIr.Let) right).body() instanceof OclIr.Binary);
+        assertTrue(((OclIr.Binary) ((OclIr.Let) right).body()).left() instanceof OclIr.Binary);
+    }
+
+    @Test
+    void doesNotInlineVariableAcrossSameNamedIteratorBinder() {
+        OclIr.Expression iterator = new OclIr.IteratorOperation(
+                new OclIr.SetLiteral(java.util.List.of(new OclIr.Literal(1L, INTEGER)),
+                        org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalarCollection(
+                                "Integer", org.uet.dse.neo4jtgg.ocl.OclTypeBinding.CollectionKind.SET)),
+                org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalarCollection(
+                        "Integer", org.uet.dse.neo4jtgg.ocl.OclTypeBinding.CollectionKind.SET),
+                "exists", "y",
+                INTEGER,
+                new OclIr.Binary("=", new OclIr.Variable("x", INTEGER),
+                        new OclIr.Variable("y", INTEGER), BOOLEAN), BOOLEAN);
+        OclIr.Expression expression = new OclIr.Let("x", new OclIr.Variable("y", INTEGER),
+                INTEGER, iterator, BOOLEAN);
+
+        assertTrue(new OclIrOptimizer().optimizeExpression(expression) instanceof OclIr.Let);
+    }
+
     @Test
     void foldsLiteralIfConditionToChosenBranch() {
         OclIrOptimizer optimizer = new OclIrOptimizer();

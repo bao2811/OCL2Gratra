@@ -78,15 +78,46 @@ class AdapterAdequacyCertificateTest {
     }
 
     @Test
-    void graphSnapshotUsesTheSameUmlClassLabelAsTheRenderer() throws Exception {
+    void graphSnapshotUsesRendererLabelsAndScansCanonicalKeysAcrossWrongModelTags() throws Exception {
         Path workspace = workspace();
         String reader = Files.readString(workspace.resolve(
                 "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacySnapshotReader.java"));
         assertTrue(reader.contains("(c:UmlClass)"), "type observation must require :UmlClass");
-        assertTrue(reader.contains("(c:UmlClass {modelKey:$modelKey})"),
-                "allInstances observation must require :UmlClass");
-        assertTrue(reader.contains("MATCH (n:UmlClass {modelKey:$modelKey})"),
-                "class-key ownership must require :UmlClass");
+        assertTrue(reader.contains("c.classKey STARTS WITH $classKeyPrefix"),
+                "allInstances observation must see every current canonical class key");
+        assertTrue(reader.contains("MATCH (n:UmlClass) WHERE n.classKey STARTS WITH $classKeyPrefix"),
+                "class-key ownership must not hide a cloned key behind a foreign modelKey");
+        assertTrue(reader.contains("r.associationKey STARTS WITH $associationKeyPrefix"),
+                "association observation must not hide a cross-model relationship");
+    }
+
+    @Test
+    void independentSourceOracleCanonicalizesRealSignedZero() throws Exception {
+        String modelName = "SignedZeroOracle";
+        String specification = """
+                model SignedZeroOracle
+                class Sample
+                attributes
+                    reading : Real
+                end
+                """;
+        StringWriter diagnostics = new StringWriter();
+        MModel model = USECompiler.compileSpecification(specification, modelName + ".use",
+                new PrintWriter(diagnostics, true), new ModelFactory());
+        assertTrue(model != null, diagnostics.toString());
+        UseSystemApi api = UseSystemApi.create(model, false);
+        api.createObject("Sample", "sample");
+        api.setAttributeValue("sample", "reading", "-0.0");
+
+        RepresentationAdequacyEvaluator.Snapshot snapshot =
+                AdapterAdequacySnapshotReader.source(api.getSystem(), modelName);
+
+        assertTrue(snapshot.attributeFacts().stream()
+                .anyMatch(fact -> "v1|R|0.0".equals(fact.encodedValue())),
+                snapshot.attributeFacts().toString());
+        assertTrue(snapshot.attributeFacts().stream()
+                .noneMatch(fact -> fact.encodedValue().contains("-0.0")),
+                snapshot.attributeFacts().toString());
     }
 
     private static Path workspace() {

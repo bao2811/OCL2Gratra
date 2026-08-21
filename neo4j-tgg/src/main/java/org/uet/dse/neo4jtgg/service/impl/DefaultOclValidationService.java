@@ -114,7 +114,7 @@ public class DefaultOclValidationService implements OclValidationService {
 
         try {
             long parseStartedAt = System.nanoTime();
-            ASTFile astFile = OclDocumentParser.parse(oclText);
+            ASTFile astFile = OclDocumentParser.parse(model, oclText);
             long parseTimeMs = elapsedMillis(parseStartedAt);
 
             DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
@@ -370,7 +370,7 @@ public class DefaultOclValidationService implements OclValidationService {
                         premiseSession, CanonicalGraphEncoding.modelKey(model.name()));
             }
             long parseStartedAt = System.nanoTime();
-            ASTFile astFile = OclDocumentParser.parse(oclText);
+            ASTFile astFile = OclDocumentParser.parse(model, oclText);
             long parseTimeMs = elapsedMillis(parseStartedAt);
             DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model);
             long compileStartedAt = System.nanoTime();

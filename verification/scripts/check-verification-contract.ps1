@@ -131,8 +131,8 @@ Test-ExactSequence @($registry.theorems.id) @('PC-T0','PC-T1','PC-T2','PC-T3','P
 Test-ExactSequence @($registry.semanticFunctions.id) @(1..29 | ForEach-Object { 'SF-{0:d2}' -f $_ }) 'Registry semantic functions'
 Test-ExactSequence @($registry.proofObligations.id) @(1..24 | ForEach-Object { 'PO-{0:d2}' -f $_ }) 'Registry proof obligations'
 Test-ExactSequence @($registry.implementationVocabulary.term) @(
-    'ObjectInstanceOf','InstanceOf','classKey','attributeKey','associationKey',
-    'sourceQualifiers','targetQualifiers','__oclBottom'
+    'ObjectInstanceOf','InstanceOf','modelKey','classKey','attributeKey','associationKey',
+    'sourceQualifiers','targetQualifiers','scalarCodecV1','__oclBottom'
 ) 'Registry implementation vocabulary'
 Test-UniqueIds @($registry.assumptions) 'Registry assumptions'
 Test-UniqueIds @($registry.scopeLemmas) 'Registry scope lemmas'
@@ -505,7 +505,7 @@ if ($null -eq $registry.artifactPolicy -or
 $blocking = @(Get-BlockingObligations $registry)
 if ([string]$registry.claimPolicy.prototypeCorrectness -ceq [string]$registry.claimPolicy.activeValue -and
     $blocking.Count -gt 0) {
-    Add-CheckError "Prototype correctness claim is active while required obligations remain open/partial: $(@($blocking.id) -join ', ')"
+    Add-CheckError "Prototype correctness claim is active while blocking obligations remain open/partial: $(@($blocking.id) -join ', ')"
 }
 
 if ($RequireGitTracked) {

@@ -10,7 +10,7 @@ package org.uet.dse.neo4jtgg.ocl.ir;
  * {@code null}, so the generated violation predicate is:</p>
  *
  * <pre>
- * NOT coalesce(predicate, false)
+ * NOT coalesce((predicate) = true, false)
  * </pre>
  */
 public final class OclValidationSemantics {
@@ -18,11 +18,13 @@ public final class OclValidationSemantics {
     }
 
     /**
-     * Coerces a Cypher predicate to validation truth. Only true remains true;
-     * null/undefined becomes false.
+     * Coerces a Cypher value to validation truth. Comparing with the unique
+     * Boolean value {@code true} keeps this expression Boolean even when a
+     * finite-set element is the non-null bottom token; null/undefined then
+     * becomes false through {@code coalesce}.
      */
     public static String validationTruth(String predicateCypher) {
-        return "coalesce(" + predicateCypher + ", false)";
+        return "coalesce((" + predicateCypher + ") = true, false)";
     }
 
     /**

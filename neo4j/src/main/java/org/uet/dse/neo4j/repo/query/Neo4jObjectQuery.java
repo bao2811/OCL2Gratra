@@ -16,8 +16,8 @@ public class Neo4jObjectQuery {
     public static String upsertObjectNodeInModel(String className) {
         return String.format(
                 "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-                        "MATCH (runtimeCls {classKey: $runtimeClassKey})-[:" + SCHEMA_INSTANCE_OF + "]->(meta) " +
-                        "MATCH (cls)-[:" + SCHEMA_INSTANCE_OF + "]->(meta) WHERE cls.classKey IN $classKeys " +
+                        "MATCH (runtimeCls {modelKey:$modelName,classKey: $runtimeClassKey})-[:" + SCHEMA_INSTANCE_OF + "]->(meta) " +
+                        "MATCH (cls {modelKey:$modelName})-[:" + SCHEMA_INSTANCE_OF + "]->(meta) WHERE cls.classKey IN $classKeys " +
                         "MERGE (obj:Object:`%s` {objectKey: $objectKey}) " +
                         "SET obj.use_id = $objName, obj.modelKey = $modelName, " +
                         "    obj.runtimeClassKey = $runtimeClassKey " +
@@ -29,7 +29,7 @@ public class Neo4jObjectQuery {
     public static String upsertObjectNodesBatchInModel(String className) {
         return String.format(
                 "UNWIND $rows AS row "
-                        + "MATCH (runtimeCls:UmlClass {classKey:row.runtimeClassKey}) "
+                        + "MATCH (runtimeCls:UmlClass {modelKey:$modelName,classKey:row.runtimeClassKey}) "
                         + "MERGE (obj:Object:`%s` {objectKey:row.objectKey}) "
                         + "SET obj.use_id=row.objName, obj.modelKey=$modelName, "
                         + "obj.runtimeClassKey=row.runtimeClassKey "
@@ -37,15 +37,15 @@ public class Neo4jObjectQuery {
                         + "WHERE NOT oldCls.classKey IN row.classKeys "
                         + "WITH row,obj,collect(old) AS staleMemberships "
                         + "FOREACH (membership IN staleMemberships | DELETE membership) "
-                        + "WITH row,obj MATCH (cls:UmlClass) WHERE cls.classKey IN row.classKeys "
+                        + "WITH row,obj MATCH (cls:UmlClass {modelKey:$modelName}) WHERE cls.classKey IN row.classKeys "
                         + "MERGE (obj)-[:" + OBJECT_INSTANCE_OF + "]->(cls)",
                 className);
     }
 
     public static final String UPSERT_SCALAR_ATTRIBUTE_VALUES_BATCH =
             "UNWIND $rows AS row "
-                    + "MATCH (obj:Object {objectKey:row.objectKey}) "
-                    + "MATCH (attrDef:Attribute {attributeKey:row.attributeKey}) "
+                    + "MATCH (obj:Object {modelKey:$modelName,objectKey:row.objectKey}) "
+                    + "MATCH (attrDef:Attribute {modelKey:$modelName,attributeKey:row.attributeKey}) "
                     + "MERGE (val:AttributeValue {slotKey:row.slotKey}) "
                     + "SET val.name=row.valId, val.attributeKey=row.attributeKey, val.modelKey=$modelName, "
                     + "val.type=row.type, val.value=row.value, val.isCollection=row.isCollection, "
@@ -69,9 +69,11 @@ public class Neo4jObjectQuery {
 
     public static final String CREATE_ATTRIBUTE_VALUE_IN_MODEL =
             "MATCH (m:ManageModel {name: $modelName})-[:DefineMetamodels]->(meta:MetaNode) " +
-                    "MATCH (obj {use_id: $objName})-[:" + OBJECT_INSTANCE_OF + "]->(cls)-[:"
+                    "MATCH (obj:Object {modelKey:$modelName,use_id:$objName})-[:" + OBJECT_INSTANCE_OF + "]->"
+                    + "(cls:UmlClass {modelKey:$modelName})-[:"
                     + SCHEMA_INSTANCE_OF + "]->(meta) " +
-                    "MATCH (cls)-[:HasAttribute]->(attrDef:Attribute {name: $attrDefId}) " +
+                    "MATCH (cls)-[:HasAttribute]->"
+                    + "(attrDef:Attribute {modelKey:$modelName,name:$attrDefId}) " +
                     "MERGE (val:AttributeValue {slotKey: $slotKey}) " +
                     "SET val.attributeKey       = $attributeKey, " +
                     "    val.name              = $valId, " +
@@ -104,7 +106,8 @@ public class Neo4jObjectQuery {
 
     public static String upsertBinaryLinkInModel(String label) {
         return String.format(
-                "MATCH (a {objectKey: $objectKey1}), (b {objectKey: $objectKey2}) " +
+                "MATCH (a {modelKey:$modelName,objectKey: $objectKey1}), "
+                        + "(b {modelKey:$modelName,objectKey: $objectKey2}) " +
                         "MERGE (a)-[r:%s {linkKey: $linkKey}]->(b) " +
                         "SET r.name = $name, r.modelKey = $modelName, r.associationKey = $associationKey, " +
                         "    r.sourceRole = $sRole, r.targetRole = $tRole, r.isTernary = false, " +
@@ -116,7 +119,8 @@ public class Neo4jObjectQuery {
     public static String upsertBinaryLinksBatchInModel(String label) {
         return String.format(
                         "UNWIND $rows AS row "
-                        + "MATCH (a:Object {objectKey:row.sourceKey}), (b:Object {objectKey:row.targetKey}) "
+                        + "MATCH (a:Object {modelKey:$modelName,objectKey:row.sourceKey}), "
+                        + "(b:Object {modelKey:$modelName,objectKey:row.targetKey}) "
                         + "MERGE (a)-[r:%s {linkKey:row.linkKey}]->(b) "
                         + "SET r.name=row.name, r.modelKey=$modelName, r.associationKey=row.associationKey, "
                         + "r.sourceRole=row.sourceRole, r.targetRole=row.targetRole, r.isTernary=false, "
@@ -160,8 +164,8 @@ public class Neo4jObjectQuery {
             "MATCH (v:ModelVersion {id: 'CURRENT'}) RETURN v.modelHash AS hash";
 
     public static final String PULL_BINARY_LINKS =
-            "MATCH (a)-[r]->(b) " +
-                    "WHERE type(r) STARTS WITH 'Link' " +
+            "MATCH (a:Object {modelKey:$modelName})-[r]->(b:Object {modelKey:$modelName}) " +
+                    "WHERE r.modelKey=$modelName AND type(r) STARTS WITH 'Link' " +
                     "  AND NOT coalesce(r.isTernary,        false) " +
                     "  AND NOT coalesce(r.isLinkObjectPart, false) " +
                     "RETURN r.name AS assocName, a.use_id AS src, b.use_id AS tgt, " +
@@ -169,13 +173,18 @@ public class Neo4jObjectQuery {
                     "       coalesce(r.targetQualifiers, []) AS targetQualifiers";
 
     public static final String PULL_TERNARY_LINKS =
-            "MATCH (p)-[r]->(hub:LinkHub) WHERE r.isTernary = true " +
+            "MATCH (p:Object {modelKey:$modelName})-[r]->"
+                    + "(hub:LinkHub {modelKey:$modelName}) "
+                    + "WHERE r.modelKey=$modelName AND r.isTernary = true " +
                     "RETURN hub.name AS assocName, " +
                     "       collect({obj: p.use_id, idx: r.index}) AS participants";
 
     public static final String PULL_LINK_OBJECTS =
-            "MATCH (lo)-[:" + OBJECT_INSTANCE_OF + "]->(ac:AssociationClass) " +
-                    "MATCH (lo)-[r]->(p) WHERE r.isLinkObjectPart = true " +
+            "MATCH (lo:Object {modelKey:$modelName})-[:" + OBJECT_INSTANCE_OF + "]->"
+                    + "(ac:UmlClass {modelKey:$modelName})-[:" + SCHEMA_INSTANCE_OF + "]->"
+                    + "(:MetaNode {name:'NodeAssociationClass'}) "
+                    + "MATCH (lo)-[r]->(p:Object {modelKey:$modelName}) "
+                    + "WHERE r.modelKey=$modelName AND r.isLinkObjectPart = true " +
                     "RETURN lo.use_id AS loName, ac.name AS acName, " +
                     "       collect(p.use_id) AS participants";
 

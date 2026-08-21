@@ -1,0 +1,230 @@
+@namespace(uri="https://uet-dse.org/cypher/query-model/1.0", prefix="cqm")
+@GenModel(documentation="Typed semantic query-plan metamodel for the certified finite-set OCL validation fragment OCL_VAL_FINITE_SET_V1. Graph bindings and the NOT_VALIDATION_TRUE invariant policy are explicit so that a conforming renderer performs no OCL or UML semantic decisions. Extended production backend constructs remain outside this certified metamodel until they receive an admitted rule and proof case.")
+package cqm;
+
+enum PlanTypeKind {
+  BOOLEAN;
+  INTEGER;
+  REAL;
+  STRING;
+  NODE;
+  COLLECTION;
+  CLASS_REFERENCE;
+  BOTTOM;
+}
+
+enum CollectionKind {
+  NONE;
+  COLLECTION;
+  SET;
+}
+
+enum LiteralKind {
+  NULL;
+  BOTTOM;
+  BOOLEAN;
+  INTEGER;
+  REAL;
+  STRING;
+}
+
+enum UnaryOperator {
+  NOT;
+}
+
+enum BinaryOperator {
+  AND;
+  OR;
+  XOR;
+  IMPLIES;
+  EQ;
+  NEQ;
+  LT;
+  LE;
+  GT;
+  GE;
+  ADD;
+  SUBTRACT;
+  MULTIPLY;
+  DIVIDE;
+}
+
+enum CallKind {
+  METHOD;
+  COLLECTION_OPERATION;
+}
+
+enum IteratorKind {
+  EXISTS;
+  FORALL;
+  SELECT;
+  REJECT;
+  COLLECT;
+  IS_UNIQUE;
+}
+
+enum PredicateMode {
+  NONE;
+  NORMAL;
+  NEGATED;
+}
+
+enum TraversalDirection {
+  OUTGOING;
+  INCOMING;
+}
+
+enum AttributeStorage {
+  SLOT_NODE;
+}
+
+enum ViolationPolicy {
+  NOT_VALIDATION_TRUE;
+}
+
+class QueryModule {
+  attr String[1] languageVersion = "cqm-certified-v1";
+  attr String[1] certificationProfile = "OCL_VAL_FINITE_SET_V1";
+  val InvariantPlan[*] invariants;
+}
+
+class InvariantPlan {
+  id attr String[1] planId;
+  attr String[1] invariantName;
+  attr String[1] contextClassName;
+  attr String[1] modelKey;
+  attr String[1] contextClassKey;
+  attr String[1] identityProperty = "use_id";
+  attr ViolationPolicy[1] violationPolicy = "NOT_VALIDATION_TRUE";
+
+  val PlanExpression[1] predicate;
+}
+
+class PlanType {
+  attr PlanTypeKind[1] kind;
+  attr String typeName;
+  attr CollectionKind[1] collectionKind = "NONE";
+
+  val PlanType elementType;
+}
+
+abstract class PlanExpression {
+  id attr String[1] nodeId;
+  val PlanType[1] resultType;
+}
+
+class VariablePlan extends PlanExpression {
+  attr String[1] variableName;
+}
+
+class LiteralPlan extends PlanExpression {
+  attr LiteralKind[1] kind;
+  attr String lexicalValue;
+}
+
+class SetPlan extends PlanExpression {
+  val PlanExpression[*] elements;
+}
+
+class UnaryPlan extends PlanExpression {
+  attr UnaryOperator[1] operator;
+  val PlanExpression[1] operand;
+}
+
+class BinaryPlan extends PlanExpression {
+  attr BinaryOperator[1] operator;
+  val PlanExpression[1] left;
+  val PlanExpression[1] right;
+}
+
+class IfPlan extends PlanExpression {
+  val PlanExpression[1] condition;
+  val PlanExpression[1] thenBranch;
+  val PlanExpression[1] elseBranch;
+}
+
+class LetPlan extends PlanExpression {
+  attr String[1] variableName;
+  val PlanType[1] variableType;
+  val PlanExpression[1] value;
+  val PlanExpression[1] body;
+}
+
+class AttributeBinding {
+  attr String[1] ownerClassName;
+  attr String[1] attributeName;
+  attr String[1] attributeKey;
+  attr AttributeStorage[1] storage = "SLOT_NODE";
+  attr String directProperty;
+  attr String[1] slotLabel = "AttributeValue";
+  attr String[1] ownerRelationship = "ObjectHasAttribute";
+  attr String[1] valueProperty = "value";
+}
+
+class AttributeAccessPlan extends PlanExpression {
+  val PlanExpression[1] source;
+  val AttributeBinding[1] binding;
+}
+
+class NavigationBinding {
+  attr String[1] associationName;
+  attr String[1] associationKey;
+  attr String[1] sourceClassName;
+  attr String[1] targetClassName;
+  attr String sourceRole;
+  attr String targetRole;
+  attr TraversalDirection[1] traversal;
+  attr String[*] physicalTypes;
+  attr String[1] sourceQualifierProperty = "sourceQualifiers";
+  attr String[1] targetQualifierProperty = "targetQualifiers";
+}
+
+class NavigationAccessPlan extends PlanExpression {
+  val PlanExpression[1] source;
+  val NavigationBinding[1] binding;
+  val PlanExpression[*] qualifiers;
+}
+
+class CallPlan extends PlanExpression {
+  attr CallKind[1] callKind;
+  attr String[1] operationName;
+  val PlanExpression[1] source;
+  val PlanExpression[*] arguments;
+}
+
+class IteratorPlan extends PlanExpression {
+  attr IteratorKind[1] kind;
+  attr String[1] iteratorName;
+  val PlanType[1] iteratorType;
+  val PlanExpression[1] source;
+  val PlanExpression[1] body;
+}
+
+class NavigationMatchPlan {
+  attr String[1] targetAlias;
+  attr PredicateMode[1] predicateMode = "NONE";
+
+  val PlanExpression[1] owner;
+  val NavigationAccessPlan[1] navigation;
+  val PlanExpression predicate;
+  val PlanType[1] targetType;
+}
+
+class ExistsSubqueryPlan extends PlanExpression {
+  val NavigationMatchPlan[1] match;
+}
+
+class NotExistsSubqueryPlan extends PlanExpression {
+  val NavigationMatchPlan[1] match;
+}
+
+class CountComparisonPlan extends PlanExpression {
+  attr BinaryOperator[1] operator;
+  attr long[1] literal;
+  val NavigationMatchPlan[1] match;
+}
+
+class UniquenessPlan extends PlanExpression {
+  val NavigationMatchPlan[1] match;
+  val PlanExpression[1] projection;
+}

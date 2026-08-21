@@ -200,7 +200,7 @@ public class CoreModelPushService {
             }
         }
         repo.upsertAttributesBatch(session, model.name(), rows);
-        repo.upsertAttributeReferencesBatch(session, referenceRows);
+        repo.upsertAttributeReferencesBatch(session, model.name(), referenceRows);
     }
 
     public void syncAssociations(MModel model) {
@@ -216,7 +216,7 @@ public class CoreModelPushService {
             }
         }
         QueryRunner runner = repo.currentRunner();
-        repo.removeObsoleteBinaryAssociationTypes(runner, binaryRows);
+        repo.removeObsoleteBinaryAssociationTypes(runner, model.name(), binaryRows);
         binaryRows.stream().collect(Collectors.groupingBy(row -> (String) row.get("edgeLabel")))
                 .forEach((label, rows) -> repo.upsertBinaryAssociationsBatch(runner, label, rows));
     }

@@ -1,0 +1,23 @@
+metamodel_classifier;java_target;status;refinement_condition
+QueryModule;List<OclCypherPlan.InvariantPlan>;CERTIFIED;module order is observationally irrelevant and every plan refines
+InvariantPlan;OclCypherPlan.InvariantPlan;CERTIFIED;context name invariant name Boolean predicate and NOT_VALIDATION_TRUE policy agree
+PlanType;OclTypeBinding;CERTIFIED;kind type name finite-set collection kind and element type agree
+VariablePlan;OclCypherPlan.VariablePlan;CERTIFIED;visible variable name and type agree
+LiteralPlan;OclCypherPlan.LiteralPlan;CERTIFIED;typed parameter value agrees
+SetPlan;OclCypherPlan.SetLiteralPlan;CERTIFIED;children and finite-set result type agree
+UnaryPlan;OclCypherPlan.NotPlan;CERTIFIED;the only certified unary operator is NOT
+BinaryPlan;OclCypherPlan.BinaryPlan;CERTIFIED;operator children and result type agree
+IfPlan;OclCypherPlan.IfPlan;CERTIFIED;condition branches and result type agree
+LetPlan;OclCypherPlan.LetPlan;CERTIFIED;binder value body declared type and result type agree capture-free
+AttributeBinding;MAttribute+CanonicalGraphSchema;CERTIFIED;resolved UML attribute refines canonical slot-node key and accessor fields
+AttributeAccessPlan;OclCypherPlan.AttributeAccessPlan;CERTIFIED;source attribute binding and result type agree
+NavigationBinding;OclMetamodelIndex.NavigationInfo+CanonicalGraphSchema;CERTIFIED;association key roles direction physical Link type and qualifier fields agree
+NavigationAccessPlan;OclCypherPlan.NavigationAccessPlan;CERTIFIED;source binding ordered qualifiers and result kind agree
+CallPlan;OclCypherPlan.MethodCallPlan|OclCypherPlan.CollectionOperationPlan;CERTIFIED;CallKind selects the matching Java record and certified operation allowlist
+IteratorPlan;OclCypherPlan.IteratorOperationPlan;CERTIFIED;iterator kind source type binder body and result type agree
+NavigationMatchPlan;OclCypherPlan.NavigationMatchPlan;CERTIFIED;owner target alias navigation predicate mode predicate and target type agree
+ExistsSubqueryPlan;OclCypherPlan.ExistsSubqueryPlan;CERTIFIED;match and Boolean result type agree
+NotExistsSubqueryPlan;OclCypherPlan.NotExistsSubqueryPlan;CERTIFIED;match and Boolean result type agree
+CountComparisonPlan;OclCypherPlan.CountSubqueryComparisonPlan;CERTIFIED;match comparison literal and Boolean result type agree
+UniquenessPlan;OclCypherPlan.NavigationUniquenessPlan;CERTIFIED;match projection and Boolean result type agree
+-;OclCypherPlan.NavigationAggregationPlan;EXCLUDED;general backend constructor has no classifier in OCL_VAL_FINITE_SET_V1

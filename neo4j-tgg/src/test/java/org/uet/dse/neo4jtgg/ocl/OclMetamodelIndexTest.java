@@ -1,10 +1,13 @@
 package org.uet.dse.neo4jtgg.ocl;
 
 import org.junit.jupiter.api.Test;
+import org.tzi.use.api.UseModelApi;
 import org.tzi.use.parser.use.USECompiler;
+import org.tzi.use.uml.mm.MAggregationKind;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
+import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -15,6 +18,30 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclMetamodelIndexTest {
+    @Test
+    void rejectsAssociationClassAsDirectRelationshipNavigation() throws Exception {
+        UseModelApi api = new UseModelApi("EmploymentModel");
+        api.createClass("Person", false);
+        api.createClass("Company", false);
+        api.createAssociationClass("Employment", false,
+                "Person", "employee", "*", MAggregationKind.NONE,
+                "Company", "employer", "*", MAggregationKind.NONE);
+
+        OclMetamodelIndex.NavigationInfo navigation =
+                new OclMetamodelIndex(api.getModel()).resolveNavigation("Person", "employer");
+
+        assertNotNull(navigation);
+        assertTrue(navigation.isAssociationClassNavigation());
+        assertFalse(navigation.supportsDirectCypherNavigation());
+        assertEquals(OclDiagnosticCode.ASSOCIATION_CLASS_UNSUPPORTED, navigation.unsupportedCode());
+
+        var compiled = new DefaultOclToCypherCompiler(api.getModel()).compile(
+                "context Person inv NoDirectLinkObjectShortcut: self.employer->notEmpty()");
+        assertFalse(compiled.isSupported());
+        assertEquals(OclDiagnosticCode.ASSOCIATION_CLASS_UNSUPPORTED,
+                compiled.getDiagnostics().get(0).code());
+    }
+
     @Test
     void indexesAttributesAndNavigations() {
         String spec = """
