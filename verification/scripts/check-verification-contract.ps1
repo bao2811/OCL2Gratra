@@ -1,5 +1,6 @@
 param(
     [string]$RegistryPath = (Join-Path $PSScriptRoot '..\contract\proof-contract-registry.json'),
+    [string]$FormalPath = (Join-Path $PSScriptRoot '..\..\md\research\formal-theorems-and-proofs.md'),
     [string]$WorkspacePath = (Join-Path $PSScriptRoot '..\..'),
     [string]$CoverageMatrixPath = '',
     [string]$AdmittedCaseSourcePath = '',
@@ -34,6 +35,26 @@ function Get-Utf8LfSha256([string]$Path) {
     } finally {
         $sha256.Dispose()
     }
+}
+
+function Normalize-Lf([string]$Text) {
+    return $Text.Replace("`r`n", "`n").Replace("`r", "`n").Trim()
+}
+
+function Get-CanonicalRegistryText([string]$FormalText) {
+    $begin = '<!-- BEGIN CANONICAL PROOF-CONTRACT REGISTRY JSON -->'
+    $end = '<!-- END CANONICAL PROOF-CONTRACT REGISTRY JSON -->'
+    $beginCount = ([regex]::Matches($FormalText, [regex]::Escape($begin))).Count
+    $endCount = ([regex]::Matches($FormalText, [regex]::Escape($end))).Count
+    if ($beginCount -ne 1 -or $endCount -ne 1) {
+        throw "Canonical formal source must contain exactly one registry JSON block; begin=$beginCount end=$endCount"
+    }
+    $pattern = '(?s)' + [regex]::Escape($begin) + '\r?\n(.*?)\r?\n' + [regex]::Escape($end)
+    $match = [regex]::Match($FormalText, $pattern)
+    if (-not $match.Success) {
+        throw 'Canonical registry JSON markers are malformed or out of order'
+    }
+    return Normalize-Lf $match.Groups[1].Value
 }
 
 function Test-ExactSequence([object[]]$Actual, [object[]]$Expected, [string]$Label) {
@@ -114,16 +135,27 @@ $vocabularyWorkspace = if ([string]::IsNullOrWhiteSpace($VocabularyWorkspacePath
 }
 
 try {
+    $formalText = Read-Utf8 $FormalPath
+    $canonicalRegistryText = Get-CanonicalRegistryText $formalText
     $registryText = Read-Utf8 $RegistryPath
-    $registry = $registryText | ConvertFrom-Json
+    $registry = $canonicalRegistryText | ConvertFrom-Json
 } catch {
     Write-Error $_
     exit 1
+}
+$normalizedDerivedRegistry = Normalize-Lf $registryText
+if ($normalizedDerivedRegistry -cne $canonicalRegistryText) {
+    Add-CheckError 'Derived registry is stale relative to md/research/formal-theorems-and-proofs.md; run sync-proof-contract-from-formal.ps1 -UpdateDerived'
 }
 $registryHash = Get-Utf8LfSha256 $RegistryPath
 
 if ([int]$registry.registrySchemaVersion -ne 4) {
     Add-CheckError "Registry: expected schema version 4, actual '$($registry.registrySchemaVersion)'"
+}
+if ([string]$registry.authority.kind -cne 'derived_projection_metadata' -or
+    [string]$registry.authority.canonicalPath -cne 'md/research/formal-theorems-and-proofs.md' -or
+    [string]$registry.authority.canonicalBlock -cne 'CANONICAL PROOF-CONTRACT REGISTRY JSON') {
+    Add-CheckError 'Registry authority metadata must identify formal-theorems-and-proofs.md as the canonical source'
 }
 Test-ExactSequence @($registry.assumptions.id) @('A1','A2','A3','A4','A5','A6','A7','A8','A9') 'Registry assumptions'
 Test-ExactSequence @($registry.scopeLemmas.id) @('M1','M2','M3','M3a','M4','M5') 'Registry scope lemmas'
@@ -165,6 +197,8 @@ foreach ($theorem in @($registry.theorems)) {
 
 $trackedPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 [void]$trackedPaths.Add('verification/contract/proof-contract-registry.json')
+[void]$trackedPaths.Add('md/research/formal-theorems-and-proofs.md')
+[void]$trackedPaths.Add('verification/scripts/sync-proof-contract-from-formal.ps1')
 $evidenceById = @{}
 foreach ($evidence in @($registry.evidence)) {
     $evidenceId = [string]$evidence.id

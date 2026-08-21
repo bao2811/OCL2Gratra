@@ -9,9 +9,10 @@ $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $workspace = [System.IO.Path]::GetFullPath($WorkspacePath)
 $checker = [System.IO.Path]::GetFullPath($CheckerPath)
 $hostExecutable = (Get-Process -Id $PID).Path
+$canonicalFormalPath = Join-Path $workspace 'md\research\formal-theorems-and-proofs.md'
 $mutationRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("verification-contract-mutations-" + [guid]::NewGuid().ToString('N'))
 $passed = 0
-$total = 6
+$total = 7
 
 function Read-Text([string]$Path) {
     return [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
@@ -25,14 +26,34 @@ function New-Case([string]$Name) {
     $casePath = Join-Path $mutationRoot $Name
     [void][System.IO.Directory]::CreateDirectory($casePath)
     $registry = Join-Path $casePath 'registry.json'
+    $formal = Join-Path $casePath 'formal.md'
     Copy-Item -LiteralPath $RegistryPath -Destination $registry
-    return [pscustomobject]@{ Root = $casePath; Registry = $registry }
+    Copy-Item -LiteralPath $canonicalFormalPath -Destination $formal
+    return [pscustomobject]@{ Root = $casePath; Registry = $registry; Formal = $formal }
+}
+
+function Sync-CanonicalRegistryFromDerived([object]$Case) {
+    $begin = '<!-- BEGIN CANONICAL PROOF-CONTRACT REGISTRY JSON -->'
+    $end = '<!-- END CANONICAL PROOF-CONTRACT REGISTRY JSON -->'
+    $registry = (Read-Text $Case.Registry).Replace("`r`n", "`n").Replace("`r", "`n").Trim()
+    $formal = Read-Text $Case.Formal
+    $pattern = '(?s)' + [regex]::Escape($begin) + '\r?\n.*?\r?\n' + [regex]::Escape($end)
+    if (-not [regex]::IsMatch($formal, $pattern)) {
+        throw 'Mutation fixture cannot find the canonical registry block'
+    }
+    Write-Text $Case.Formal ([regex]::Replace(
+        $formal,
+        $pattern,
+        $begin + "`n" + $registry + "`n" + $end,
+        1
+    ))
 }
 
 function Invoke-Checker([object]$Case, [string[]]$ExtraArguments = @()) {
     $arguments = @(
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $checker,
         '-RegistryPath', $Case.Registry,
+        '-FormalPath', $Case.Formal,
         '-WorkspacePath', $workspace
     ) + $ExtraArguments
     $previousPreference = $ErrorActionPreference
@@ -73,16 +94,25 @@ try {
         throw "Machine-verification baseline failed: $($baselineResult.Output)"
     }
 
+    $case = New-Case 'derived-registry-drift'
+    $registry = (Read-Text $case.Registry) | ConvertFrom-Json
+    ($registry.assumptions | Where-Object id -eq 'A1').key = 'MUTATED_DERIVED_ONLY'
+    Write-Text $case.Registry ($registry | ConvertTo-Json -Depth 40)
+    Assert-Killed 'derived registry cannot override formal source' $case `
+        'Derived registry is stale'
+
     $case = New-Case 'missing-premise'
     $registry = (Read-Text $case.Registry) | ConvertFrom-Json
     ($registry.theorems | Where-Object id -eq 'PC-T0').assumptions = @()
     Write-Text $case.Registry ($registry | ConvertTo-Json -Depth 40)
+    Sync-CanonicalRegistryFromDerived $case
     Assert-Killed 'missing theorem premise' $case 'premise/dependency list'
 
     $case = New-Case 'dependency-drift'
     $registry = (Read-Text $case.Registry) | ConvertFrom-Json
     ($registry.theorems | Where-Object id -eq 'PC-T4').assumptions = @('A2','A3','A4','A5','AX')
     Write-Text $case.Registry ($registry | ConvertTo-Json -Depth 40)
+    Sync-CanonicalRegistryFromDerived $case
     Assert-Killed 'registry dependency drift' $case 'unknown assumption AX'
 
     $case = New-Case 'admitted-constructor'
@@ -116,12 +146,14 @@ try {
     $registry = (Read-Text $case.Registry) | ConvertFrom-Json
     ($registry.evidence | Where-Object id -eq 'EV-PO17-CHECKER').path = 'verification/evidence/does-not-exist.txt'
     Write-Text $case.Registry ($registry | ConvertTo-Json -Depth 40)
+    Sync-CanonicalRegistryFromDerived $case
     Assert-Killed 'discharged obligation missing evidence' $case 'verification/evidence/does-not-exist.txt'
 
     $case = New-Case 'premature-active-claim'
     $registry = (Read-Text $case.Registry) | ConvertFrom-Json
     $registry.claimPolicy.prototypeCorrectness = 'active'
     Write-Text $case.Registry ($registry | ConvertTo-Json -Depth 40)
+    Sync-CanonicalRegistryFromDerived $case
     Assert-Killed 'premature prototype correctness claim' $case 'Prototype correctness claim is active while blocking'
 
     Write-Host "Machine verification mutation tests PASS: $passed/$total killed."

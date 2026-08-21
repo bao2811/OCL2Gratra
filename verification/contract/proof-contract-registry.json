@@ -1,6 +1,11 @@
 {
   "version": "PC-2026-07-22.3",
   "registrySchemaVersion": 4,
+  "authority": {
+    "kind": "derived_projection_metadata",
+    "canonicalPath": "md/research/formal-theorems-and-proofs.md",
+    "canonicalBlock": "CANONICAL PROOF-CONTRACT REGISTRY JSON"
+  },
   "assumptions": [
     { "id": "A1", "key": "invariant_parse_decode_and_admission" },
     { "id": "A2", "key": "successful_context_fixed_invariant_binding" },
@@ -248,11 +253,11 @@
     { "term": "ObjectInstanceOf", "role": "M1 object to runtime UmlClass typing link", "path": "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphVocabulary.java", "literal": "public static final String OBJECT_INSTANCE_OF = \"ObjectInstanceOf\";" },
     { "term": "InstanceOf", "role": "M2 schema element to MetaNode typing link", "path": "neo4j/src/main/java/org/uet/dse/neo4j/encoding/CanonicalGraphVocabulary.java", "literal": "public static final String SCHEMA_INSTANCE_OF = \"InstanceOf\";" },
     { "term": "modelKey", "role": "repository model scope conjoined with every validation-visible canonical lookup", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "{modelKey: $" },
-    { "term": "classKey", "role": "exact UmlClass identity used jointly with modelKey by invariant context/allInstances", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "modelScopedKeyedNodePattern(classAlias, \"UmlClass\", \"classKey\", classParam, state)" },
+    { "term": "classKey", "role": "exact UmlClass identity used jointly with modelKey by invariant context/allInstances", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "\"UmlClass\", \"classKey\", classParam, state)" },
     { "term": "attributeKey", "role": "exact scalar attribute-slot identity", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": ".attributeKey = $" },
     { "term": "associationKey", "role": "exact association identity for navigation", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": ".associationKey = $" },
-    { "term": "sourceQualifiers", "role": "qualifier payload at the source association end", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "case OUTGOING, UNDIRECTED -> \"sourceQualifiers\";" },
-    { "term": "targetQualifiers", "role": "qualifier payload at the target association end", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "case INCOMING -> \"targetQualifiers\";" },
+    { "term": "sourceQualifiers", "role": "qualifier payload at the source association end", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "? \"sourceQualifiers\" : binding.sourceQualifierProperty();" },
+    { "term": "targetQualifiers", "role": "qualifier payload at the target association end", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/OclCypherRenderer.java", "literal": "case INCOMING -> binding == null ? \"targetQualifiers\" : binding.targetQualifierProperty();" },
     { "term": "scalarCodecV1", "role": "typed scalar wire format separating bottom from ordinary strings and numeric domains", "path": "neo4j/src/main/java/org/uet/dse/neo4j/sync/helper/CanonicalScalarValueCodec.java", "literal": "public static final String BOTTOM = \"v1|V\";" },
     { "term": "__oclBottom", "role": "reserved semantic bottom marker", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclBottomToken.java", "literal": "public static final String MARKER = \"__oclBottom\";" }
   ],
