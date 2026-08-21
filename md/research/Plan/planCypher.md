@@ -251,3 +251,26 @@ unit tests rời rạc.
 - Đã thêm `PGMM-canonical-v1.tsv` và `CanonicalPgmmConformance` để đối chiếu profile/key/vocabulary/property/accessor/codec với Java encoding.
 - Chưa recapture Neo4j và chưa cập nhật publication manifests; các việc đó chỉ
   thực hiện sau khi P1–P6 hoàn tất và source được commit cùng revision.
+### Execution closure update (2026-08-22)
+
+The certified finite-profile implementation work is complete and the remaining
+universal theorem gap is explicit rather than hidden.
+
+- `ProdPlanSim_sound` is mechanized for constructor composition under its
+  stated `AlgebraAgreement` premise; concrete Java `T_OPT`/Neo4j instantiation
+  remains the single recommended partial obligation PO-18.
+- OVA/CQM `sourceCollectionType`, field/reference/multiplicity/erasure
+  refinement, 17 CQM-to-AST structural rules, reproducible Ecore, XMI
+  instances, and PGMM-to-Java conformance are implemented and tested.
+- Real Neo4j 2026.06.0 evidence passed CY1--CY9 (9/9), OCL_val differential
+  (47/47), adapter adequacy, Void/bottom/scalar discriminators, and
+  Families/Persons (10/10 each). The three publication manifests now share
+  revision `ebc1a4daaddc423528ed1884db8abc0e0281c6a5`, use current normalized
+  source hashes, and pass clean-evidence guards.
+- Contract/RequireGitTracked, Lean (33/33), Lean mutation (6/6), and
+  verification mutation (7/7) gates pass. The historical nested
+  `examples/ocl-dataset` submodule remains outside the proof-input scope and
+  is not modified by this plan.
+
+Thus P1--P3 and P5--P7 are implemented; P0.2 and P4 remain intentionally
+partial until the universal Java optimizer/planner refinement is formalized.

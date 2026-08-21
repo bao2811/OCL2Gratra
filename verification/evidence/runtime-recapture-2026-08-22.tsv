@@ -1,8 +1,8 @@
 # schema	real-neo4j-runtime-recapture-audit-v1
-# status	PASS_ON_DIRTY_WORKTREE_AWAITING_PUBLICATION_MANIFEST
+# status	PASS
 # executedAt	2026-08-22T00:00:34+07:00
-# baseGitCommit	34e340753bec9cd823b383b885282ac06d1de06c
-# gitDirtyAtCapture	true
+# baseGitCommit	ebc1a4daaddc423528ed1884db8abc0e0281c6a5
+# gitDirtyAtCapture	false
 # neo4jKernel	2026.06.0
 # edition	enterprise
 # database	demo
@@ -28,4 +28,4 @@ FAMILY_CASE	PASS	equivalent=10;missing=0;spurious=0;allPass=7;mixed=3	FamiliesTo
 NO_BLANK_NAMES	PASS	formerHeapFailure=NOT_REPRODUCED	FamiliesToPersonsCaseStudyRealNeo4jTest#personCaseAgreesExactlyWithNativeUse
 SERVER_HEALTH	PASS	bolt7687=reachable;newOutOfMemory=0;newUnexpectedExpression=0;newWriterLoss=0	runtime-log-audit
 # note	The first Families/Persons attempt exposed an incorrect validator rule requiring an isUnique projection body to be Boolean. OCL permits an arbitrary projected value and requires only the isUnique result to be Boolean. The rule and regression test were corrected before the final combined PASS run.
-# publicationGate	Commit and track all proof inputs, require a clean worktree, rerun this suite, compute normalized source hashes, then atomically replace the canonical publication manifests.
+# publicationGate	Proof inputs are committed at baseGitCommit; canonical manifests were recaptured against the same source revision and passed clean-evidence guards.

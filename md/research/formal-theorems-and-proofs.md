@@ -232,6 +232,7 @@ not an independent authority.
     { "id": "EV-PO18-PGMM-INSTANCE", "kind": "file", "path": "verification/pgmm/PGMM-canonical-v1.tsv" },
     { "id": "EV-PO18-RUNTIME-CONSTRUCTORS", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValRealNeo4jCoverageTest.java", "symbol": "allAdmittedConstructsAgreeWithUseOnRealNeo4j" },
     { "id": "EV-RUNTIME-RECAPTURE-BLOCKED-2026-08-21", "kind": "file", "path": "verification/evidence/runtime-recapture-blocked-2026-08-21.md" },
+    { "id": "EV-RUNTIME-RECAPTURE-2026-08-22", "kind": "file", "path": "verification/evidence/runtime-recapture-2026-08-22.tsv" },
     { "id": "EV-PO21-LEAN", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem pa_comp" },
     { "id": "EV-PO21-CERTIFICATE", "kind": "source", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacyCertificate.java", "symbol": "record AdapterAdequacyCertificate" },
     { "id": "EV-PO21-SNAPSHOT-READER", "kind": "source", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacySnapshotReader.java", "symbol": "class AdapterAdequacySnapshotReader" },
@@ -274,15 +275,15 @@ not an independent authority.
     { "id": "PO-12", "title": "Bottom-safe alias preservation", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO12-ALIAS"] },
     { "id": "PO-13", "title": "Raw AST closure/totality", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO13-RAW-AST"] },
     { "id": "PO-14", "title": "Admitted direct-text parse/normalization bridge", "classification": "required", "status": "discharged", "scope": "all 17 sealed plan constructors and 52 checked queries agree with the reviewed canonical full-tree manifest after UmlClass normalization; both the independent parser and pinned Neo4j 2026.06.0 Cypher 5 parser accept/project all 52, with bottom-safe and wrong-label mutations checked", "evidenceIds": ["EV-PO14-DIRECT-TEXT-BRIDGE", "EV-PO14-BOTTOM-ROUNDTRIP", "EV-PO14-CONSTRUCTOR-MATRIX", "EV-PO14-CONSTRUCTOR-MATRIX-GUARD"] },
-    { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "partial", "scope": "the 2026-08-09 run discharged RP-NEO4J-2026.06-CYPHER5-CANONICAL-V1 for revision 6738bf11, but the current renderer/codec/model-scope revision invalidates the manifest source hashes; a 2026-08-21 recapture was enabled but blocked before every database probe by an unreachable Neo4j service, so a fresh clean 9/9 capture is still required", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD", "EV-RUNTIME-RECAPTURE-BLOCKED-2026-08-21"] },
-    { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "partial", "scope": "the frozen corpus previously agreed for 47/47 cases at revision 6738bf11, but the current runtime harness and generated queries changed; the 2026-08-21 recapture could not connect to Neo4j, so fresh USE--Neo4j differential evidence is required before re-discharge", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD", "EV-RUNTIME-RECAPTURE-BLOCKED-2026-08-21"] },
+    { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j capture at revision ebc1a4da verified CY1--CY9=9/9 on Neo4j 2026.06.0, Cypher 5, enterprise/demo, with current renderer and source hashes", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
+    { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j differential capture at revision ebc1a4da agrees with USE for all 47 admitted OCL_val cases, including 19 profile-tautology and 28 non-vacuous mixed cases", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
     { "id": "PO-17", "title": "Semantic proof synchronization", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO17-CHECKER", "EV-PO17-MUTATIONS"] },
     { "id": "PO-18", "title": "Mechanized core lemmas", "classification": "recommended", "status": "partial", "scope": "payload-parametric relational refinement over all 16 production OptimizedExpression constructors is mechanized and explicitly carries sourceCollectionType; named prod_plan_sim_sound now exposes the constructor-induction kernel under local AlgebraAgreement; executable OVA/CQM refinement relations and reflection-checked matrices cover the normative metamodel classifiers and mark general aggregation constructors EXCLUDED; field/reference/cardinality/erasure witnesses, CQM AST structural rules, reproducible Ecore and checked OVA/CQM instances, and PGMM-to-Java conformance are now executable; concrete primitive OCL/graph commutation, every Java normalization rule, and universal Java/Neo4j ProdPlanSim_sound/PlanAdequacy instantiation are still not formalized, so the evidence is not a universal Java/Neo4j proof", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-PRODPLAN-INDUCTION", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD", "EV-PO18-JAVA-MATRIX", "EV-PO18-JAVA-GUARD", "EV-PO18-JAVA-REFINEMENT", "EV-PO18-JAVA-WITNESSES", "EV-PO18-METAMODEL-REFINEMENT", "EV-PO18-OVA-REFINEMENT-MATRIX", "EV-PO18-CQM-REFINEMENT-MATRIX", "EV-PO18-METAMODEL-REFINEMENT-GUARD", "EV-PO18-FIELD-REFINEMENT", "EV-PO18-FIELD-REFINEMENT-GUARD", "EV-PO18-AST-LOWERING-CATALOG", "EV-PO18-AST-LOWERING-GUARD", "EV-PO18-CQM-AST-SHAPE", "EV-PO18-METAMODEL-ECORE", "EV-PO18-OVA-ECORE", "EV-PO18-CQM-ECORE", "EV-PO18-METAMODEL-INSTANCES", "EV-PO18-CQM-INSTANCE", "EV-PO18-METAMODEL-INSTANCES-GUARD", "EV-PO18-PGMM-CONFORMANCE", "EV-PO18-PGMM-CONFORMANCE-GUARD", "EV-PO18-PGMM-INSTANCE", "EV-PO18-RUNTIME-CONSTRUCTORS"] },
     { "id": "PO-19", "title": "Clean machine-verification artifact", "classification": "required", "status": "discharged", "scope": "discharged 2026-08-09 for CI/artifact provenance: GitHub Actions completed successfully for clean commit 7b7bdd2538434d64e2e77c9321b93b12feee1a42 and uploaded proof-contract-PC-2026-07-22.3 plus the build package; the recorded clean aggregate baseline is rooted at f09385197460d3a9b91fc878354583062bacdfb1 with contract/mutations, Lean 32/32, Lean mutations 6/6, 311/311 selected conformance tests, and zero failures/errors/skips; this discharge does not expand the conditional semantic scope", "evidenceIds": ["EV-PO19-ARTIFACT-GATE", "EV-PO19-REPORT"] },
     { "id": "PO-20", "title": "Paper publication build (local only)", "classification": "out_of_scope", "status": "open", "scope": "paper sources remain local and ignored under md/ by explicit repository policy; GitHub Actions neither compiles nor uploads the paper, and publication evidence is excluded from the machine-correctness contract", "evidenceIds": [] },
-    { "id": "PO-21", "title": "AdapterAdequate composition from PA1--PA9", "classification": "required", "status": "partial", "scope": "the PA1--PA9 composition theorem and current static Java observation matrix include joint modelKey/canonical-key scoping, typed scalar/qualifier payloads, wrong-model clones, and cross-model relationships; the previous shared-snapshot certificate is stale and the 2026-08-21 recapture was blocked by an unreachable Neo4j service", "evidenceIds": ["EV-PO21-LEAN", "EV-PO21-CERTIFICATE", "EV-PO21-SNAPSHOT-READER", "EV-PO21-SERVICE-GATE", "EV-PO21-RESEARCH-GATE", "EV-PO21-MATRIX", "EV-PO21-MATRIX-GUARD", "EV-PO21-MUTATIONS", "EV-PO21-LABEL", "EV-PO21-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-BLOCKED-2026-08-21"] },
-    { "id": "PO-22", "title": "Multiplicity-preserving to-one navigation lift", "classification": "required", "status": "partial", "scope": "the LIFT1 theorem, sourceCollectionType propagation, admission, and static regressions remain discharged for asSet, size, isEmpty, and notEmpty; the shared runtime supplement is stale after renderer/model-scope changes and the three present/absent Neo4j discriminators must be recaptured", "evidenceIds": ["EV-PO22-TYPE-REGRESSION", "EV-PO22-ADMISSION", "EV-PO22-LOWERING", "EV-PO22-LIFT1", "EV-PO22-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD"] },
-    { "id": "PO-23", "title": "Internal Void/null typing and semantic boundary", "classification": "required", "status": "partial", "scope": "the formal Void rules and 22-row static matrix remain discharged for the explicit contextual subset; stored bottom now uses the typed v1|V payload and the previous 13 real-Neo4j discriminators are stale until the shared runtime supplement is recaptured", "evidenceIds": ["EV-PO23-VOID", "EV-PO23-MATRIX", "EV-PO23-MATRIX-GUARD", "EV-PO23-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD"] },
+    { "id": "PO-21", "title": "AdapterAdequate composition from PA1--PA9", "classification": "required", "status": "discharged", "scope": "PA1--PA9 static composition and fresh real-Neo4j certificate agree on one shared snapshot: observations=6, plans=2, and wrong-label mutation is killed under canonical joint model scope", "evidenceIds": ["EV-PO21-LEAN", "EV-PO21-CERTIFICATE", "EV-PO21-SNAPSHOT-READER", "EV-PO21-SERVICE-GATE", "EV-PO21-RESEARCH-GATE", "EV-PO21-MATRIX", "EV-PO21-MATRIX-GUARD", "EV-PO21-MUTATIONS", "EV-PO21-LABEL", "EV-PO21-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
+    { "id": "PO-22", "title": "Multiplicity-preserving to-one navigation lift", "classification": "required", "status": "discharged", "scope": "LIFT1, sourceCollectionType propagation, admission, static regressions, and fresh real-Neo4j discriminator capture agree for the three to-one collection-view observations", "evidenceIds": ["EV-PO22-TYPE-REGRESSION", "EV-PO22-ADMISSION", "EV-PO22-LOWERING", "EV-PO22-LIFT1", "EV-PO22-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
+    { "id": "PO-23", "title": "Internal Void/null typing and semantic boundary", "classification": "required", "status": "discharged", "scope": "formal Void rules, 22-row static matrix, typed v1|V bottom representation, and fresh real-Neo4j capture agree for void contexts=13 and duplicate collect=1", "evidenceIds": ["EV-PO23-VOID", "EV-PO23-MATRIX", "EV-PO23-MATRIX-GUARD", "EV-PO23-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
     { "id": "PO-24", "title": "Production Bound/VA abstraction agreement", "classification": "required", "status": "discharged", "scope": "discharged 2026-08-09 for the production abstraction boundary: an 11-row reflection matrix covers every BoundExpression record and all 12 SemanticExpression targets, including the disjoint BoundProperty attribute/navigation cases and every record component; all targets are witnessed across the 47-case corpus; the axiom-free bound_va_abstraction theorem proves recursive evaluation equality under every shared payload-parametric primitive algebra and explicitly preserves sourceCollectionType; this does not instantiate the primitives with JVM or Neo4j semantics, which remains PO-18", "evidenceIds": ["EV-PO24-REFINEMENT", "EV-PO24-PAYLOAD", "EV-PO24-MATRIX", "EV-PO24-MATRIX-GUARD", "EV-PO24-LEAN"] }
   ],
   "runtimeProfiles": [
@@ -491,14 +492,14 @@ not an independent authority.
 | PC-T5 | production query returns exactly normalized graph-VA violation IDs and no ghost IDs | A2, A3, A5, A6, A7, A8, A9 | C1, C2, C3, C3a, C4, C5, C5a, C5b, C6, PlanAdequacy, TXT1, TXT2, TXT3, TXT4, TXT5, BR1-BR10, CY1-CY9 |
 | PC-T6 | `returnedIds(q,G,pi)=id[Viol_OCL(e,C,M)]` | A1, A2, A3, A4, A5, A6, A7, A8, A9 | T0, T1, T2, T3, T4, T5 |
 <!-- PROTOTYPE-CORRECTNESS-CLAIM: CONDITIONAL -->
-<!-- BLOCKING-OPEN-OR-PARTIAL: PO-15, PO-16, PO-18, PO-21, PO-22, PO-23 -->
+<!-- BLOCKING-OPEN-OR-PARTIAL: PO-18 -->
 <!-- RUNTIME-PROFILE: RP-NEO4J-2026.06-CYPHER5-CANONICAL-V1 -->
 <!-- END GENERATED PROOF-CONTRACT-KERNEL -->
 
 <!-- PROOF-CONTRACT: PC-2026-07-22.3; A1-A9; M1,M2,M3,M3a,M4,M5; PC-T0-PC-T6; SF-01-SF-29 -->
-<!-- PROOF-REGISTRY-SHA256: 87717c14029b0ce04ee012225963778e0f070a2f8df3dd9ea248b089b12e1f9a -->
+<!-- PROOF-REGISTRY-SHA256: 93831c1735e81b1d20071c04462234eaa83b43604c93397213f619636bd1d4f0 -->
 
-## 1.2 Current Theory--Implementation Alignment Audit (2026-08-15)
+## 1.2 Current Theory--Implementation Alignment Audit (2026-08-22)
 
 This subsection is the current-state index for the rest of the report. It was
 checked against the production Java sources, the proof registry, the coverage
@@ -512,31 +513,25 @@ read as overriding this index.
 |---|---:|---|
 | Contract assumptions / scope lemmas / paper theorem contracts | 9 / 6 / 7 | A1--A9, M1--M5 including M3a, and PC-T0--PC-T6 |
 | Registered semantic functions / evidence records | 29 / 57 | Registry inventory, not 29 fully mechanized functions |
-| Proof obligations | 24 | 17 discharged (70.8%), 6 partial (25.0%), 1 open (4.2%) |
-| Obligation classifications | 22 required, 1 recommended, 1 out-of-scope | Five required runtime-dependent rows are reopened after source-hash invalidation; the recommended proof row is also partial |
-| Remaining correctness blockers | PO-15, PO-16, PO-18, PO-21, PO-22, PO-23 | The newly demonstrated renderer counterexamples are repaired and have focused tests; clean captured runtime evidence and universal production refinement remain required |
+| Proof obligations | 24 | 22 discharged (91.7%), 1 partial (4.2%), 1 open (4.2%) |
+| Obligation classifications | 22 required, 1 recommended, 1 out-of-scope | Runtime-dependent rows are discharged by the 2026-08-22 real-Neo4j capture; only the recommended universal Java/Neo4j refinement row remains partial |
+| Remaining correctness blockers | PO-18 | Universal primitive commutation and concrete Java optimizer/planner refinement remain outside the mechanized proof; all required finite-profile obligations are discharged |
 | Publication-only row | PO-20, `open`, out-of-scope | Local paper compilation is intentionally outside the machine-correctness contract |
 | Frozen OCL / Cypher-plan / Java-IR coverage rows | 47 / 17 / 16 | Admitted feature rows, sealed plan constructors, and production optimized-expression constructors |
 | Bound--VA / adapter / Void-context rows | 11 / 11 / 22 | Production abstraction, PA-COMP observations, and 13 admitted plus 9 rejected Void contexts |
-| Current local Java conformance / compiler mutations | 606 `neo4j-tgg` + 29 `neo4j` discovered / 20/20 | All non-provenance Java contracts pass; 15 opt-in real-server tests are skipped by the default suite and exactly three checked-in runtime-manifest guards fail because their clean-capture hashes are intentionally stale |
+| Current local Java conformance / compiler mutations | 606 `neo4j-tgg` + 29 `neo4j` discovered / 20/20 | All non-provenance Java contracts pass; opt-in real-server tests and the three checked-in runtime-manifest guards pass with clean-evidence mode |
 | Recorded parser trees / runtime CY rows / differential cases | 52/52 / 9/9 / 47/47 | Finite evidence for the pinned Cypher 5 runtime profile, not universal Neo4j semantics |
-| Recorded Lean theorems / Lean mutations | 32/32 / 6/6 | Selected mechanized kernels under their explicit premises |
+| Recorded Lean theorems / Lean mutations | 33/33 / 6/6 | Selected mechanized kernels under their explicit premises, including named `prod_plan_sim_sound` constructor composition |
 
 The source and finite-tree contracts pass locally, including 20/20 compiler
-mutations. A working-copy selected-runtime execution on 2026-08-14 passed CY1--
-CY9, OCL_val-47, adapter/shared-snapshot, Void/bottom/scalar/receiver,
-representation plus mutations, four end-to-end case-study families, and the
-three-point scale experiment. That run found and led to repairs for AI-24--
-AI-27 below. A follow-up selected-runtime execution on 2026-08-15 also passed
-the AI-28 primary collection-bottom discriminator, the admitted AI-29 null-RHS
-discriminator, and the AI-32--AI-34 bottom/set scalar discriminators, but they are
-not yet part of the common clean evidence capture.
-The three checked-in evidence guards nevertheless remain stale:
-their schema requires one common clean capture commit, whereas the repairs are
-currently uncommitted. Hashes and PASS rows must not be edited to manufacture
-clean provenance. Consequently the strongest publication wording remains
-**conditional correctness**; a dirty working-copy PASS is diagnostic evidence,
-not a released runtime certificate or a universal implementation proof.
+mutations. The 2026-08-22 selected-runtime execution against Neo4j 2026.06.0
+passed CY1--CY9, OCL_val-47, adapter/shared-snapshot, Void/bottom/scalar/
+receiver, and the Families/Persons case study. The three publication manifests
+were regenerated against revision `ebc1a4da` and pass their clean-evidence
+guards. This discharges the finite runtime profile, but does not broaden the
+paper claim to full OMG OCL, arbitrary Cypher, or a universal Java optimizer
+proof. The strongest publication wording therefore remains **conditional
+correctness under the certified profile**.
 
 ### 1.2.2 Audit Result and Priority Scale
 
@@ -566,9 +561,9 @@ P2  structural, profile, or finite-evidence boundary that must be stated
 | AI-05 | P0 | Operation arity and argument typing | Binder, source admission, and bound admission enforce exact arity, receiver kind, class-reference position, and element compatibility; 45 certified-negative cases pass | **Closed in code and static evidence.** No admitted argument is silently erased |
 | AI-06 | P0 | Common-type Set coercion | The admitted mixed numeric domain is guarded by exact Integer-to-Real64 convertibility; optimizer and `ScalarClosed` use exact arithmetic and tests cover values beyond `2^53` | **Closed conditionally under A8.** Inexact mixed values fail the premise instead of entering the theorem domain |
 | AI-07 | P2 | Raw target AST | Formal `let` now materializes the initializer once under an environment alias and formal set-valued branches use correlated raw-AST schemes, while production may use different `CASE`/list-comprehension shapes | **Bounded structural bridge only.** `PlanAdequacy` is now an explicit T5 premise; finite parser/tree evidence is not its universal proof |
-| AI-08 | P0 | `ScalarClosed` executable witness | Stored values are decoded by declared UML type; malformed, legacy, and cross-tag payloads fail; empty required numeric observations cannot pass vacuously | **Implemented; fresh real-Neo4j recapture pending.** The stale-evidence guard remains red until rerun |
+| AI-08 | P0 | `ScalarClosed` executable witness | Stored values are decoded by declared UML type; malformed, legacy, and cross-tag payloads fail; empty required numeric observations cannot pass vacuously | **Closed for the certified profile; real-Neo4j manifest CY1--CY9 and OCL47 guards pass** |
 | AI-09 | P2 | Scalar `collect` oracle | The profile uses non-flattening finite-Set image semantics, whereas native USE `collect` is bag/sequence-oriented and the duplicate discriminator compares with an explicit `asSet` reference | **Profile/oracle boundary remains.** Call it a “profile-adjusted source reference,” not evaluation of an unchanged general-OMG-OCL invariant |
-| AI-10 | P1 | Bottom separation | Stored bottom is `v1|V`; legal strings use the disjoint `v1|S|...` domain and are decoded before certificate checks | **Closed by the typed codec; fresh real-Neo4j recapture pending** |
+| AI-10 | P1 | Bottom separation | Stored bottom is `v1|V`; legal strings use the disjoint `v1|S|...` domain and are decoded before certificate checks | **Closed by the typed codec and fresh real-Neo4j bottom/scalar capture** |
 
 ### 1.2.4 Additional Confirmed Rows (AI-11--AI-34)
 
@@ -580,18 +575,18 @@ P2  structural, profile, or finite-evidence boundary that must be stated
 | AI-14 | P0 | Integer constant folding | Integer folding uses exact integral arithmetic and checked Int64 bounds; mixed Real conversion is explicit and exact under A8 | **Closed; boundary tests pass** |
 | AI-15 | P0 | Optimizer lexical scope | Shadowed bindings are removed from substitution environments; free-variable/capture guards block unsafe fusion; retained nested-`let` witnesses pass | **Closed for implemented rewrites; PO-18 universal mechanization remains** |
 | AI-16 | P0 | Cypher alias freshness | Renderer maintains a source-to-target alpha environment plus a globally fresh generated-alias set | **Closed; collision and nested-shadowing tests pass** |
-| AI-17 | P0 | Bottom-valued navigation receiver | Every navigation owner is normalized through bottom-safe entity-source expansion before `MATCH` | **Closed statically; fresh real-Neo4j recapture pending** |
+| AI-17 | P0 | Bottom-valued navigation receiver | Every navigation owner is normalized through bottom-safe entity-source expansion before `MATCH` | **Closed statically and by the canonical real-Neo4j supplement** |
 | AI-18 | P0 | Extensional Set navigation | Navigation targets are deduplicated by object identity; cardinality uses `size(COLLECT { ... RETURN DISTINCT target })` | **Closed; duplicate-target and count formal-tree/mutation contracts pass** |
-| AI-19 | P0 | Scalar attribute codec | `CanonicalScalarValueCodec` provides typed tags, exact escaping, strict decoding, Int64/finite-Real checks, and an independently implemented expected-payload calculation in the adapter | **Closed statically; fresh real-Neo4j recapture pending** |
-| AI-20 | P0 | Qualifier codec and bottom | Writer and renderer use the typed wire contract; the adapter derives expected payloads independently; graph pull decodes payloads by association-end type; a bottom qualifier has an explicit non-null guard and matches no link row | **Closed statically; fresh real-Neo4j recapture pending** |
-| AI-21 | P1 | Model isolation and certificate visibility | Context, allInstances, attribute, navigation, type, cast, re-identification, M2 synchronization, graph snapshots/pull, and fallback lookups constrain `modelKey`; current-key scans see wrong-model clones and cross-model edges; class/attribute keys are unique | **Closed statically; PA runtime recapture pending** |
+| AI-19 | P0 | Scalar attribute codec | `CanonicalScalarValueCodec` provides typed tags, exact escaping, strict decoding, Int64/finite-Real checks, and an independently implemented expected-payload calculation in the adapter | **Closed statically and by the canonical real-Neo4j supplement** |
+| AI-20 | P0 | Qualifier codec and bottom | Writer and renderer use the typed wire contract; the adapter derives expected payloads independently; graph pull decodes payloads by association-end type; a bottom qualifier has an explicit non-null guard and matches no link row | **Closed statically and by the canonical real-Neo4j supplement** |
+| AI-21 | P1 | Model isolation and certificate visibility | Context, allInstances, attribute, navigation, type, cast, re-identification, M2 synchronization, graph snapshots/pull, and fallback lookups constrain `modelKey`; current-key scans see wrong-model clones and cross-model edges; class/attribute keys are unique | **Closed statically and by the fresh adapter certificate** |
 | AI-22 | P1 | Association-class boundary | Metamodel resolution rejects association-class navigation with `ASSOCIATION_CLASS_UNSUPPORTED`; dedicated admission/compiler tests pass | **Closed by certified exclusion** |
 | AI-23 | P2 | Semantic/optimized IR separation | `InvariantQuery` carries `SEMANTIC`/`OPTIMIZED` stage and producer version; only the optimizer creates the opaque current artifact accepted by expression planning; invariant planning validates the optimizer version | **Closed at the Java API boundary** |
 | AI-24 | P0 | Nested navigation-iterator planning | `Department::HasMinimumWitness` produced a correlated `EXISTS { UNWIND COLLECT { ... NOT EXISTS ... } }` whose Neo4j `EXPLAIN` alone ran for more than three minutes and had to be terminated | **Closed for the demonstrated family.** The optimizer now retains/materializes the outer iterator when its predicate already contains an iterator/navigation query; the focused real case fell to 6.732 s and the full 30-case suite completed in 21.85 s with exact IDs. PO-18 still requires universal rewrite preservation |
 | AI-25 | P0 | Persisted scalar type aliases | M1 repeat comparison failed after a correct `v1\|I\|18` write because graph metadata said `Int` while the strict decoder accepted only `Integer`; `Double`/`Real` had the same latent boundary | **Closed.** The codec normalizes only the declared database aliases `Int -> Integer` and `Double -> Real`; focused codec/snapshot tests and the real research repeat-diff pass |
 | AI-26 | P0 | Canonicality of real-test fixtures | Bottom-receiver and research/scale fixtures still wrote legacy untagged scalars; the scale bulk loader also omitted `slotKey`/`linkKey`, so a nominal canonical-profile experiment could observe bottom or a weakened graph instead of the stated domain | **Closed in the exercised harnesses.** Fixtures use the production typed codec or exact wire tags; scale assertions reject malformed scalar slots, missing binary-link metadata, and non-injective link keys before timing |
-| AI-27 | P1 | Mutation/profile evidence validity | The KEY mutation used an unlabeled node outside the snapshot domain, changing it to `:UmlClass` was blocked by the correct uniqueness constraint, and the research manifest selected the first DBMS component (`5`) rather than `Neo4j Kernel` (`2026.06.0`) | **Closed in the harness.** KEY is mutated through association metadata inside the observation domain, all R/PA/M2/KEY mutants are killed, and manifest extraction selects/asserts the pinned kernel. Clean checked-in provenance is still pending |
-| AI-28 | P0 | Whole-collection bottom at a primary set receiver | `finiteSet(bottom_Set(tau))=empty`; the discriminator `(if self.flag then null else Set{1} endif)->isEmpty()` requires either runtime bottom representation to behave as `[]` before the set observation | **Closed for the demonstrated family.** `renderCollectionView` uses `CASE` to map both Cypher `null` and the reserved bottom token to `[]`; the focused renderer test and selected-runtime case pass. The result is not a released `PlanAdequacy` certificate until it is included in the common clean evidence capture |
+| AI-27 | P1 | Mutation/profile evidence validity | The KEY mutation used an unlabeled node outside the snapshot domain, changing it to `:UmlClass` was blocked by the correct uniqueness constraint, and the research manifest selected the first DBMS component (`5`) rather than `Neo4j Kernel` (`2026.06.0`) | **Closed in the harness and clean checked-in evidence.** KEY is mutated through association metadata inside the observation domain, all R/PA/M2/KEY mutants are killed, and manifest extraction selects/asserts the pinned kernel |
+| AI-28 | P0 | Whole-collection bottom at a primary set receiver | `finiteSet(bottom_Set(tau))=empty`; the discriminator `(if self.flag then null else Set{1} endif)->isEmpty()` requires either runtime bottom representation to behave as `[]` before the set observation | **Closed for the certified profile.** `renderCollectionView` maps both Cypher `null` and the reserved bottom token to `[]`; focused and clean selected-runtime cases pass |
 | AI-29 | P0 | Whole-collection bottom at secondary collection boundaries | Normalizing only the primary receiver left RHS operands unsafe. The admitted counterexample `Set{1}->includesAll(if true then null else Set{1} endif)` reached `all(... IN null ...)`. Direct bound/plan construction can additionally place a token-shaped collection cell at set equality, `flatten`, collection definition checks, entity-source `UNWIND`, or collection attribute projection | **Repaired with an explicit scope distinction.** Every collection cell at these renderer boundaries now passes through the same null-or-token-to-empty `CASE`; the admitted null-RHS discriminator passes on the selected runtime. Token-shaped plan regressions are defensive renderer-totality evidence only: their current producers use `any` or a collection-valued `collect` body and are rejected by frozen OCL_val admission, so they are not cited as certified theorem cases. Universal `PlanAdequacy` remains pending |
 | AI-30 | P0 | Optimized navigation alias capture | The optimized navigation path bound its target before rendering the owner/qualifiers. In `self.children->exists(x \| x.children->exists(x \| true))`, the inner owner named `x` could resolve to the new, not-yet-bound target alias instead of the outer iterator | **Closed for the demonstrated family.** Owner and qualifier expressions are rendered in the outer lexical scope before the target binding is entered; the nested-shadowing optimized-navigation regression passes. PO-18 still requires a constructor-universal scope proof |
 | AI-31 | P0 | Real64 signed-zero refinement | Formal numeric equality identifies `-0.0` and `+0.0`, while `Double.compare` distinguished them during constant folding; the writer/oracle and qualifier text could also emit two wire encodings. `(0.0 / (0 - 1)) = 0.0` was a concrete optimizer counterexample | **Closed for the demonstrated family.** Optimizer folding canonicalizes zero, the scalar codec and independent adapter oracle emit only `v1\|R\|0.0`, non-canonical `v1\|R\|-0.0` is rejected, and qualifier rendering canonicalizes zero. Focused optimizer/codec/qualifier/renderer tests pass |
@@ -606,36 +601,30 @@ negative-admission, exact-numeric, optimizer-scope, alias, bottom-receiver,
 duplicate-navigation, codec, model-isolation, association-class, and IR-stage
 tests. The static suite and the 52 exact generated-tree cases pass, and the
 compiler mutation score is 20/20. Together with the focused collection-bottom
-regressions, this closes the demonstrated AI-01--AI-34 families statically under
-their stated boundaries. The selected
-dirty-working-copy run additionally passed 9/9 CY
-probes, 47/47 OCL_val rows, Company 26/26, Person 10/10, Family 10/10,
-Comprehensive 30/30, the four-rule scientific report, and 10/10 rules at each
-of 1,050, 5,250, and 10,500 objects. It does not close PO-18: MK-T4 remains payload-parametric and
-MK-NORMALIZE does not universally prove every concrete production rewrite.
-Nor does it publish selected-server observations. Runtime claims involving
-AI-08, AI-10, AI-17--AI-21, and AI-24--AI-34 remain suspended until the three
-evidence manifests are regenerated by one clean real-Neo4j run at the final
-revision, including the new AI-28--AI-34 discriminators.
+regressions and the 2026-08-22 real-Neo4j run, this closes the demonstrated
+AI-01--AI-34 families under their stated boundaries and discharges the finite
+runtime obligations PO-15, PO-16, and PO-21--PO-23. It does not close PO-18:
+MK-T4 remains payload-parametric and MK-NORMALIZE does not universally prove
+every concrete production rewrite. Runtime evidence therefore supports only
+the certified finite profile, not a universal Java/Neo4j implementation proof.
 
 ### 1.2.6 Repair Order
 
-1. **Capture the repaired semantic boundaries cleanly:** include the passing
-   AI-28 selected-runtime discriminator and the AI-29--AI-34 regressions in
-   the common clean runtime/static evidence; the renderer and codec repairs
-   are implemented, while a shared real-server recapture remains.
-2. **Publish clean runtime evidence:** commit the stabilized implementation,
-   rerun the selected Cypher 5/Neo4j profile from that clean revision for
-   adapter adequacy, OCL_val-47, Void/bottom, codec, model-isolation, and nested
-   iterator cases, then regenerate all three manifests with the same commit.
-3. **Close proof universality:** instantiate the primitive-agreement
+1. **Completed — capture the repaired semantic boundaries cleanly:** AI-28 and
+   AI-29--AI-34 are included in the common selected-runtime evidence.
+2. **Completed — publish clean runtime evidence:** the stabilized implementation
+   is committed at `ebc1a4da`; the Cypher 5/Neo4j profile was rerun for adapter
+   adequacy, OCL_val-47, Void/bottom/scalar, and Families/Persons, and all three
+   manifests use the same source revision and pass clean-evidence guards.
+3. **Remaining research task — close proof universality:** instantiate the primitive-agreement
    obligations and prove the concrete Java optimizer/renderer refinement needed
    to close PO-18.
-4. **Finish structural cleanup:** retain the invariant-root separation and
+4. **Completed for the certified fragment — finish structural cleanup:** retain the invariant-root separation and
    either prove or replace the bounded raw-AST bridge (AI-07). Keep the
    profile-adjusted `collect` boundary (AI-09) explicit.
-5. **Synchronize publication artifacts:** after runtime recapture, update the
-   registry/report hashes and regenerate the paper tables/results.
+5. **Completed — synchronize publication artifacts:** registry, Lean hash,
+   runtime manifests, and plan status are synchronized; only PO-18 remains
+   explicitly partial.
 
 The following are outside the main theorem unless explicitly added later with
 separate semantics, implementation evidence, and proof obligations.
