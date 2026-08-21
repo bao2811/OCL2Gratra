@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ova:ValidationModule xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ova="https://uet-dse.org/ocl/validation-algebra/1.0"
+    languageVersion="ova-certified-v1" certificationProfile="OCL_VAL_FINITE_SET_V1">
+  <invariants>
+    <ova:Invariant invariantId="inv_person_name" name="PersonNameInvariant"
+        contextClassName="Person" stage="SEMANTIC" producerVersion="semantic-ir-v1">
+      <selfVariable symbolId="self" name="self">
+        <declaredType kind="CLASS" typeName="Person" collectionKind="NONE"/>
+      </selfVariable>
+      <predicate xsi:type="ova:LiteralExpression" nodeId="literal_true"
+          kind="BOOLEAN" lexicalValue="true">
+        <resultType kind="BOOLEAN" typeName="Boolean" collectionKind="NONE"/>
+      </predicate>
+    </ova:Invariant>
+  </invariants>
+</ova:ValidationModule>

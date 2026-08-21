@@ -34,14 +34,26 @@ public final class OclCypherPlan {
      * violating objects, not satisfying objects.
      */
     public record InvariantPlan(String contextClassName, String invariantName, ExpressionPlan predicate,
-                                ViolationPolicy violationPolicy) {
+                                ViolationPolicy violationPolicy,
+                                GraphContextBinding graphBinding,
+                                EvaluationPolicy evaluationPolicy) {
         public InvariantPlan(String contextClassName, String invariantName, ExpressionPlan predicate) {
-            this(contextClassName, invariantName, predicate, ViolationPolicy.NOT_VALIDATION_TRUE);
+            this(contextClassName, invariantName, predicate, ViolationPolicy.NOT_VALIDATION_TRUE,
+                    null, EvaluationPolicy.MATERIALIZE_REUSED_EXPRESSIONS);
+        }
+
+        public InvariantPlan(String contextClassName, String invariantName, ExpressionPlan predicate,
+                             ViolationPolicy violationPolicy) {
+            this(contextClassName, invariantName, predicate, violationPolicy,
+                    null, EvaluationPolicy.MATERIALIZE_REUSED_EXPRESSIONS);
         }
 
         public InvariantPlan {
             if (violationPolicy == null) {
                 throw new IllegalArgumentException("Invariant violation policy is required");
+            }
+            if (evaluationPolicy == null) {
+                throw new IllegalArgumentException("CQM evaluation policy is required");
             }
         }
     }
@@ -49,6 +61,35 @@ public final class OclCypherPlan {
     /** Only Boolean true satisfies a certified invariant; every other value is a violation. */
     public enum ViolationPolicy {
         NOT_VALIDATION_TRUE
+    }
+
+    /**
+     * Physical evaluation contract carried by certified CQM artifacts.  The
+     * renderer may inline atomic aliases and parameters, but every compound
+     * value used more than once by one lowering rule must cross a
+     * materialize-once boundary.
+     */
+    public enum EvaluationPolicy {
+        MATERIALIZE_REUSED_EXPRESSIONS
+    }
+
+    /** Canonical graph information that makes an invariant plan self-contained. */
+    public record GraphContextBinding(String profileId, String modelKey, String contextClassKey,
+                                      String objectLabel, String classLabel,
+                                      String conformanceRelationship, String identityProperty) {
+    }
+
+    /** Physical scalar-slot accessor selected during CQM planning. */
+    public record AttributeBinding(String attributeKey, String slotLabel,
+                                   String ownerRelationship, String valueProperty) {
+    }
+
+    /** Physical association accessor selected during CQM planning. */
+    public record NavigationBinding(String associationKey, String sourceRole, String targetRole,
+                                    OclMetamodelIndex.NavigationDirection direction,
+                                    String relationshipTypePrefix,
+                                    String sourceQualifierProperty,
+                                    String targetQualifierProperty) {
     }
 
     /**
@@ -90,12 +131,22 @@ public final class OclCypherPlan {
     }
 
     public record AttributeAccessPlan(ExpressionPlan source, String attributeName, Type attributeType,
-                                      OclTypeBinding type, MAttribute attribute) implements ExpressionPlan {
+                                      OclTypeBinding type, MAttribute attribute,
+                                      AttributeBinding binding) implements ExpressionPlan {
+        public AttributeAccessPlan(ExpressionPlan source, String attributeName, Type attributeType,
+                                   OclTypeBinding type, MAttribute attribute) {
+            this(source, attributeName, attributeType, type, attribute, null);
+        }
     }
 
     public record NavigationAccessPlan(ExpressionPlan source, OclMetamodelIndex.NavigationInfo navigation,
                                        List<ExpressionPlan> qualifiers,
-                                       OclTypeBinding type) implements ExpressionPlan {
+                                       OclTypeBinding type,
+                                       NavigationBinding binding) implements ExpressionPlan {
+        public NavigationAccessPlan(ExpressionPlan source, OclMetamodelIndex.NavigationInfo navigation,
+                                    List<ExpressionPlan> qualifiers, OclTypeBinding type) {
+            this(source, navigation, qualifiers, type, null);
+        }
     }
 
     public record MethodCallPlan(ExpressionPlan source, String methodName, List<ExpressionPlan> arguments,

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 final class OclContextBatchQueryExecutor {
+    static final int MAX_RULES_PER_QUERY = 8;
+    static final int MAX_GENERATED_CHARS_PER_QUERY = 50_000;
 
     record BatchRule(int ruleIndex,
                      OclRuleDescriptor rule,
@@ -61,20 +63,48 @@ final class OclContextBatchQueryExecutor {
         if (batchRules.isEmpty()) {
             return new BatchExecutionResult(Map.of(), 0L);
         }
-        BatchQueryPlan plan = prepare(batchRules);
-        OclBottomToken.requireWellFormedGeneratedParameters(plan.parameters());
         long startedAt = System.nanoTime();
         Map<Integer, Map<String, String>> violationsByRuleIndex = new LinkedHashMap<>();
-        List<Record> records = session.run(plan.cypher(), plan.parameters()).list();
-        for (Record record : records) {
-            String alias = record.get("__ruleAlias").asString();
-            String useId = record.get("useId").asString();
-            BatchRule batchRule = plan.aliasToRule().get(alias);
-            violationsByRuleIndex
-                    .computeIfAbsent(batchRule.ruleIndex(), ignored -> new LinkedHashMap<>())
-                    .put(useId, batchRule.violationMessage());
+        for (BatchQueryPlan plan : prepareBatches(batchRules)) {
+            OclBottomToken.requireWellFormedGeneratedParameters(plan.parameters());
+            List<Record> records = session.run(plan.cypher(), plan.parameters()).list();
+            for (Record record : records) {
+                String alias = record.get("__ruleAlias").asString();
+                String useId = record.get("useId").asString();
+                BatchRule batchRule = plan.aliasToRule().get(alias);
+                violationsByRuleIndex
+                        .computeIfAbsent(batchRule.ruleIndex(), ignored -> new LinkedHashMap<>())
+                        .put(useId, batchRule.violationMessage());
+            }
         }
         return new BatchExecutionResult(Map.copyOf(violationsByRuleIndex), elapsedMillis(startedAt));
+    }
+
+    /**
+     * Greedily bounds both UNION branches and generated text per Neo4j query.
+     * One individually large rule is kept intact so diagnostics still identify
+     * the actual compiler output instead of failing during batch construction.
+     */
+    static List<BatchQueryPlan> prepareBatches(List<BatchRule> batchRules) {
+        if (batchRules == null || batchRules.isEmpty()) return List.of();
+        List<BatchQueryPlan> plans = new ArrayList<>();
+        List<BatchRule> current = new ArrayList<>();
+        int currentChars = 0;
+        for (BatchRule rule : batchRules) {
+            int ruleChars = rule.compiledRule().getCompilation().getCypher().length() + 96;
+            boolean exceedsRuleLimit = current.size() >= MAX_RULES_PER_QUERY;
+            boolean exceedsTextLimit = !current.isEmpty()
+                    && currentChars + ruleChars > MAX_GENERATED_CHARS_PER_QUERY;
+            if (exceedsRuleLimit || exceedsTextLimit) {
+                plans.add(prepare(current));
+                current = new ArrayList<>();
+                currentChars = 0;
+            }
+            current.add(rule);
+            currentChars += ruleChars;
+        }
+        if (!current.isEmpty()) plans.add(prepare(current));
+        return List.copyOf(plans);
     }
 
     private static RewrittenQuery rewriteParameters(CypherCompilationResult compilation, String alias) {

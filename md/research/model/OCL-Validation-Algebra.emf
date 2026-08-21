@@ -90,6 +90,7 @@ class Invariant {
   attr String[1] name;
   attr String[1] contextClassName;
   attr AlgebraStage[1] stage = "SEMANTIC";
+  attr String[1] producerVersion = "semantic-ir-v1";
 
   val VariableDeclaration[1] selfVariable;
   val Expression[1] predicate;
@@ -182,12 +183,15 @@ class CallExpression extends Expression {
   attr CallKind[1] callKind;
   attr String[1] operationName;
   val Expression[1] source;
+  // Required for COLLECTION_OPERATION; absent for METHOD.
+  val TypeDescriptor sourceCollectionType;
   val Expression[*] arguments;
 }
 
 class IteratorExpression extends Expression {
   attr IteratorKind[1] kind;
   val Expression[1] source;
+  val TypeDescriptor[1] sourceCollectionType;
   val VariableDeclaration[1] iterator;
   val Expression[1] body;
 }

@@ -1,5 +1,7 @@
 package org.uet.dse.neo4jtgg.ocl.ir;
 
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+import org.uet.dse.neo4j.encoding.CanonicalGraphVocabulary;
 import org.uet.dse.neo4jtgg.ocl.OclTypeBinding;
 
 import java.util.ArrayList;
@@ -95,6 +97,10 @@ public final class OclCertifiedModelValidator {
             violations.add(new Violation("WF_CQM_POLICY", "$.violationPolicy",
                     "Violation policy is required"));
         }
+        if (plan.evaluationPolicy() == null) {
+            violations.add(new Violation("WF_CQM_EVALUATION", "$.evaluationPolicy",
+                    "Evaluation policy is required"));
+        }
         validateCqmExpression(plan.predicate(), "$.predicate", Set.of("self"), false, violations,
                 java.util.Collections.newSetFromMap(new IdentityHashMap<>()));
         if (plan.predicate() != null && !isBoolean(plan.predicate().type())) {
@@ -112,8 +118,18 @@ public final class OclCertifiedModelValidator {
                 violations.add(new Violation("CERT_CQM_POLICY", "$.violationPolicy",
                         "Certified CQM requires NOT_VALIDATION_TRUE"));
             }
+            if (plan.evaluationPolicy()
+                    != OclCypherPlan.EvaluationPolicy.MATERIALIZE_REUSED_EXPRESSIONS) {
+                violations.add(new Violation("CERT_CQM_EVALUATION", "$.evaluationPolicy",
+                        "Certified CQM requires materialization of reused expressions"));
+            }
+            validateCertifiedGraphContext(plan.graphBinding(), violations);
             validateCqmExpression(plan.predicate(), "$.predicate", Set.of("self"), true, violations,
                     java.util.Collections.newSetFromMap(new IdentityHashMap<>()));
+            if (plan.graphBinding() != null) {
+                validateCqmBindingScope(plan.predicate(), plan.graphBinding().modelKey(), "$.predicate",
+                        violations, java.util.Collections.newSetFromMap(new IdentityHashMap<>()));
+            }
         }
         return new ValidationReport(violations);
     }
@@ -168,24 +184,39 @@ public final class OclCertifiedModelValidator {
                             stage, certified, violations, visited);
                 }
             }
+            validateOvaSetLiteralTypes(set.type(), set.elements(), "WF_OVA_SET_TYPE", path, violations);
         } else if (expression instanceof OclIr.Not not) {
             validateOvaExpression(not.expression(), path + ".operand", scope, stage, certified, violations, visited);
             requireBoolean(not.expression(), "WF_OVA_NOT", path + ".operand", violations);
+            if (!isBoolean(not.type())) {
+                violations.add(new Violation("WF_OVA_NOT", path + ".type", "not result must be Boolean"));
+            }
         } else if (expression instanceof OclIr.Binary binary) {
             requireAllowed(binary.operator(), BINARY_OPERATORS, "WF_OVA_OPERATOR", path + ".operator", violations);
             validateOvaExpression(binary.left(), path + ".left", scope, stage, certified, violations, visited);
             validateOvaExpression(binary.right(), path + ".right", scope, stage, certified, violations, visited);
+            validateBinaryTypes(binary.operator(), binary.left(), binary.right(), binary.type(),
+                    "WF_OVA_BINARY_TYPE", path, violations);
         } else if (expression instanceof OclIr.If ifExpression) {
             validateOvaExpression(ifExpression.condition(), path + ".condition", scope, stage, certified, violations, visited);
             requireBoolean(ifExpression.condition(), "WF_OVA_IF", path + ".condition", violations);
             validateOvaExpression(ifExpression.thenBranch(), path + ".thenBranch", scope, stage, certified, violations, visited);
             validateOvaExpression(ifExpression.elseBranch(), path + ".elseBranch", scope, stage, certified, violations, visited);
+            requireCompatibleType(ifExpression.thenBranch().type(), ifExpression.elseBranch().type(),
+                    "WF_OVA_IF_TYPE", path, violations);
+            requireCompatibleType(ifExpression.type(), ifExpression.thenBranch().type(),
+                    "WF_OVA_IF_TYPE", path + ".type", violations);
+            requireCompatibleType(ifExpression.type(), ifExpression.elseBranch().type(),
+                    "WF_OVA_IF_TYPE", path + ".type", violations);
         } else if (expression instanceof OclIr.Let let) {
             requireNonBlank(let.variableName(), "WF_OVA_BINDER", path + ".variableName", violations);
             validateType(let.variableType(), path + ".variableType", certified, "OVA", violations);
             validateOvaExpression(let.value(), path + ".value", scope, stage, certified, violations, visited);
             validateOvaExpression(let.body(), path + ".body", extend(scope, let.variableName()), stage,
                     certified, violations, visited);
+            requireCompatibleType(let.variableType(), let.value().type(),
+                    "WF_OVA_LET_TYPE", path + ".value", violations);
+            requireSameType(let.type(), let.body().type(), "WF_OVA_LET_TYPE", path + ".body", violations);
         } else if (expression instanceof OclIr.AttributeAccess attribute) {
             requireNonBlank(attribute.attributeName(), "WF_OVA_ATTRIBUTE", path + ".attributeName", violations);
             if (attribute.attribute() == null || attribute.attributeType() == null) {
@@ -236,6 +267,8 @@ public final class OclCertifiedModelValidator {
             validateOvaExpression(iterator.source(), path + ".source", scope, stage, certified, violations, visited);
             validateOvaExpression(iterator.body(), path + ".body", extend(scope, iterator.iteratorName()),
                     stage, certified, violations, visited);
+            validateIteratorTypes(iterator.operationName(), iterator.body().type(), iterator.type(),
+                    "WF_OVA_ITERATOR_TYPE", path, violations);
         } else if (expression instanceof OclIr.NavigationPredicateCheck check) {
             validateOptimizedStage(stage, path, violations);
             validateOvaExpression(check.navigation(), path + ".navigation", scope, stage, certified, violations, visited);
@@ -294,24 +327,39 @@ public final class OclCertifiedModelValidator {
             // Literal payload validity is covered by parameter/scalar closure contracts.
         } else if (expression instanceof OclCypherPlan.SetLiteralPlan set) {
             validateCqmList(set.elements(), path + ".elements", scope, certified, violations, visited);
+            validateCqmSetLiteralTypes(set.type(), set.elements(), "WF_CQM_SET_TYPE", path, violations);
         } else if (expression instanceof OclCypherPlan.NotPlan not) {
             validateCqmExpression(not.expression(), path + ".operand", scope, certified, violations, visited);
             requireBoolean(not.expression(), "WF_CQM_NOT", path + ".operand", violations);
+            if (!isBoolean(not.type())) {
+                violations.add(new Violation("WF_CQM_NOT", path + ".type", "not result must be Boolean"));
+            }
         } else if (expression instanceof OclCypherPlan.BinaryPlan binary) {
             requireAllowed(binary.operator(), BINARY_OPERATORS, "WF_CQM_OPERATOR", path + ".operator", violations);
             validateCqmExpression(binary.left(), path + ".left", scope, certified, violations, visited);
             validateCqmExpression(binary.right(), path + ".right", scope, certified, violations, visited);
+            validateBinaryTypes(binary.operator(), binary.left(), binary.right(), binary.type(),
+                    "WF_CQM_BINARY_TYPE", path, violations);
         } else if (expression instanceof OclCypherPlan.IfPlan ifPlan) {
             validateCqmExpression(ifPlan.condition(), path + ".condition", scope, certified, violations, visited);
             requireBoolean(ifPlan.condition(), "WF_CQM_IF", path + ".condition", violations);
             validateCqmExpression(ifPlan.thenBranch(), path + ".thenBranch", scope, certified, violations, visited);
             validateCqmExpression(ifPlan.elseBranch(), path + ".elseBranch", scope, certified, violations, visited);
+            requireCompatibleType(ifPlan.thenBranch().type(), ifPlan.elseBranch().type(),
+                    "WF_CQM_IF_TYPE", path, violations);
+            requireCompatibleType(ifPlan.type(), ifPlan.thenBranch().type(),
+                    "WF_CQM_IF_TYPE", path + ".type", violations);
+            requireCompatibleType(ifPlan.type(), ifPlan.elseBranch().type(),
+                    "WF_CQM_IF_TYPE", path + ".type", violations);
         } else if (expression instanceof OclCypherPlan.LetPlan let) {
             requireNonBlank(let.variableName(), "WF_CQM_BINDER", path + ".variableName", violations);
             validateType(let.variableType(), path + ".variableType", certified, "CQM", violations);
             validateCqmExpression(let.value(), path + ".value", scope, certified, violations, visited);
             validateCqmExpression(let.body(), path + ".body", extend(scope, let.variableName()),
                     certified, violations, visited);
+            requireCompatibleType(let.variableType(), let.value().type(),
+                    "WF_CQM_LET_TYPE", path + ".value", violations);
+            requireSameType(let.type(), let.body().type(), "WF_CQM_LET_TYPE", path + ".body", violations);
         } else if (expression instanceof OclCypherPlan.AttributeAccessPlan attribute) {
             requireNonBlank(attribute.attributeName(), "WF_CQM_ATTRIBUTE", path + ".attributeName", violations);
             if (attribute.attribute() == null || attribute.attributeType() == null) {
@@ -319,6 +367,7 @@ public final class OclCertifiedModelValidator {
                         "Attribute plan must retain resolved UML metadata"));
             }
             validateCqmExpression(attribute.source(), path + ".source", scope, certified, violations, visited);
+            if (certified) validateAttributeBinding(attribute, path + ".binding", violations);
         } else if (expression instanceof OclCypherPlan.NavigationAccessPlan navigation) {
             if (navigation.navigation() == null || !navigation.navigation().supportsDirectCypherNavigation()) {
                 violations.add(new Violation("WF_CQM_NAVIGATION", path,
@@ -326,6 +375,7 @@ public final class OclCertifiedModelValidator {
             }
             validateCqmExpression(navigation.source(), path + ".source", scope, certified, violations, visited);
             validateCqmList(navigation.qualifiers(), path + ".qualifiers", scope, certified, violations, visited);
+            if (certified) validateNavigationBinding(navigation, path + ".binding", violations);
         } else if (expression instanceof OclCypherPlan.MethodCallPlan call) {
             requireNonBlank(call.methodName(), "WF_CQM_METHOD", path + ".methodName", violations);
             if (certified) {
@@ -354,6 +404,8 @@ public final class OclCertifiedModelValidator {
             validateCqmExpression(iterator.source(), path + ".source", scope, certified, violations, visited);
             validateCqmExpression(iterator.body(), path + ".body", extend(scope, iterator.iteratorName()),
                     certified, violations, visited);
+            validateIteratorTypes(iterator.operationName(), iterator.body().type(), iterator.type(),
+                    "WF_CQM_ITERATOR_TYPE", path, violations);
         } else if (expression instanceof OclCypherPlan.ExistsSubqueryPlan exists) {
             validateNavigationMatch(exists.match(), path + ".match", scope, certified, violations, visited);
         } else if (expression instanceof OclCypherPlan.NotExistsSubqueryPlan notExists) {
@@ -442,6 +494,294 @@ public final class OclCertifiedModelValidator {
         for (int i = 0; i < expressions.size(); i++) {
             validateCqmExpression(expressions.get(i), path + "[" + i + "]", scope,
                     certified, violations, visited);
+        }
+    }
+
+    private static void validateCertifiedGraphContext(OclCypherPlan.GraphContextBinding binding,
+                                                      List<Violation> violations) {
+        if (binding == null) {
+            violations.add(new Violation("CERT_CQM_GRAPH_BINDING", "$.graphBinding",
+                    "Certified CQM requires an explicit graph-context binding"));
+            return;
+        }
+        if (!CanonicalGraphEncoding.PROFILE_ID.equals(binding.profileId())) {
+            violations.add(new Violation("CERT_CQM_GRAPH_PROFILE", "$.graphBinding.profileId",
+                    "Expected " + CanonicalGraphEncoding.PROFILE_ID));
+        }
+        requireNonBlank(binding.modelKey(), "CERT_CQM_GRAPH_BINDING", "$.graphBinding.modelKey", violations);
+        requireNonBlank(binding.contextClassKey(), "CERT_CQM_GRAPH_BINDING",
+                "$.graphBinding.contextClassKey", violations);
+        requireKeyModelScope(binding.contextClassKey(), binding.modelKey(), "CERT_CQM_MODEL_SCOPE",
+                "$.graphBinding.contextClassKey", violations);
+        requireExact(binding.objectLabel(), "Object", "CERT_CQM_GRAPH_BINDING",
+                "$.graphBinding.objectLabel", violations);
+        requireExact(binding.classLabel(), "UmlClass", "CERT_CQM_GRAPH_BINDING",
+                "$.graphBinding.classLabel", violations);
+        requireExact(binding.conformanceRelationship(), CanonicalGraphVocabulary.OBJECT_INSTANCE_OF,
+                "CERT_CQM_GRAPH_BINDING", "$.graphBinding.conformanceRelationship", violations);
+        requireExact(binding.identityProperty(), "use_id", "CERT_CQM_GRAPH_BINDING",
+                "$.graphBinding.identityProperty", violations);
+    }
+
+    private static void validateCqmBindingScope(OclCypherPlan.ExpressionPlan expression, String modelKey,
+                                                String path, List<Violation> violations,
+                                                Set<OclCypherPlan.ExpressionPlan> visited) {
+        if (expression == null || !visited.add(expression) || modelKey == null) return;
+        if (expression instanceof OclCypherPlan.AttributeAccessPlan access && access.binding() != null) {
+            requireKeyModelScope(access.binding().attributeKey(), modelKey,
+                    "CERT_CQM_MODEL_SCOPE", path + ".binding.attributeKey", violations);
+        }
+        if (expression instanceof OclCypherPlan.NavigationAccessPlan access && access.binding() != null) {
+            requireKeyModelScope(access.binding().associationKey(), modelKey,
+                    "CERT_CQM_MODEL_SCOPE", path + ".binding.associationKey", violations);
+        }
+        for (java.lang.reflect.RecordComponent component : expression.getClass().getRecordComponents()) {
+            try {
+                Object value = component.getAccessor().invoke(expression);
+                if (value instanceof OclCypherPlan.ExpressionPlan child) {
+                    validateCqmBindingScope(child, modelKey, path + "." + component.getName(), violations, visited);
+                } else if (value instanceof OclCypherPlan.NavigationMatchPlan match) {
+                    validateCqmBindingScope(match.owner(), modelKey, path + ".match.owner", violations, visited);
+                    validateCqmBindingScope(match.navigation(), modelKey, path + ".match.navigation", violations, visited);
+                    validateCqmBindingScope(match.predicate(), modelKey, path + ".match.predicate", violations, visited);
+                } else if (value instanceof List<?> values) {
+                    for (int i = 0; i < values.size(); i++) {
+                        if (values.get(i) instanceof OclCypherPlan.ExpressionPlan child) {
+                            validateCqmBindingScope(child, modelKey,
+                                    path + "." + component.getName() + "[" + i + "]", violations, visited);
+                        }
+                    }
+                }
+            } catch (ReflectiveOperationException ex) {
+                violations.add(new Violation("WF_CQM_TOTALITY", path,
+                        "Cannot inspect CQM record component " + component.getName()));
+            }
+        }
+    }
+
+    private static void requireKeyModelScope(String key, String modelKey, String code, String path,
+                                             List<Violation> violations) {
+        if (key == null || !key.startsWith(modelKey + "::")) {
+            violations.add(new Violation(code, path,
+                    "Physical key must be scoped by graph modelKey '" + modelKey + "'"));
+        }
+    }
+
+    private static void validateAttributeBinding(OclCypherPlan.AttributeAccessPlan access, String path,
+                                                 List<Violation> violations) {
+        OclCypherPlan.AttributeBinding binding = access.binding();
+        if (binding == null) {
+            violations.add(new Violation("CERT_CQM_ATTRIBUTE_BINDING", path,
+                    "Certified attribute access requires an explicit physical binding"));
+            return;
+        }
+        requireNonBlank(binding.attributeKey(), "CERT_CQM_ATTRIBUTE_BINDING", path + ".attributeKey", violations);
+        if (access.attribute() != null && binding.attributeKey() != null) {
+            String suffix = "::attribute::" + access.attribute().owner().name() + "::" + access.attributeName();
+            if (!binding.attributeKey().endsWith(suffix)) {
+                violations.add(new Violation("CERT_CQM_ATTRIBUTE_BINDING", path + ".attributeKey",
+                        "Attribute key does not realize resolved UML attribute " + suffix));
+            }
+        }
+        requireExact(binding.slotLabel(), "AttributeValue", "CERT_CQM_ATTRIBUTE_BINDING",
+                path + ".slotLabel", violations);
+        requireExact(binding.ownerRelationship(), "ObjectHasAttribute", "CERT_CQM_ATTRIBUTE_BINDING",
+                path + ".ownerRelationship", violations);
+        requireExact(binding.valueProperty(), "value", "CERT_CQM_ATTRIBUTE_BINDING",
+                path + ".valueProperty", violations);
+    }
+
+    private static void validateNavigationBinding(OclCypherPlan.NavigationAccessPlan access, String path,
+                                                  List<Violation> violations) {
+        OclCypherPlan.NavigationBinding binding = access.binding();
+        if (binding == null) {
+            violations.add(new Violation("CERT_CQM_NAVIGATION_BINDING", path,
+                    "Certified navigation requires an explicit physical binding"));
+            return;
+        }
+        requireNonBlank(binding.associationKey(), "CERT_CQM_NAVIGATION_BINDING",
+                path + ".associationKey", violations);
+        if (access.navigation() != null) {
+            String suffix = "::association::" + access.navigation().associationName();
+            if (binding.associationKey() == null || !binding.associationKey().endsWith(suffix)) {
+                violations.add(new Violation("CERT_CQM_NAVIGATION_BINDING", path + ".associationKey",
+                        "Association key does not realize resolved UML association " + suffix));
+            }
+            requireExact(binding.sourceRole(), access.navigation().sourceRoleName(),
+                    "CERT_CQM_NAVIGATION_BINDING", path + ".sourceRole", violations);
+            requireExact(binding.targetRole(), access.navigation().targetRoleName(),
+                    "CERT_CQM_NAVIGATION_BINDING", path + ".targetRole", violations);
+            if (binding.direction() != access.navigation().direction()) {
+                violations.add(new Violation("CERT_CQM_NAVIGATION_BINDING", path + ".direction",
+                        "Physical direction does not agree with resolved UML navigation"));
+            }
+        }
+        requireNonBlank(binding.sourceRole(), "CERT_CQM_NAVIGATION_BINDING", path + ".sourceRole", violations);
+        requireNonBlank(binding.targetRole(), "CERT_CQM_NAVIGATION_BINDING", path + ".targetRole", violations);
+        if (binding.direction() == null) {
+            violations.add(new Violation("CERT_CQM_NAVIGATION_BINDING", path + ".direction",
+                    "Navigation direction is required"));
+        }
+        requireExact(binding.relationshipTypePrefix(), "Link", "CERT_CQM_NAVIGATION_BINDING",
+                path + ".relationshipTypePrefix", violations);
+        requireExact(binding.sourceQualifierProperty(), "sourceQualifiers", "CERT_CQM_NAVIGATION_BINDING",
+                path + ".sourceQualifierProperty", violations);
+        requireExact(binding.targetQualifierProperty(), "targetQualifiers", "CERT_CQM_NAVIGATION_BINDING",
+                path + ".targetQualifierProperty", violations);
+    }
+
+    private static void validateOvaSetLiteralTypes(OclTypeBinding setType,
+                                                List<? extends OclIr.Expression> elements,
+                                                String code, String path, List<Violation> violations) {
+        if (setType == null || !setType.isCollection()) {
+            violations.add(new Violation(code, path + ".type", "Set literal must have a collection type"));
+            return;
+        }
+        if (elements == null) return;
+        for (int i = 0; i < elements.size(); i++) {
+            requireCompatibleType(setType.elementBinding(), elements.get(i).type(), code,
+                    path + ".elements[" + i + "]", violations);
+        }
+    }
+
+    private static void validateCqmSetLiteralTypes(OclTypeBinding setType,
+                                                List<? extends OclCypherPlan.ExpressionPlan> elements,
+                                                String code, String path, List<Violation> violations) {
+        if (setType == null || !setType.isCollection()) {
+            violations.add(new Violation(code, path + ".type", "Set plan must have a collection type"));
+            return;
+        }
+        if (elements == null) return;
+        for (int i = 0; i < elements.size(); i++) {
+            requireCompatibleType(setType.elementBinding(), elements.get(i).type(), code,
+                    path + ".elements[" + i + "]", violations);
+        }
+    }
+
+    private static void validateBinaryTypes(String operator, OclIr.Expression left, OclIr.Expression right,
+                                            OclTypeBinding result, String code, String path,
+                                            List<Violation> violations) {
+        validateBinaryTypes(operator, left == null ? null : left.type(), right == null ? null : right.type(),
+                result, code, path, violations);
+    }
+
+    private static void validateBinaryTypes(String operator, OclCypherPlan.ExpressionPlan left,
+                                            OclCypherPlan.ExpressionPlan right, OclTypeBinding result,
+                                            String code, String path, List<Violation> violations) {
+        validateBinaryTypes(operator, left == null ? null : left.type(), right == null ? null : right.type(),
+                result, code, path, violations);
+    }
+
+    private static void validateBinaryTypes(String operator, OclTypeBinding left, OclTypeBinding right,
+                                            OclTypeBinding result, String code, String path,
+                                            List<Violation> violations) {
+        if (operator == null || left == null || right == null || result == null) return;
+        String normalized = operator.toLowerCase(Locale.ROOT);
+        if (Set.of("and", "or", "xor", "implies").contains(normalized)) {
+            if (!isBoolean(left) || !isBoolean(right) || !isBoolean(result)) {
+                violations.add(new Violation(code, path,
+                        "Boolean operator requires Boolean operands and result"));
+            }
+        } else if (Set.of("+", "-", "*", "/").contains(normalized)) {
+            if (!isNumeric(left) || !isNumeric(right) || !isNumeric(result)) {
+                violations.add(new Violation(code, path,
+                        "Arithmetic operator requires numeric operands and result"));
+            }
+        } else if (Set.of(">", "<", ">=", "<=").contains(normalized)) {
+            if ((!isNumeric(left) || !isNumeric(right)) && !left.equals(right)) {
+                violations.add(new Violation(code, path,
+                        "Ordering operands must be compatible numeric or identical scalar types"));
+            }
+            if (!isBoolean(result)) {
+                violations.add(new Violation(code, path + ".type", "Comparison result must be Boolean"));
+            }
+        } else if (Set.of("=", "<>").contains(normalized)) {
+            requireCompatibleType(left, right, code, path, violations);
+            if (!isBoolean(result)) {
+                violations.add(new Violation(code, path + ".type", "Equality result must be Boolean"));
+            }
+        }
+    }
+
+    private static void validateIteratorTypes(String operationName, OclTypeBinding body,
+                                              OclTypeBinding result, String code, String path,
+                                              List<Violation> violations) {
+        if (operationName == null || body == null || result == null) return;
+        switch (operationName.toLowerCase(Locale.ROOT)) {
+            case "exists", "forall" -> {
+                if (!isBoolean(body) || !isBoolean(result)) {
+                    violations.add(new Violation(code, path,
+                            operationName + " requires a Boolean body and Boolean result"));
+                }
+            }
+            case "isunique" -> {
+                if (!isBoolean(result)) {
+                    violations.add(new Violation(code, path + ".type",
+                            "isUnique result must be Boolean"));
+                }
+            }
+            case "select", "reject" -> {
+                if (!isBoolean(body) || !result.isCollection()) {
+                    violations.add(new Violation(code, path,
+                            operationName + " requires a Boolean body and collection result"));
+                }
+            }
+            case "collect" -> {
+                if (!result.isCollection()) {
+                    violations.add(new Violation(code, path + ".type", "collect result must be a collection"));
+                } else {
+                    requireCompatibleType(result.elementBinding(), body, code, path + ".body", violations);
+                }
+            }
+            default -> {
+                // Admission/totality validators report unsupported iterator names.
+            }
+        }
+    }
+
+    private static void requireCompatibleType(OclTypeBinding expected, OclTypeBinding actual,
+                                              String code, String path, List<Violation> violations) {
+        if (typesCompatible(expected, actual)) return;
+        violations.add(new Violation(code, path,
+                "Incompatible types: expected " + expected + " but found " + actual));
+    }
+
+    private static boolean typesCompatible(OclTypeBinding expected, OclTypeBinding actual) {
+        if (expected == null || actual == null || expected.equals(actual)
+                || isVoid(expected) || isVoid(actual)
+                || (isNumeric(expected) && isNumeric(actual))) return true;
+        // This metamodel-level validator has no UML generalization graph. USE has
+        // already type-checked node conformance; here we can validate only the
+        // node/scalar shape without incorrectly requiring identical class names.
+        if (expected.isNode() && actual.isNode()) return true;
+        if (!expected.isCollection() || !actual.isCollection()) return false;
+        boolean compatibleKind = expected.collectionKind() == actual.collectionKind()
+                || expected.collectionKind() == OclTypeBinding.CollectionKind.COLLECTION;
+        return compatibleKind && typesCompatible(expected.elementBinding(), actual.elementBinding());
+    }
+
+    private static void requireSameType(OclTypeBinding expected, OclTypeBinding actual,
+                                        String code, String path, List<Violation> violations) {
+        if (expected != null && actual != null && !expected.equals(actual)) {
+            violations.add(new Violation(code, path,
+                    "Types must be identical: " + expected + " versus " + actual));
+        }
+    }
+
+    private static boolean isNumeric(OclTypeBinding type) {
+        return type != null && !type.isCollection() && !type.isNode() && !type.isClassReference()
+                && ("Integer".equalsIgnoreCase(type.typeName()) || "Real".equalsIgnoreCase(type.typeName()));
+    }
+
+    private static boolean isVoid(OclTypeBinding type) {
+        return type != null && "Void".equalsIgnoreCase(type.typeName());
+    }
+
+    private static void requireExact(String actual, String expected, String code, String path,
+                                     List<Violation> violations) {
+        if (!expected.equals(actual)) {
+            violations.add(new Violation(code, path,
+                    "Expected '" + expected + "' but found '" + actual + "'"));
         }
     }
 

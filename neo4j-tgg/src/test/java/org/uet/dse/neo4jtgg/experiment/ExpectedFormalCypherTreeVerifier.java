@@ -50,6 +50,15 @@ final class ExpectedFormalCypherTreeVerifier {
         require(observed, invariant, "invariant wrapper", ast(AstKind.SINGLE_QUERY, AstKind.MATCH, AstKind.RETURN),
                 token("WHERE"), token("DISTINCT"), token("ObjectInstanceOf"), token("UmlClass"), token("classKey"),
                 token("use_id"), token("useId"), token("NOT"), token("coalesce"));
+        if (invariant.graphBinding() != null) {
+            require(observed, invariant, "graph binding",
+                    token(invariant.graphBinding().objectLabel()),
+                    token(invariant.graphBinding().classLabel()),
+                    token(invariant.graphBinding().conformanceRelationship()),
+                    token(invariant.graphBinding().identityProperty()),
+                    parameterValue(invariant.graphBinding().modelKey(), rendered.parameters()),
+                    parameterValue(invariant.graphBinding().contextClassKey(), rendered.parameters()));
+        }
         return verifyExpression(invariant.predicate(), renderer);
     }
 
@@ -168,11 +177,14 @@ final class ExpectedFormalCypherTreeVerifier {
         if (plan instanceof OclCypherPlan.AttributeAccessPlan value) {
             expected.add(ast(AstKind.COLLECT_EXPRESSION, AstKind.WITH, AstKind.MATCH, AstKind.RETURN,
                     AstKind.PROPERTY, AstKind.PARAMETER));
-            expected.add(token("ObjectHasAttribute"));
+            expected.add(token(value.binding() == null ? "ObjectHasAttribute" : value.binding().ownerRelationship()));
+            expected.add(token(value.binding() == null ? "AttributeValue" : value.binding().slotLabel()));
             expected.add(token("attributeKey"));
             expected.add(token("objectKey"));
-            expected.add(parameterSuffix("::attribute::" + value.attribute().owner().name()
-                    + "::" + value.attributeName(), parameters));
+            expected.add(value.binding() == null
+                    ? parameterSuffix("::attribute::" + value.attribute().owner().name()
+                            + "::" + value.attributeName(), parameters)
+                    : parameterValue(value.binding().attributeKey(), parameters));
             return value.attributeName();
         }
         if (plan instanceof OclCypherPlan.NavigationAccessPlan value) {
@@ -329,16 +341,21 @@ final class ExpectedFormalCypherTreeVerifier {
         expected.add(token("associationKey"));
         expected.add(token("sourceRole"));
         expected.add(token("targetRole"));
-        expected.add(parameterSuffix("::association::" + value.navigation().associationName(), parameters));
-        switch (value.navigation().direction()) {
+        OclCypherPlan.NavigationBinding binding = value.binding();
+        expected.add(binding == null
+                ? parameterSuffix("::association::" + value.navigation().associationName(), parameters)
+                : parameterValue(binding.associationKey(), parameters));
+        var direction = binding == null ? value.navigation().direction() : binding.direction();
+        switch (direction) {
             case OUTGOING -> expected.add(token("->"));
             case INCOMING -> expected.add(token("<-"));
             case UNDIRECTED -> expected.add(noToken("->", "<-"));
         }
         if (!value.qualifiers().isEmpty()) {
-            expected.add(token(switch (value.navigation().direction()) {
-                case INCOMING -> "targetQualifiers";
-                case OUTGOING, UNDIRECTED -> "sourceQualifiers";
+            expected.add(token(switch (direction) {
+                case INCOMING -> binding == null ? "targetQualifiers" : binding.targetQualifierProperty();
+                case OUTGOING, UNDIRECTED -> binding == null
+                        ? "sourceQualifiers" : binding.sourceQualifierProperty();
             }));
         }
     }

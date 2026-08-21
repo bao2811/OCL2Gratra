@@ -23,12 +23,22 @@ public final class OclCypherQueryModel {
     public static OclCypherPlan.InvariantPlan invariant(String contextClassName,
                                                         String invariantName,
                                                         OclCypherPlan.ExpressionPlan predicate) {
+        return invariant(contextClassName, invariantName, predicate, null);
+    }
+
+    public static OclCypherPlan.InvariantPlan invariant(String contextClassName,
+                                                        String invariantName,
+                                                        OclCypherPlan.ExpressionPlan predicate,
+                                                        OclCypherPlan.GraphContextBinding graphBinding) {
         OclCypherPlan.ExpressionPlan checkedPredicate = required(predicate, "predicate");
         requireBoolean(checkedPredicate.type(), "predicate");
         return new OclCypherPlan.InvariantPlan(
                 nonBlank(contextClassName, "contextClassName"),
                 nonBlank(invariantName, "invariantName"),
-                checkedPredicate);
+                checkedPredicate,
+                OclCypherPlan.ViolationPolicy.NOT_VALIDATION_TRUE,
+                graphBinding,
+                OclCypherPlan.EvaluationPolicy.MATERIALIZE_REUSED_EXPRESSIONS);
     }
 
     public static OclCypherPlan.VariablePlan variable(String name, OclTypeBinding type) {
@@ -94,23 +104,42 @@ public final class OclCypherQueryModel {
                                                                     Type attributeType,
                                                                     OclTypeBinding type,
                                                                     MAttribute attribute) {
+        return attributeAccess(source, attributeName, attributeType, type, attribute, null);
+    }
+
+    public static OclCypherPlan.AttributeAccessPlan attributeAccess(OclCypherPlan.ExpressionPlan source,
+                                                                    String attributeName,
+                                                                    Type attributeType,
+                                                                    OclTypeBinding type,
+                                                                    MAttribute attribute,
+                                                                    OclCypherPlan.AttributeBinding binding) {
         return new OclCypherPlan.AttributeAccessPlan(
                 required(source, "source"),
                 nonBlank(attributeName, "attributeName"),
                 required(attributeType, "attributeType"),
                 required(type, "type"),
-                required(attribute, "attribute"));
+                required(attribute, "attribute"),
+                binding);
     }
 
     public static OclCypherPlan.NavigationAccessPlan navigationAccess(OclCypherPlan.ExpressionPlan source,
                                                                       OclMetamodelIndex.NavigationInfo navigation,
                                                                       List<OclCypherPlan.ExpressionPlan> qualifiers,
                                                                       OclTypeBinding type) {
+        return navigationAccess(source, navigation, qualifiers, type, null);
+    }
+
+    public static OclCypherPlan.NavigationAccessPlan navigationAccess(OclCypherPlan.ExpressionPlan source,
+                                                                      OclMetamodelIndex.NavigationInfo navigation,
+                                                                      List<OclCypherPlan.ExpressionPlan> qualifiers,
+                                                                      OclTypeBinding type,
+                                                                      OclCypherPlan.NavigationBinding binding) {
         return new OclCypherPlan.NavigationAccessPlan(
                 required(source, "source"),
                 required(navigation, "navigation"),
                 copyList(qualifiers, "qualifiers"),
-                required(type, "type"));
+                required(type, "type"),
+                binding);
     }
 
     public static OclCypherPlan.MethodCallPlan methodCall(OclCypherPlan.ExpressionPlan source,

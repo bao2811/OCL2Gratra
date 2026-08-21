@@ -1,5 +1,5 @@
 @namespace(uri="https://uet-dse.org/cypher/query-model/1.0", prefix="cqm")
-@GenModel(documentation="Typed semantic query-plan metamodel for the certified finite-set OCL validation fragment OCL_VAL_FINITE_SET_V1. Graph bindings and the NOT_VALIDATION_TRUE invariant policy are explicit so that a conforming renderer performs no OCL or UML semantic decisions. Extended production backend constructs remain outside this certified metamodel until they receive an admitted rule and proof case.")
+@GenModel(documentation="Typed, graph-bound Cypher Query Model for OCL_VAL_FINITE_SET_V1. CQM is deliberately above the concrete Cypher AST: it fixes semantic operators, physical graph bindings, invariant violation policy, and a no-duplication evaluation contract. AstLoweringContract states the independently checkable structural relation between each CQM constructor and the parsed Cypher AST.")
 package cqm;
 
 enum PlanTypeKind {
@@ -72,6 +72,7 @@ enum PredicateMode {
 enum TraversalDirection {
   OUTGOING;
   INCOMING;
+  UNDIRECTED;
 }
 
 enum AttributeStorage {
@@ -82,22 +83,60 @@ enum ViolationPolicy {
   NOT_VALIDATION_TRUE;
 }
 
+enum EvaluationPolicy {
+  MATERIALIZE_REUSED_EXPRESSIONS;
+}
+
+enum CypherAstKind {
+  QUERY;
+  SINGLE_QUERY;
+  MATCH_CLAUSE;
+  WHERE_CLAUSE;
+  WITH_CLAUSE;
+  RETURN_CLAUSE;
+  PATTERN;
+  VARIABLE;
+  PARAMETER;
+  LITERAL;
+  PROPERTY_ACCESS;
+  FUNCTION_INVOCATION;
+  UNARY_EXPRESSION;
+  BINARY_EXPRESSION;
+  CASE_EXPRESSION;
+  LIST_EXPRESSION;
+  LIST_COMPREHENSION;
+  REDUCE_EXPRESSION;
+  ITERABLE_PREDICATE;
+  EXISTS_SUBQUERY_EXPRESSION;
+  COLLECT_SUBQUERY_EXPRESSION;
+}
+
 class QueryModule {
-  attr String[1] languageVersion = "cqm-certified-v1";
+  attr String[1] languageVersion = "cqm-certified-v2";
   attr String[1] certificationProfile = "OCL_VAL_FINITE_SET_V1";
   val InvariantPlan[*] invariants;
+  val AstLoweringContract[1] astLoweringContract;
 }
 
 class InvariantPlan {
   id attr String[1] planId;
   attr String[1] invariantName;
   attr String[1] contextClassName;
+  attr ViolationPolicy[1] violationPolicy = "NOT_VALIDATION_TRUE";
+  attr EvaluationPolicy[1] evaluationPolicy = "MATERIALIZE_REUSED_EXPRESSIONS";
+
+  val GraphContextBinding[1] graphBinding;
+  val PlanExpression[1] predicate;
+}
+
+class GraphContextBinding {
+  attr String[1] profileId = "canonical-v1";
   attr String[1] modelKey;
   attr String[1] contextClassKey;
+  attr String[1] objectLabel = "Object";
+  attr String[1] classLabel = "UmlClass";
+  attr String[1] conformanceRelationship = "ObjectInstanceOf";
   attr String[1] identityProperty = "use_id";
-  attr ViolationPolicy[1] violationPolicy = "NOT_VALIDATION_TRUE";
-
-  val PlanExpression[1] predicate;
 }
 
 class PlanType {
@@ -173,8 +212,8 @@ class NavigationBinding {
   attr String[1] targetClassName;
   attr String sourceRole;
   attr String targetRole;
-  attr TraversalDirection[1] traversal;
-  attr String[*] physicalTypes;
+  attr TraversalDirection[1] direction;
+  attr String[1] relationshipTypePrefix = "Link";
   attr String[1] sourceQualifierProperty = "sourceQualifiers";
   attr String[1] targetQualifierProperty = "targetQualifiers";
 }
@@ -189,6 +228,8 @@ class CallPlan extends PlanExpression {
   attr CallKind[1] callKind;
   attr String[1] operationName;
   val PlanExpression[1] source;
+  // Required for COLLECTION_OPERATION; absent for METHOD.
+  val PlanType sourceCollectionType;
   val PlanExpression[*] arguments;
 }
 
@@ -197,6 +238,7 @@ class IteratorPlan extends PlanExpression {
   attr String[1] iteratorName;
   val PlanType[1] iteratorType;
   val PlanExpression[1] source;
+  val PlanType[1] sourceCollectionType;
   val PlanExpression[1] body;
 }
 
@@ -227,4 +269,21 @@ class CountComparisonPlan extends PlanExpression {
 class UniquenessPlan extends PlanExpression {
   val NavigationMatchPlan[1] match;
   val PlanExpression[1] projection;
+}
+
+class AstLoweringContract {
+  attr String[1] cypherDialect;
+  attr String[1] parserImplementation;
+  attr boolean[1] requireIndependentParse = true;
+  attr boolean[1] requireBoundedExpansion = true;
+  val ConstructorAstRule[+] rules;
+}
+
+class ConstructorAstRule {
+  id attr String[1] ruleId;
+  attr String[1] sourceConstructor;
+  attr CypherAstKind[+] requiredAstKinds;
+  attr CypherAstKind[*] forbiddenAstKinds;
+  attr int[1] maxCopiesPerComplexChild = 1;
+  attr String[1] observationContract;
 }

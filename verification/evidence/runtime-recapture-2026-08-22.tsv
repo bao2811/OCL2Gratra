@@ -1,0 +1,31 @@
+# schema	real-neo4j-runtime-recapture-audit-v1
+# status	PASS_ON_DIRTY_WORKTREE_AWAITING_PUBLICATION_MANIFEST
+# executedAt	2026-08-22T00:00:34+07:00
+# baseGitCommit	34e340753bec9cd823b383b885282ac06d1de06c
+# gitDirtyAtCapture	true
+# neo4jKernel	2026.06.0
+# edition	enterprise
+# database	demo
+# cypherComponent	5
+# javaDriverDependency	5.21.0
+# encodingProfile	canonical-v1
+# heapInitial	4G
+# heapMaximum	6G
+# combinedTests	7
+# combinedFailures	0
+# combinedErrors	0
+# combinedSkipped	0
+# combinedElapsed	PT1M36S
+id	status	observed	evidenceTest
+CY1_CY9	PASS	assumptions=9/9	Cypher5ValDialectRealNeo4jTest#selectedServerSatisfiesEveryRequiredDialectProbe
+ADAPTER_ADEQUACY	PASS	observations=6;plans=2;labelMutation=KILLED	AdapterAdequacyCertificateRealNeo4jTest#certificateAndQueriesObserveOneNeo4jSnapshot
+OCLVAL47	PASS	equivalent=47;allPass=19;mixed=28;t4Constructors=16/16	OclValRealNeo4jCoverageTest#allAdmittedConstructsAgreeWithUseOnRealNeo4j
+VOID_CONTEXTS	PASS	cases=13	OclValSemanticDiscriminatorRealNeo4jTest#nullAndDuplicateCollectFollowTheCanonicalProfile
+DUPLICATE_COLLECT	PASS	cases=1;formerUnexpectedExpression=NOT_REPRODUCED	OclValSemanticDiscriminatorRealNeo4jTest#nullAndDuplicateCollectFollowTheCanonicalProfile
+TO_ONE_COLLECTION_VIEW	PASS	cases=3	OclValSemanticDiscriminatorRealNeo4jTest#nullAndDuplicateCollectFollowTheCanonicalProfile
+PERSON_CASE	PASS	equivalent=10;missing=0;spurious=0;allPass=3;mixed=7	FamiliesToPersonsCaseStudyRealNeo4jTest#personCaseAgreesExactlyWithNativeUse
+FAMILY_CASE	PASS	equivalent=10;missing=0;spurious=0;allPass=7;mixed=3	FamiliesToPersonsCaseStudyRealNeo4jTest#familyCaseAgreesExactlyWithNativeUse
+NO_BLANK_NAMES	PASS	formerHeapFailure=NOT_REPRODUCED	FamiliesToPersonsCaseStudyRealNeo4jTest#personCaseAgreesExactlyWithNativeUse
+SERVER_HEALTH	PASS	bolt7687=reachable;newOutOfMemory=0;newUnexpectedExpression=0;newWriterLoss=0	runtime-log-audit
+# note	The first Families/Persons attempt exposed an incorrect validator rule requiring an isUnique projection body to be Boolean. OCL permits an arbitrary projected value and requires only the isUnique result to be Boolean. The rule and regression test were corrected before the final combined PASS run.
+# publicationGate	Commit and track all proof inputs, require a clean worktree, rerun this suite, compute normalized source hashes, then atomically replace the canonical publication manifests.

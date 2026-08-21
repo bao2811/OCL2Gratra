@@ -20,7 +20,8 @@ class OclValidationSemanticsAdequacyTest {
                 "context Family inv NameDefined: self.name.isDefined()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("CASE WHEN head(["), result.getCypher());
+        assertTrue(result.getCypher().contains("ObjectHasAttribute"), result.getCypher());
+        assertTrue(result.getCypher().contains("WITH head(["), result.getCypher());
         assertTrue(result.getCypher().contains("= 'v1|V'"), result.getCypher());
         assertTrue(result.getCypher().contains("THEN null"), result.getCypher());
         assertTrue(result.getCypher().contains("IS NOT NULL"), result.getCypher());
@@ -33,7 +34,8 @@ class OclValidationSemanticsAdequacyTest {
                 "context Family inv NameUndefined: self.name.isUndefined()");
 
         assertTrue(result.isSupported(), result.getReason());
-        assertTrue(result.getCypher().contains("CASE WHEN head(["), result.getCypher());
+        assertTrue(result.getCypher().contains("ObjectHasAttribute"), result.getCypher());
+        assertTrue(result.getCypher().contains("WITH head(["), result.getCypher());
         assertTrue(result.getCypher().contains("THEN null"), result.getCypher());
         assertTrue(result.getCypher().contains("IS NULL"), result.getCypher());
         assertTrue(result.getCypher().contains("WHERE NOT coalesce("), result.getCypher());

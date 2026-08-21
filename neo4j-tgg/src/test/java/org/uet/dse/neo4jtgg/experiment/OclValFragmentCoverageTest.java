@@ -198,13 +198,24 @@ class OclValFragmentCoverageTest {
 
         for (String source : cases) {
             InstrumentedCompilationResult compiled = compiler.compileInvariantInstrumented(source);
-            assertTrue(compiled.cypher().contains("CASE WHEN head("), source + "\n" + compiled.cypher());
-            assertTrue(compiled.cypher().contains("THEN [] ELSE [head("), source + "\n" + compiled.cypher());
-            assertFalse(compiled.cypher().contains("size(head("), source + "\n" + compiled.cypher());
-            assertFalse(compiled.cypher().contains(" IN head("), source + "\n" + compiled.cypher());
+            assertTrue(compiled.cypher().contains("head(COLLECT {"), source + "\n" + compiled.cypher());
+            assertTrue(compiled.cypher().contains(" IS NULL THEN [] ELSE ["),
+                    source + "\n" + compiled.cypher());
+            assertEquals(1, occurrences(compiled.cypher(), "type(r) STARTS WITH 'Link'"),
+                    source + "\n" + compiled.cypher());
             PipelineRefinementVerifier.verify(compiled);
             GeneratedCypherContractVerifier.verify(compiled, compiled.cypher(), compiled.parameters());
         }
+    }
+
+    private static int occurrences(String source, String needle) {
+        int count = 0;
+        int offset = 0;
+        while ((offset = source.indexOf(needle, offset)) >= 0) {
+            count++;
+            offset += needle.length();
+        }
+        return count;
     }
 
     @Test

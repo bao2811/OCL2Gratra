@@ -62,7 +62,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         this.certifiedBinder = this.binder.forCertifiedProfile();
         this.irBuilder = new OclIrBuilder();
         this.irOptimizer = new OclIrOptimizer();
-        this.cypherPlanner = new OclCypherPlanner();
+        this.cypherPlanner = new OclCypherPlanner(model.name());
         this.cypherRenderer = new OclCypherRenderer(model.name());
     }
 

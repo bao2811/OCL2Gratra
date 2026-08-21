@@ -1,5 +1,7 @@
 package org.uet.dse.neo4jtgg.ocl.ir;
 
+import org.uet.dse.neo4j.encoding.CanonicalGraphEncoding;
+import org.uet.dse.neo4j.encoding.CanonicalGraphVocabulary;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
@@ -19,11 +21,22 @@ import java.util.List;
  * </pre>
  */
 public class OclCypherPlanner {
+    private final String modelName;
+
+    public OclCypherPlanner() {
+        this(null);
+    }
+
+    public OclCypherPlanner(String modelName) {
+        this.modelName = modelName;
+    }
+
     public OclCypherPlan.InvariantPlan planInvariant(OclIr.InvariantQuery invariantQuery) {
         return OclCypherQueryModel.invariant(
                 invariantQuery.contextClassName(),
                 invariantQuery.invariantName(),
-                planOptimizedExpression(OclOptimizedIr.requireOptimized(invariantQuery)));
+                planOptimizedExpression(OclOptimizedIr.requireOptimized(invariantQuery)),
+                graphContextBinding(invariantQuery.contextClassName()));
     }
 
     public OclCypherPlan.ExpressionPlan planExpression(OclOptimizedIr.Artifact artifact) {
@@ -74,14 +87,16 @@ public class OclCypherPlanner {
                     attributeAccess.attributeName(),
                     attributeAccess.attributeType(),
                     attributeAccess.type(),
-                    attributeAccess.attribute());
+                    attributeAccess.attribute(),
+                    attributeBinding(attributeAccess));
         }
         if (expression instanceof OclIr.NavigationAccess navigationAccess) {
             return OclCypherQueryModel.navigationAccess(
                     planExpressionInternal(navigationAccess.source()),
                     navigationAccess.navigation(),
                     navigationAccess.qualifiers().stream().map(this::planExpressionInternal).toList(),
-                    navigationAccess.type());
+                    navigationAccess.type(),
+                    navigationBinding(navigationAccess));
         }
         if (expression instanceof OclIr.MethodCall methodCall) {
             return OclCypherQueryModel.methodCall(
@@ -210,5 +225,40 @@ public class OclCypherPlanner {
                     OclDiagnosticCode.UNSUPPORTED_COUNT_OPERATOR,
                     "Unsupported count operator: " + operator);
         };
+    }
+
+    private OclCypherPlan.GraphContextBinding graphContextBinding(String contextClassName) {
+        if (modelName == null || modelName.isBlank()) return null;
+        return new OclCypherPlan.GraphContextBinding(
+                CanonicalGraphEncoding.PROFILE_ID,
+                CanonicalGraphEncoding.modelKey(modelName),
+                CanonicalGraphEncoding.classKey(modelName, contextClassName),
+                "Object",
+                "UmlClass",
+                CanonicalGraphVocabulary.OBJECT_INSTANCE_OF,
+                "use_id");
+    }
+
+    private OclCypherPlan.AttributeBinding attributeBinding(OclIr.AttributeAccess access) {
+        if (modelName == null || modelName.isBlank()) return null;
+        return new OclCypherPlan.AttributeBinding(
+                CanonicalGraphEncoding.attributeKey(
+                        modelName, access.attribute().owner().name(), access.attributeName()),
+                "AttributeValue",
+                "ObjectHasAttribute",
+                "value");
+    }
+
+    private OclCypherPlan.NavigationBinding navigationBinding(OclIr.NavigationAccess access) {
+        if (modelName == null || modelName.isBlank()) return null;
+        var navigation = access.navigation();
+        return new OclCypherPlan.NavigationBinding(
+                CanonicalGraphEncoding.associationKey(modelName, navigation.associationName()),
+                navigation.sourceRoleName(),
+                navigation.targetRoleName(),
+                navigation.direction(),
+                "Link",
+                "sourceQualifiers",
+                "targetQualifiers");
     }
 }

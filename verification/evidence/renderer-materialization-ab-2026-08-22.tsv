@@ -1,0 +1,42 @@
+# schema	controlled-renderer-ab-v1
+# status	HISTORICAL_PASS_BASELINE_REMOVED_AWAITING_ARCHIVE
+# executedAt	2026-08-22T00:59:01+07:00
+# baseGitCommit	34e340753bec9cd823b383b885282ac06d1de06c
+# gitDirtyAtCapture	true
+# neo4jKernel	2026.06.0
+# edition	enterprise
+# database	demo
+# cypherComponent	5
+# javaDriverDependency	5.21.0
+# heapInitial	4G
+# heapMaximum	6G
+# productionVariant	MATERIALIZE_ONCE
+# baselineVariant	INLINE_BASELINE
+# currentSourceContainsBaseline	false
+# reproducibilityNote	The obsolete inline implementation and its live A/B harness were removed after this capture; archive a tagged pre-removal source bundle before using this as publication evidence.
+# controlledInputs	identical UML model; object fixture; OCL invariant; OVA; CQM query plan; parameters; USE violation oracle
+# treatment	OclCypherRenderer.ReuseLowering only
+# order	ABBA per workload; each block clears Neo4j query caches
+# sampling	2 warm-up executions then 10 measured executions per block; 20 measured executions per variant/workload
+# transactionTimeout	PT90S
+# correctnessCriterion	each execution must return the exact USE violation-ID set
+# command	mvn -pl neo4j-tgg "-Dtest=OclValSemanticDiscriminatorRealNeo4jTest" "-Dneo4j.renderer.ab.it=true" test
+# abSuite	4 tests; 0 failures; 0 errors; 1 unrelated guarded test skipped; elapsed=PT1M46S
+# offlineRegression	628 tests; 0 failures; 0 errors; 17 guarded real-backend tests skipped
+# postRemovalCleanRegression	626 tests; 0 failures; 0 errors; 15 guarded real-backend tests skipped
+# offlineExclusions	CanonicalProfileRuntimeEvidenceManifestTest; Cypher5ValRuntimeEvidenceManifestTest; OclVal47NonVacuityEvidenceTest
+# exclusionReason	publication manifests intentionally retain committed-source hashes until all proof inputs are committed and recaptured on a clean worktree
+# structuralRegression	formal Cypher trees=52/52; Neo4j Cypher 5 AST parse=52/52
+workload	order	variant	chars	collects	reduces	caseWhen	objectHasAttribute	explainMs	executionMedianMs	executionP95Ms	completedRuns	semanticStatus
+NO_BLANK_NAMES	AB-A	INLINE_BASELINE	4345	6	0	6	15	15152	297	696	10/10	PASS
+NO_BLANK_NAMES	AB-B	MATERIALIZE_ONCE	1625	4	0	2	1	2817	16	184	10/10	PASS
+NO_BLANK_NAMES	BA-B	MATERIALIZE_ONCE	1625	4	0	2	1	2634	11	155	10/10	PASS
+NO_BLANK_NAMES	BA-A	INLINE_BASELINE	4345	6	0	6	15	17355	34	643	10/10	PASS
+COLLECT_USES_SET_IMAGE	AB-A	INLINE_BASELINE	44779	60	105	96	45	16274	31	2432	10/10	PASS
+COLLECT_USES_SET_IMAGE	AB-B	MATERIALIZE_ONCE	2324	6	3	6	1	846	9	131	10/10	PASS
+COLLECT_USES_SET_IMAGE	BA-B	MATERIALIZE_ONCE	2324	6	3	6	1	865	8	137	10/10	PASS
+COLLECT_USES_SET_IMAGE	BA-A	INLINE_BASELINE	44779	60	105	96	45	13122	15	1585	10/10	PASS
+# conservativeEffect	NO_BLANK_NAMES	chars=-62.60%; objectHasAttribute=-93.33%; explain>=81.41% faster; median>=52.94% faster; p95>=71.38% faster
+# conservativeEffect	COLLECT_USES_SET_IMAGE	chars=-94.81%; objectHasAttribute=-97.78%; explain>=93.41% faster; median>=40.00% faster; p95>=91.36% faster
+# interpretation	The experiment isolates renderer reuse lowering and establishes semantic preservation on these fixtures plus a substantial reduction in generated-query duplication and runtime cost.
+# limitation	This is not a universal performance proof, not a heap-size factorial experiment, and not immutable publication evidence until proof inputs are committed and the suite is rerun on a clean worktree.

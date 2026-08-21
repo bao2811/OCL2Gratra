@@ -94,9 +94,10 @@ class OclGraphEncodingAdequacyTest {
 
         assertTrue(result.isSupported(), result.getReason());
         assertTrue(result.getCypher().contains("ObjectInstanceOf"), result.getCypher());
-        assertTrue(result.getCypher().contains("RETURN size((CASE WHEN COLLECT { MATCH"), result.getCypher());
-        assertTrue(result.getCypher().contains("THEN [] ELSE COLLECT { MATCH"), result.getCypher());
-        assertTrue(result.getCypher().contains("END)) AS value"), result.getCypher());
+        assertTrue(result.getCypher().contains("RETURN size(head(COLLECT { WITH COLLECT { MATCH"),
+                result.getCypher());
+        assertTrue(result.getCypher().contains("THEN [] ELSE finiteSet"), result.getCypher());
+        assertTrue(result.getCypher().contains("AS finiteSet"), result.getCypher());
         assertTrue(result.getCypher().contains("RETURN DISTINCT"), result.getCypher());
         assertTrue(result.getCypher().contains("AS value"), result.getCypher());
         assertTrue(result.getParameters().containsValue(

@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="cqm" nsURI="https://uet-dse.org/cypher/query-model/1.0" nsPrefix="cqm">
+
+  <eClassifiers xsi:type="ecore:EEnum" name="PlanTypeKind">
+    <eLiterals name="BOOLEAN" value="0"/>
+    <eLiterals name="INTEGER" value="1"/>
+    <eLiterals name="REAL" value="2"/>
+    <eLiterals name="STRING" value="3"/>
+    <eLiterals name="NODE" value="4"/>
+    <eLiterals name="COLLECTION" value="5"/>
+    <eLiterals name="CLASS_REFERENCE" value="6"/>
+    <eLiterals name="BOTTOM" value="7"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CollectionKind">
+    <eLiterals name="NONE" value="0"/>
+    <eLiterals name="COLLECTION" value="1"/>
+    <eLiterals name="SET" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="LiteralKind">
+    <eLiterals name="NULL" value="0"/>
+    <eLiterals name="BOTTOM" value="1"/>
+    <eLiterals name="BOOLEAN" value="2"/>
+    <eLiterals name="INTEGER" value="3"/>
+    <eLiterals name="REAL" value="4"/>
+    <eLiterals name="STRING" value="5"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="UnaryOperator">
+    <eLiterals name="NOT" value="0"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="BinaryOperator">
+    <eLiterals name="AND" value="0"/>
+    <eLiterals name="OR" value="1"/>
+    <eLiterals name="XOR" value="2"/>
+    <eLiterals name="IMPLIES" value="3"/>
+    <eLiterals name="EQ" value="4"/>
+    <eLiterals name="NEQ" value="5"/>
+    <eLiterals name="LT" value="6"/>
+    <eLiterals name="LE" value="7"/>
+    <eLiterals name="GT" value="8"/>
+    <eLiterals name="GE" value="9"/>
+    <eLiterals name="ADD" value="10"/>
+    <eLiterals name="SUBTRACT" value="11"/>
+    <eLiterals name="MULTIPLY" value="12"/>
+    <eLiterals name="DIVIDE" value="13"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CallKind">
+    <eLiterals name="METHOD" value="0"/>
+    <eLiterals name="COLLECTION_OPERATION" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="IteratorKind">
+    <eLiterals name="EXISTS" value="0"/>
+    <eLiterals name="FORALL" value="1"/>
+    <eLiterals name="SELECT" value="2"/>
+    <eLiterals name="REJECT" value="3"/>
+    <eLiterals name="COLLECT" value="4"/>
+    <eLiterals name="IS_UNIQUE" value="5"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="PredicateMode">
+    <eLiterals name="NONE" value="0"/>
+    <eLiterals name="NORMAL" value="1"/>
+    <eLiterals name="NEGATED" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TraversalDirection">
+    <eLiterals name="OUTGOING" value="0"/>
+    <eLiterals name="INCOMING" value="1"/>
+    <eLiterals name="UNDIRECTED" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="AttributeStorage">
+    <eLiterals name="SLOT_NODE" value="0"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ViolationPolicy">
+    <eLiterals name="NOT_VALIDATION_TRUE" value="0"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="EvaluationPolicy">
+    <eLiterals name="MATERIALIZE_REUSED_EXPRESSIONS" value="0"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CypherAstKind">
+    <eLiterals name="QUERY" value="0"/>
+    <eLiterals name="SINGLE_QUERY" value="1"/>
+    <eLiterals name="MATCH_CLAUSE" value="2"/>
+    <eLiterals name="WHERE_CLAUSE" value="3"/>
+    <eLiterals name="WITH_CLAUSE" value="4"/>
+    <eLiterals name="RETURN_CLAUSE" value="5"/>
+    <eLiterals name="PATTERN" value="6"/>
+    <eLiterals name="VARIABLE" value="7"/>
+    <eLiterals name="PARAMETER" value="8"/>
+    <eLiterals name="LITERAL" value="9"/>
+    <eLiterals name="PROPERTY_ACCESS" value="10"/>
+    <eLiterals name="FUNCTION_INVOCATION" value="11"/>
+    <eLiterals name="UNARY_EXPRESSION" value="12"/>
+    <eLiterals name="BINARY_EXPRESSION" value="13"/>
+    <eLiterals name="CASE_EXPRESSION" value="14"/>
+    <eLiterals name="LIST_EXPRESSION" value="15"/>
+    <eLiterals name="LIST_COMPREHENSION" value="16"/>
+    <eLiterals name="REDUCE_EXPRESSION" value="17"/>
+    <eLiterals name="ITERABLE_PREDICATE" value="18"/>
+    <eLiterals name="EXISTS_SUBQUERY_EXPRESSION" value="19"/>
+    <eLiterals name="COLLECT_SUBQUERY_EXPRESSION" value="20"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="QueryModule">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="languageVersion" lowerBound="1" defaultValueLiteral="cqm-certified-v2" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificationProfile" lowerBound="1" defaultValueLiteral="OCL_VAL_FINITE_SET_V1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="invariants" upperBound="-1" containment="true" eType="#//InvariantPlan"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="astLoweringContract" lowerBound="1" containment="true" eType="#//AstLoweringContract"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="InvariantPlan">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="planId" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="invariantName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contextClassName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="violationPolicy" lowerBound="1" defaultValueLiteral="NOT_VALIDATION_TRUE" eType="#//ViolationPolicy"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="evaluationPolicy" lowerBound="1" defaultValueLiteral="MATERIALIZE_REUSED_EXPRESSIONS" eType="#//EvaluationPolicy"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="graphBinding" lowerBound="1" containment="true" eType="#//GraphContextBinding"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="predicate" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GraphContextBinding">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="profileId" lowerBound="1" defaultValueLiteral="canonical-v1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="modelKey" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contextClassKey" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="objectLabel" lowerBound="1" defaultValueLiteral="Object" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="classLabel" lowerBound="1" defaultValueLiteral="UmlClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="conformanceRelationship" lowerBound="1" defaultValueLiteral="ObjectInstanceOf" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityProperty" lowerBound="1" defaultValueLiteral="use_id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PlanType">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//PlanTypeKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="typeName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="collectionKind" lowerBound="1" defaultValueLiteral="NONE" eType="#//CollectionKind"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="elementType" containment="true" eType="#//PlanType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PlanExpression" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nodeId" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="resultType" lowerBound="1" containment="true" eType="#//PlanType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VariablePlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="variableName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="LiteralPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//LiteralKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lexicalValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SetPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="elements" upperBound="-1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UnaryPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operator" lowerBound="1" eType="#//UnaryOperator"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operand" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BinaryPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operator" lowerBound="1" eType="#//BinaryOperator"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="left" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="right" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IfPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="condition" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="thenBranch" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="elseBranch" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="LetPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="variableName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="variableType" lowerBound="1" containment="true" eType="#//PlanType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="value" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="body" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AttributeBinding">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="ownerClassName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attributeName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attributeKey" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="storage" lowerBound="1" defaultValueLiteral="SLOT_NODE" eType="#//AttributeStorage"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="directProperty" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="slotLabel" lowerBound="1" defaultValueLiteral="AttributeValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="ownerRelationship" lowerBound="1" defaultValueLiteral="ObjectHasAttribute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="valueProperty" lowerBound="1" defaultValueLiteral="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AttributeAccessPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="binding" lowerBound="1" containment="true" eType="#//AttributeBinding"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NavigationBinding">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="associationName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="associationKey" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceClassName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetClassName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceRole" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetRole" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" lowerBound="1" eType="#//TraversalDirection"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="relationshipTypePrefix" lowerBound="1" defaultValueLiteral="Link" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceQualifierProperty" lowerBound="1" defaultValueLiteral="sourceQualifiers" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetQualifierProperty" lowerBound="1" defaultValueLiteral="targetQualifiers" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NavigationAccessPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="binding" lowerBound="1" containment="true" eType="#//NavigationBinding"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="qualifiers" upperBound="-1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CallPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="callKind" lowerBound="1" eType="#//CallKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operationName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sourceCollectionType" containment="true" eType="#//PlanType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="arguments" upperBound="-1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IteratorPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//IteratorKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="iteratorName" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="iteratorType" lowerBound="1" containment="true" eType="#//PlanType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sourceCollectionType" lowerBound="1" containment="true" eType="#//PlanType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="body" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NavigationMatchPlan">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetAlias" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="predicateMode" lowerBound="1" defaultValueLiteral="NONE" eType="#//PredicateMode"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="owner" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="navigation" lowerBound="1" containment="true" eType="#//NavigationAccessPlan"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="predicate" containment="true" eType="#//PlanExpression"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="targetType" lowerBound="1" containment="true" eType="#//PlanType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ExistsSubqueryPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="match" lowerBound="1" containment="true" eType="#//NavigationMatchPlan"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NotExistsSubqueryPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="match" lowerBound="1" containment="true" eType="#//NavigationMatchPlan"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CountComparisonPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operator" lowerBound="1" eType="#//BinaryOperator"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="literal" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="match" lowerBound="1" containment="true" eType="#//NavigationMatchPlan"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UniquenessPlan" eSuperTypes="#//PlanExpression">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="match" lowerBound="1" containment="true" eType="#//NavigationMatchPlan"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="projection" lowerBound="1" containment="true" eType="#//PlanExpression"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AstLoweringContract">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cypherDialect" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="parserImplementation" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requireIndependentParse" lowerBound="1" defaultValueLiteral="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requireBoundedExpansion" lowerBound="1" defaultValueLiteral="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" containment="true" eType="#//ConstructorAstRule"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ConstructorAstRule">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="ruleId" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceConstructor" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requiredAstKinds" lowerBound="1" upperBound="-1" eType="#//CypherAstKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="forbiddenAstKinds" upperBound="-1" eType="#//CypherAstKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxCopiesPerComplexChild" lowerBound="1" defaultValueLiteral="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="observationContract" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+</ecore:EPackage>

@@ -12,7 +12,7 @@ namespace Ocl2CypherProof
 
 def proofContractVersion : String := "PC-2026-07-22.3"
 def proofRegistrySha256 : String :=
-  "87717c14029b0ce04ee012225963778e0f070a2f8df3dd9ea248b089b12e1f9a"
+  "7c64751384b59ac71ada408444abc5930e814e6cb4ed976fac74d8ef974a1f52"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/
@@ -1551,6 +1551,28 @@ end
 
 end JavaIrRefinement
 
+/-!
+Named constructor-induction kernel for the formal `ProdPlanSim_sound` contract.
+The production CQM/AST adapter supplies the two algebras and their local
+`AlgebraAgreement`; this theorem composes all recursive constructor cases. It
+is parametric in backend primitives and therefore does not silently claim
+Neo4j semantics or erase the local agreement premise.
+-/
+namespace JavaIrRefinement
+
+theorem prod_plan_sim_sound
+    {Payload : Type u} {ObjectValue : Type v} {GraphValue : Type w}
+    {relation : ObjectValue → GraphValue → Prop}
+    {object : JavaIrRefinement.Algebra Payload ObjectValue}
+    {graph : JavaIrRefinement.Algebra Payload GraphValue}
+    (agreement : JavaIrRefinement.AlgebraAgreement relation object graph)
+    (expression : JavaIrRefinement.Expr Payload) :
+    relation (JavaIrRefinement.eval object expression)
+      (JavaIrRefinement.eval graph expression) := by
+  exact JavaIrRefinement.java_ir_eval_refinement agreement expression
+
+end JavaIrRefinement
+
 /-! ## Production Bound-to-VA abstraction kernel
 
 `BoundVaAbstraction.BoundExpr` is the semantic projection of the eleven Java
@@ -1806,6 +1828,7 @@ end Ocl2CypherProof
 #print axioms Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free
 #print axioms Ocl2CypherProof.Formula.structural_preservation
 #print axioms Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement
+#print axioms Ocl2CypherProof.JavaIrRefinement.prod_plan_sim_sound
 #print axioms Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction
 #print axioms Ocl2CypherProof.AdapterComposition.pa_comp
 #print axioms Ocl2CypherProof.theorem6_at_object

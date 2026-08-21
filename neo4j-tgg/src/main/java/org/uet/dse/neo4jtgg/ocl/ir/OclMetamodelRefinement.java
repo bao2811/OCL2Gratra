@@ -30,6 +30,10 @@ public final class OclMetamodelRefinement {
         validation.violations().forEach(v -> errors.add(v.code() + "@" + v.path() + ": " + v.message()));
         if (plan != null) {
             witnesses.add(new NodeWitness("$", "InvariantPlan", "InvariantPlan"));
+            if (plan.graphBinding() != null) {
+                witnesses.add(new NodeWitness("$.graphBinding", "GraphContextBinding",
+                        "GraphContextBinding"));
+            }
             walkCqm(plan.predicate(), "$.predicate", witnesses, errors);
         }
         return new RefinementReport(witnesses, errors);
@@ -169,8 +173,14 @@ public final class OclMetamodelRefinement {
             walkCqm(let.value(), path + ".value", witnesses, errors);
             walkCqm(let.body(), path + ".body", witnesses, errors);
         } else if (expression instanceof OclCypherPlan.AttributeAccessPlan attribute) {
+            if (attribute.binding() != null) {
+                witnesses.add(new NodeWitness(path + ".binding", "AttributeBinding", "AttributeBinding"));
+            }
             walkCqm(attribute.source(), path + ".source", witnesses, errors);
         } else if (expression instanceof OclCypherPlan.NavigationAccessPlan navigation) {
+            if (navigation.binding() != null) {
+                witnesses.add(new NodeWitness(path + ".binding", "NavigationBinding", "NavigationBinding"));
+            }
             walkCqm(navigation.source(), path + ".source", witnesses, errors);
             walkCqmList(navigation.qualifiers(), path + ".qualifiers", witnesses, errors);
         } else if (expression instanceof OclCypherPlan.MethodCallPlan call) {

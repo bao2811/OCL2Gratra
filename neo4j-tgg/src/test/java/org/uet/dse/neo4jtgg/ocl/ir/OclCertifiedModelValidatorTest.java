@@ -33,6 +33,10 @@ class OclCertifiedModelValidatorTest {
         assertTrue(OclCertifiedModelValidator.certifiedCqm(result.queryPlan()).valid());
         assertEquals(OclCypherPlan.ViolationPolicy.NOT_VALIDATION_TRUE,
                 result.queryPlan().violationPolicy());
+        assertEquals(OclCypherPlan.EvaluationPolicy.MATERIALIZE_REUSED_EXPRESSIONS,
+                result.queryPlan().evaluationPolicy());
+        assertNotNull(result.queryPlan().graphBinding());
+        assertEquals("canonical-v1", result.queryPlan().graphBinding().profileId());
     }
 
     @Test
@@ -89,6 +93,67 @@ class OclCertifiedModelValidatorTest {
         assertFalse(report.valid());
         assertTrue(report.violations().stream().anyMatch(v -> v.code().equals("WF_OVA_SCOPE")));
         assertTrue(report.violations().stream().anyMatch(v -> v.code().equals("WF_OVA_BOOLEAN_ROOT")));
+    }
+
+    @Test
+    void wfCqmRejectsIllTypedBooleanOperators() {
+        OclCypherPlan.InvariantPlan plan = new OclCypherPlan.InvariantPlan(
+                "Person", "IllTyped",
+                new OclCypherPlan.BinaryPlan("and",
+                        new OclCypherPlan.LiteralPlan(1L, INTEGER),
+                        new OclCypherPlan.LiteralPlan(2L, INTEGER), BOOLEAN));
+
+        var report = OclCertifiedModelValidator.wfCqm(plan);
+        assertFalse(report.valid());
+        assertTrue(report.violations().stream()
+                .anyMatch(v -> v.code().equals("WF_CQM_BINARY_TYPE")), report.toString());
+    }
+
+    @Test
+    void certifiedCqmRejectsCrossModelPhysicalBindings() {
+        var original = new DefaultOclToCypherCompiler(model()).compileInvariantInstrumented(
+                "context Person inv Adult: self.age >= 18").queryPlan();
+        var binding = original.graphBinding();
+        var wrongScope = new OclCypherPlan.GraphContextBinding(
+                binding.profileId(), "AnotherModel", binding.contextClassKey(),
+                binding.objectLabel(), binding.classLabel(), binding.conformanceRelationship(),
+                binding.identityProperty());
+        var mutant = new OclCypherPlan.InvariantPlan(
+                original.contextClassName(), original.invariantName(), original.predicate(),
+                original.violationPolicy(), wrongScope, original.evaluationPolicy());
+
+        var report = OclCertifiedModelValidator.certifiedCqm(mutant);
+        assertFalse(report.valid());
+        assertTrue(report.violations().stream()
+                .anyMatch(v -> v.code().equals("CERT_CQM_MODEL_SCOPE")), report.toString());
+    }
+
+    @Test
+    void isUniqueAcceptsANonBooleanProjectionBody() {
+        OclTypeBinding integerSet = OclTypeBinding.scalarCollection(
+                "Integer", OclTypeBinding.CollectionKind.SET);
+        OclIr.InvariantQuery query = new OclIr.InvariantQuery(
+                "Person", "UniqueValues",
+                new OclIr.IteratorOperation(
+                        new OclIr.SetLiteral(List.of(new OclIr.Literal(1L, INTEGER)), integerSet),
+                        integerSet, "isUnique", "x", INTEGER,
+                        new OclIr.Variable("x", INTEGER), BOOLEAN));
+
+        assertTrue(OclCertifiedModelValidator.wfOva(query).valid(),
+                OclCertifiedModelValidator.wfOva(query).toString());
+        assertTrue(OclCertifiedModelValidator.certifiedOva(query).valid(),
+                OclCertifiedModelValidator.certifiedOva(query).toString());
+    }
+
+    @Test
+    void numericLetBindingAcceptsIntegerValueForDeclaredRealType() {
+        var result = new DefaultOclToCypherCompiler(model()).compileInvariantInstrumented(
+                "context Person inv RealThreshold: let threshold : Real = self.age "
+                        + "in threshold >= 0.0");
+
+        assertTrue(OclCertifiedModelValidator.wfOva(result.validationAlgebra()).valid());
+        assertTrue(OclCertifiedModelValidator.wfCqm(result.queryPlan()).valid());
+        assertTrue(result.cypher().contains("toFloat("), result.cypher());
     }
 
     @Test

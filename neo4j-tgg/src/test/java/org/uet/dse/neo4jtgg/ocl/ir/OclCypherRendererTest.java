@@ -66,9 +66,11 @@ class OclCypherRendererTest {
                 .map(java.util.Map.Entry::getKey)
                 .findFirst()
                 .orElseThrow();
-        assertTrue(rendered.cypher().contains("size((CASE WHEN (CASE WHEN"), rendered.cypher());
+        assertTrue(rendered.cypher().contains("size(head(COLLECT { WITH"), rendered.cypher());
+        assertTrue(rendered.cypher().matches("(?s).* AS finiteSet[0-9]+ RETURN \\(CASE WHEN finiteSet[0-9]+ IS NULL.*"),
+                rendered.cypher());
         assertTrue(rendered.cypher().contains(" = $" + bottomParam + ", false) THEN []"), rendered.cypher());
-        assertTrue(rendered.cypher().endsWith("END)) = 0 AS value"), rendered.cypher());
+        assertTrue(rendered.cypher().endsWith("AS value })) = 0 AS value"), rendered.cypher());
     }
 
     @Test
@@ -165,8 +167,9 @@ class OclCypherRendererTest {
 
         String bottomParam = assertCollectionBottomBoundary(rendered);
         assertTrue(rendered.cypher().contains("all(setLeft"), rendered.cypher());
+        assertTrue(rendered.cypher().contains("AS setComparisonLeft"), rendered.cypher());
         assertTrue(rendered.cypher().contains(" = $" + bottomParam
-                + ", false) THEN [] ELSE head(["), rendered.cypher());
+                + ", false) THEN [] ELSE finiteSet"), rendered.cypher());
     }
 
     @Test
@@ -177,9 +180,9 @@ class OclCypherRendererTest {
                             + collectionBottomTokenPlanExpression() + ")." + method + "()");
 
             String bottomParam = assertCollectionBottomBoundary(rendered);
-            assertTrue(rendered.cypher().contains("size((CASE WHEN head(["), rendered.cypher());
+            assertTrue(rendered.cypher().contains("size(head(COLLECT { WITH head(["), rendered.cypher());
             assertTrue(rendered.cypher().contains(" = $" + bottomParam
-                    + ", false) THEN [] ELSE head(["), rendered.cypher());
+                    + ", false) THEN [] ELSE finiteSet"), rendered.cypher());
         }
     }
 
@@ -429,7 +432,8 @@ class OclCypherRendererTest {
 
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
         assertFalse(rendered.cypher().contains("head([(head(["));
-        assertTrue(rendered.cypher().contains("CASE WHEN head(["));
+        assertTrue(rendered.cypher().contains(" AS rawAttr"));
+        assertTrue(rendered.cypher().contains("RETURN CASE WHEN rawAttr"));
     }
 
     @Test

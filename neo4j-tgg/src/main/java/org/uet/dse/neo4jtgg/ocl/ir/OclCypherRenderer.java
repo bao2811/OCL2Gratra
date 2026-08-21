@@ -16,6 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Model-to-text transformation from the abstract Cypher Query Model to Cypher
@@ -46,16 +48,30 @@ public class OclCypherRenderer {
             throw new IllegalArgumentException("Unsupported invariant violation policy: "
                     + invariantPlan.violationPolicy());
         }
-        RenderState state = new RenderState();
+        if (invariantPlan.evaluationPolicy()
+                != OclCypherPlan.EvaluationPolicy.MATERIALIZE_REUSED_EXPRESSIONS) {
+            throw new IllegalArgumentException("Unsupported CQM evaluation policy: "
+                    + invariantPlan.evaluationPolicy());
+        }
+        RenderState state = new RenderState(invariantPlan.graphBinding());
         String selfAlias = state.enterVariable("self", OclTypeBinding.node(invariantPlan.contextClassName()));
         String classAlias = state.reserveAlias("cls");
         RenderedExpression predicate = renderExpression(invariantPlan.predicate(), state);
-        String classParam = state.newParam(classKey(invariantPlan.contextClassName()));
-        String cypher = "MATCH " + modelScopedNodePattern(selfAlias, "Object", state)
-                + "-[:" + CanonicalGraphVocabulary.OBJECT_INSTANCE_OF + "]->"
-                + modelScopedKeyedNodePattern(classAlias, "UmlClass", "classKey", classParam, state) + "\n" +
+        OclCypherPlan.GraphContextBinding binding = invariantPlan.graphBinding();
+        String classParam = state.newParam(binding == null
+                ? classKey(invariantPlan.contextClassName(), state)
+                : binding.contextClassKey());
+        String objectLabel = binding == null ? "Object" : binding.objectLabel();
+        String classLabel = binding == null ? "UmlClass" : binding.classLabel();
+        String conformanceRelationship = binding == null
+                ? CanonicalGraphVocabulary.OBJECT_INSTANCE_OF
+                : binding.conformanceRelationship();
+        String identityProperty = binding == null ? "use_id" : binding.identityProperty();
+        String cypher = "MATCH " + modelScopedNodePattern(selfAlias, objectLabel, state)
+                + "-[:" + conformanceRelationship + "]->"
+                + modelScopedKeyedNodePattern(classAlias, classLabel, "classKey", classParam, state) + "\n" +
                 "WHERE " + OclValidationSemantics.violationPredicate(predicate.cypher()) + "\n" +
-                "RETURN DISTINCT " + selfAlias + ".use_id AS useId";
+                "RETURN DISTINCT " + selfAlias + "." + identityProperty + " AS useId";
         Map<String, Object> parameters = state.parameters();
         OclBottomToken.requireWellFormedGeneratedParameters(parameters);
         return new RenderedInvariant(cypher, parameters);
@@ -363,7 +379,7 @@ public class OclCypherRenderer {
 
     private RenderedExpression renderMethodCall(OclCypherPlan.MethodCallPlan methodCall, RenderedExpression source, RenderState state) {
         if ("allInstances".equalsIgnoreCase(methodCall.methodName())) {
-            String classParam = state.newParam(classKey(source.type().typeName()));
+            String classParam = state.newParam(classKey(source.type().typeName(), state));
             String objectAlias = state.newVariableAlias("obj");
             String classAlias = state.newVariableAlias("cls");
             String cypher = "COLLECT { MATCH " + modelScopedNodePattern(objectAlias, "Object", state)
@@ -448,7 +464,7 @@ public class OclCypherRenderer {
                         "oclIsKindOf() requires a type argument.");
             }
             RenderedExpression typeArg = renderExpression(methodCall.arguments().get(0), state);
-            String classParam = state.newParam(classKey(typeArg.type().typeName()));
+            String classParam = state.newParam(classKey(typeArg.type().typeName(), state));
             return new RenderedExpression(renderGuardedIsKindOfCheck(source.cypher(), classParam, state), methodCall.type());
         }
         if ("oclAsType".equalsIgnoreCase(methodCall.methodName())) {
@@ -458,7 +474,7 @@ public class OclCypherRenderer {
                         "oclAsType() requires a type argument.");
             }
             RenderedExpression typeArg = renderExpression(methodCall.arguments().get(0), state);
-            String classParam = state.newParam(classKey(typeArg.type().typeName()));
+            String classParam = state.newParam(classKey(typeArg.type().typeName(), state));
             return new RenderedExpression(renderGuardedCast(source.cypher(), classParam, state), methodCall.type());
         }
         throw new OclCodedUnsupportedOperationException(
@@ -469,7 +485,7 @@ public class OclCypherRenderer {
     private RenderedExpression renderAttributeAccess(OclCypherPlan.AttributeAccessPlan attributeAccess,
                                                      RenderedExpression source,
                                                      RenderState state) {
-        String attributeParam = state.newParam(attributeKey(attributeAccess));
+        String attributeParam = state.newParam(attributeKey(attributeAccess, state));
         if (source.type().isCollection()) {
             String itemAlias = state.newVariableAlias("attrOwner");
             String receiverAlias = state.newVariableAlias("attrRecv");
@@ -492,22 +508,24 @@ public class OclCypherRenderer {
                                                           String attributeParam,
                                                           RenderState state) {
         if (attributeAccess.type().isNode()) {
-            String references = referenceAttributeLookup(sourceAlias, attributeParam, state);
+            String references = referenceAttributeLookup(sourceAlias, attributeParam, attributeAccess.binding(), state);
             return new RenderedExpression("head(" + references + ")", attributeAccess.type());
         }
         if (attributeAccess.type().isCollection() && attributeAccess.type().elementType().isNode()) {
             return new RenderedExpression(
-                    referenceAttributeLookup(sourceAlias, attributeParam, state), attributeAccess.type());
+                    referenceAttributeLookup(sourceAlias, attributeParam, attributeAccess.binding(), state),
+                    attributeAccess.type());
         }
         if (attributeAccess.type().isCollection() && attributeAccess.type().elementType().isCollection()) {
             return new RenderedExpression(
-                    nestedCollectionAttributeLookup(sourceAlias, attributeParam, attributeAccess.attributeType(), state),
+                    nestedCollectionAttributeLookup(sourceAlias, attributeParam, attributeAccess.attributeType(),
+                            attributeAccess.binding(), state),
                     attributeAccess.type());
         }
-        String raw = attributeLookup(sourceAlias, attributeParam, state);
+        String raw = attributeLookup(sourceAlias, attributeParam, attributeAccess.binding(), state);
         String normalized = attributeAccess.type().isCollection()
                 ? normalizeCollectionAttributeValue(raw, attributeAccess.attributeType(), state)
-                : normalizeAttributeValue(raw, attributeAccess.attributeType());
+                : normalizeAttributeValue(raw, attributeAccess.attributeType(), state);
         return new RenderedExpression(normalized, attributeAccess.type());
     }
 
@@ -892,32 +910,40 @@ public class OclCypherRenderer {
                                            List<RenderedExpression> qualifiers,
                                            RenderState state) {
         org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex.NavigationInfo navigationInfo = navigationAccess.navigation();
-        String associationParam = state.newParam(associationKey(navigationInfo.associationName()));
-        String sourceRoleParam = state.newParam(navigationInfo.sourceRoleName());
-        String targetRoleParam = state.newParam(navigationInfo.targetRoleName());
+        OclCypherPlan.NavigationBinding binding = navigationAccess.binding();
+        String associationParam = state.newParam(binding == null
+                ? associationKey(navigationInfo.associationName(), state)
+                : binding.associationKey());
+        String sourceRoleParam = state.newParam(binding == null
+                ? navigationInfo.sourceRoleName() : binding.sourceRole());
+        String targetRoleParam = state.newParam(binding == null
+                ? navigationInfo.targetRoleName() : binding.targetRole());
         String relationshipAlias = state.newRelationshipAlias();
         String qualifierPredicate = renderQualifierPredicate(
                 navigationAccess, qualifiers, relationshipAlias, state);
         String relationshipModelPredicate = modelPropertyPredicate(relationshipAlias, state);
         String sourcePattern = modelScopedNodePattern(sourceAlias, "Object", state);
         String targetPattern = modelScopedNodePattern(targetAlias, "Object", state);
-        return switch (navigationInfo.direction()) {
+        String relationshipPrefix = binding == null ? "Link" : binding.relationshipTypePrefix();
+        org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex.NavigationDirection direction = binding == null
+                ? navigationInfo.direction() : binding.direction();
+        return switch (direction) {
             case OUTGOING -> sourcePattern + "-[" + relationshipAlias + "]->" + targetPattern
-                    + " WHERE type(" + relationshipAlias + ") STARTS WITH 'Link' " +
+                    + " WHERE type(" + relationshipAlias + ") STARTS WITH '" + relationshipPrefix + "' " +
                     relationshipModelPredicate +
                     "AND " + relationshipAlias + ".associationKey = $" + associationParam +
                     " AND " + relationshipAlias + ".sourceRole = $" + sourceRoleParam +
                     " AND " + relationshipAlias + ".targetRole = $" + targetRoleParam +
                     qualifierPredicate;
             case INCOMING -> sourcePattern + "<-[" + relationshipAlias + "]-" + targetPattern
-                    + " WHERE type(" + relationshipAlias + ") STARTS WITH 'Link' " +
+                    + " WHERE type(" + relationshipAlias + ") STARTS WITH '" + relationshipPrefix + "' " +
                     relationshipModelPredicate +
                     "AND " + relationshipAlias + ".associationKey = $" + associationParam +
                     " AND " + relationshipAlias + ".sourceRole = $" + targetRoleParam +
                     " AND " + relationshipAlias + ".targetRole = $" + sourceRoleParam +
                     qualifierPredicate;
             case UNDIRECTED -> sourcePattern + "-[" + relationshipAlias + "]-" + targetPattern
-                    + " WHERE type(" + relationshipAlias + ") STARTS WITH 'Link' " +
+                    + " WHERE type(" + relationshipAlias + ") STARTS WITH '" + relationshipPrefix + "' " +
                     relationshipModelPredicate +
                     "AND " + relationshipAlias + ".associationKey = $" + associationParam +
                     " AND ((" + relationshipAlias + ".sourceRole = $" + sourceRoleParam + " AND "
@@ -944,18 +970,26 @@ public class OclCypherRenderer {
         if (qualifiers.size() != navigationAccess.qualifiers().size()) {
             throw new IllegalArgumentException("Rendered qualifier arity does not match navigation metadata.");
         }
-        String propertyName = switch (navigationAccess.navigation().direction()) {
-            case OUTGOING, UNDIRECTED -> "sourceQualifiers";
-            case INCOMING -> "targetQualifiers";
+        OclCypherPlan.NavigationBinding binding = navigationAccess.binding();
+        org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex.NavigationDirection direction = binding == null
+                ? navigationAccess.navigation().direction() : binding.direction();
+        String propertyName = switch (direction) {
+            case OUTGOING, UNDIRECTED -> binding == null
+                    ? "sourceQualifiers" : binding.sourceQualifierProperty();
+            case INCOMING -> binding == null ? "targetQualifiers" : binding.targetQualifierProperty();
         };
         StringBuilder predicate = new StringBuilder();
         for (int i = 0; i < navigationAccess.qualifiers().size(); i++) {
+            int qualifierIndex = i;
             OclCypherPlan.ExpressionPlan qualifier = navigationAccess.qualifiers().get(i);
             RenderedExpression rendered = qualifiers.get(i);
-            predicate.append(" AND NOT ").append(renderIsBottom(rendered.cypher(), state))
-                    .append(" AND ").append(relationshipAlias).append(".")
-                    .append(propertyName).append("[").append(i).append("] = ")
-                    .append(renderSerializedQualifierValue(rendered, qualifier.type(), state));
+            String condition = materializeOnce(rendered.cypher(), "qualifier", state, value -> {
+                RenderedExpression boundQualifier = new RenderedExpression(value, qualifier.type());
+                return "NOT " + renderIsBottom(value, state) + " AND " + relationshipAlias + "."
+                        + propertyName + "[" + qualifierIndex + "] = "
+                        + renderSerializedQualifierValue(boundQualifier, qualifier.type(), state);
+            });
+            predicate.append(" AND ").append(condition);
         }
         return predicate.toString();
     }
@@ -1019,27 +1053,30 @@ public class OclCypherRenderer {
         };
     }
 
-    private String normalizeAttributeValue(String raw, org.tzi.use.uml.ocl.type.Type type) {
+    private String normalizeAttributeValue(String raw, org.tzi.use.uml.ocl.type.Type type,
+                                           RenderState state) {
         String prefix;
         if (type.isTypeOfInteger()) prefix = "v1|I|";
         else if (type.isTypeOfReal()) prefix = "v1|R|";
         else if (type.isTypeOfBoolean()) prefix = "v1|B|";
         else if (type.isTypeOfString()) prefix = "v1|S|";
         else prefix = "v1|E|";
-        String payload = "substring(" + raw + ", " + prefix.length() + ")";
-        String decoded = "replace(replace(" + payload + ", '%7C', '|'), '%25', '%')";
-        String taggedPayload = "CASE WHEN " + raw + " = 'v1|V' THEN null "
-                + "WHEN " + raw + " STARTS WITH '" + prefix + "' THEN " + decoded + " ELSE null END";
-        if (type.isTypeOfInteger()) {
-            return "toInteger(" + taggedPayload + ")";
-        }
-        if (type.isTypeOfReal()) {
-            return "toFloat(" + taggedPayload + ")";
-        }
-        if (type.isTypeOfBoolean()) {
-            return "CASE " + taggedPayload + " WHEN 'true' THEN true WHEN 'false' THEN false ELSE null END";
-        }
-        return taggedPayload;
+        return materializeOnce(raw, "rawAttr", state, rawAlias -> {
+            String payload = "substring(" + rawAlias + ", " + prefix.length() + ")";
+            String decoded = "replace(replace(" + payload + ", '%7C', '|'), '%25', '%')";
+            String taggedPayload = "CASE WHEN " + rawAlias + " = 'v1|V' THEN null "
+                    + "WHEN " + rawAlias + " STARTS WITH '" + prefix + "' THEN " + decoded + " ELSE null END";
+            if (type.isTypeOfInteger()) {
+                return "toInteger(" + taggedPayload + ")";
+            }
+            if (type.isTypeOfReal()) {
+                return "toFloat(" + taggedPayload + ")";
+            }
+            if (type.isTypeOfBoolean()) {
+                return "CASE " + taggedPayload + " WHEN 'true' THEN true WHEN 'false' THEN false ELSE null END";
+            }
+            return taggedPayload;
+        });
     }
 
     private String normalizeCollectionAttributeValue(String raw, Type type, RenderState state) {
@@ -1054,14 +1091,19 @@ public class OclCypherRenderer {
                     OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED,
                     "Nested collection-valued attributes must use the nested collection graph path during Cypher rendering.");
         }
-        String itemAlias = state.newVariableAlias("attrItem");
-        String emptyCheck = raw + " IS NULL OR " + raw + " = 'Undefined' OR " + raw + " = 'COLLECTION_EMPTY'";
-        String splitExpr = "split(" + raw + ", ' | ')";
-        String itemValue = normalizeAttributeValue(itemAlias, elementType);
-        return "CASE WHEN " + emptyCheck + " THEN [] ELSE [" + itemAlias + " IN " + splitExpr + " | " + itemValue + "] END";
+        return materializeOnce(raw, "rawCollectionAttr", state, rawAlias -> {
+            String itemAlias = state.newVariableAlias("attrItem");
+            String emptyCheck = rawAlias + " IS NULL OR " + rawAlias + " = 'Undefined' OR "
+                    + rawAlias + " = 'COLLECTION_EMPTY'";
+            String splitExpr = "split(" + rawAlias + ", ' | ')";
+            String itemValue = normalizeAttributeValue(itemAlias, elementType, state);
+            return "CASE WHEN " + emptyCheck + " THEN [] ELSE [" + itemAlias + " IN "
+                    + splitExpr + " | " + itemValue + "] END";
+        });
     }
 
-    private String nestedCollectionAttributeLookup(String sourceAlias, String attributeParam, Type type, RenderState state) {
+    private String nestedCollectionAttributeLookup(String sourceAlias, String attributeParam, Type type,
+                                                   OclCypherPlan.AttributeBinding binding, RenderState state) {
         if (!(type instanceof CollectionType outerCollectionType)
                 || !outerCollectionType.elemType().isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
             throw new OclCodedUnsupportedOperationException(
@@ -1069,7 +1111,9 @@ public class OclCypherRenderer {
                     "Nested collection-valued attribute metadata is invalid for Cypher rendering.");
         }
         String nestedAlias = state.newVariableAlias("nestedAttr");
-        String outerPattern = "(" + sourceAlias + ")-[:ObjectHasAttribute]->(val:AttributeValue) " +
+        String ownerRelationship = binding == null ? "ObjectHasAttribute" : binding.ownerRelationship();
+        String slotLabel = binding == null ? "AttributeValue" : binding.slotLabel();
+        String outerPattern = "(" + sourceAlias + ")-[:" + ownerRelationship + "]->(val:" + slotLabel + ") " +
                 "WHERE val.attributeKey = $" + attributeParam
                 + modelPropertyConjunction("val", state) + " " +
                 "MATCH (val)-[outer:HasNestedCollectionValue]->(" + nestedAlias + ":NestedCollectionValue)";
@@ -1093,22 +1137,29 @@ public class OclCypherRenderer {
         String emptyCheck = nodeAlias + ".value IS NULL OR " + nodeAlias + ".value = 'Undefined' OR " +
                 nodeAlias + ".value = 'COLLECTION_EMPTY'";
         String splitExpr = "split(" + nodeAlias + ".value, ' | ')";
-        String itemValue = normalizeAttributeValue(itemAlias, type);
+        String itemValue = normalizeAttributeValue(itemAlias, type, state);
         return "CASE WHEN " + emptyCheck + " THEN [] ELSE [" + itemAlias + " IN " + splitExpr +
                 " | " + itemValue + "] END";
     }
 
-    private String attributeLookup(String sourceAlias, String attributeParam, RenderState state) {
-        return "head([(" + sourceAlias + ")-[:ObjectHasAttribute]->(val:AttributeValue) " +
+    private String attributeLookup(String sourceAlias, String attributeParam,
+                                   OclCypherPlan.AttributeBinding binding, RenderState state) {
+        String ownerRelationship = binding == null ? "ObjectHasAttribute" : binding.ownerRelationship();
+        String slotLabel = binding == null ? "AttributeValue" : binding.slotLabel();
+        String valueProperty = binding == null ? "value" : binding.valueProperty();
+        return "head([(" + sourceAlias + ")-[:" + ownerRelationship + "]->(val:" + slotLabel + ") " +
                 "WHERE val.attributeKey = $" + attributeParam
-                + modelPropertyConjunction("val", state) + " | val.value])";
+                + modelPropertyConjunction("val", state) + " | val." + valueProperty + "])";
     }
 
-    private String referenceAttributeLookup(String sourceAlias, String attributeParam, RenderState state) {
+    private String referenceAttributeLookup(String sourceAlias, String attributeParam,
+                                            OclCypherPlan.AttributeBinding binding, RenderState state) {
         String targetAlias = state.newVariableAlias("attrTarget");
         String referenceAlias = state.newRelationshipAlias();
+        String ownerRelationship = binding == null ? "ObjectHasAttribute" : binding.ownerRelationship();
+        String slotLabel = binding == null ? "AttributeValue" : binding.slotLabel();
         return "COLLECT { " +
-                "MATCH (" + sourceAlias + ")-[:ObjectHasAttribute]->(val:AttributeValue) " +
+                "MATCH (" + sourceAlias + ")-[:" + ownerRelationship + "]->(val:" + slotLabel + ") " +
                 "WHERE val.attributeKey = $" + attributeParam
                 + modelPropertyConjunction("val", state) + " " +
                 "MATCH (val)-[" + referenceAlias + ":objectReference|HasReferenceValue]->"
@@ -1137,8 +1188,9 @@ public class OclCypherRenderer {
                 + " RETURN DISTINCT " + nodeAlias + " }";
     }
 
-    private String renderSingletonNodeList(String expression) {
-        return "CASE WHEN " + expression + " IS NULL THEN [] ELSE [" + expression + "] END";
+    private String renderSingletonNodeList(String expression, RenderState state) {
+        return materializeOnce(expression, "singleton", state,
+                value -> "CASE WHEN " + value + " IS NULL THEN [] ELSE [" + value + "] END");
     }
 
     /**
@@ -1158,7 +1210,7 @@ public class OclCypherRenderer {
                     renderFiniteCollectionValue(source.cypher(), state), sourceCollectionType);
         }
         if (sourceCollectionType.isCollection()) {
-            return new RenderedExpression(renderSingletonNodeList(source.cypher()), sourceCollectionType);
+            return new RenderedExpression(renderSingletonNodeList(source.cypher(), state), sourceCollectionType);
         }
         return source;
     }
@@ -1166,13 +1218,15 @@ public class OclCypherRenderer {
     /** Completes either runtime representation of whole-collection bottom to []. */
     private String renderFiniteCollectionValue(String collectionCypher, RenderState state) {
         String bottomToken = "$" + state.bottomTokenParam();
-        return "(CASE WHEN " + collectionCypher + " IS NULL OR coalesce(" + collectionCypher
-                + " = " + bottomToken + ", false) THEN [] ELSE " + collectionCypher + " END)";
+        return materializeOnce(collectionCypher, "finiteSet", state,
+                value -> "(CASE WHEN " + value + " IS NULL OR coalesce(" + value
+                        + " = " + bottomToken + ", false) THEN [] ELSE " + value + " END)");
     }
 
     private String renderIteratorIsUnique(String iteratorName, String sourceCypher, String bodyCypher, RenderState state) {
         String projected = "[" + iteratorName + " IN " + sourceCypher + " | " + bodyCypher + "]";
-        return "size(" + projected + ") = size(" + renderUniqueCollection(projected, state) + ")";
+        return materializeOnce(projected, "projection", state,
+                value -> "size(" + value + ") = size(" + renderUniqueCollection(value, state) + ")");
     }
 
     private String renderGuardedIsKindOfCheck(String sourceCypher, String classParam, RenderState state) {
@@ -1214,10 +1268,11 @@ public class OclCypherRenderer {
     }
 
     private String modelScopedNodePattern(String alias, String label, RenderState state) {
-        if (modelName == null || modelName.isBlank()) {
+        String modelKey = activeModelKey(state);
+        if (modelKey == null || modelKey.isBlank()) {
             return "(" + alias + ":" + label + ")";
         }
-        String modelParam = state.newParam(CanonicalGraphEncoding.modelKey(modelName));
+        String modelParam = state.newParam(modelKey);
         return "(" + alias + ":" + label + " {modelKey: $" + modelParam + "})";
     }
 
@@ -1231,43 +1286,56 @@ public class OclCypherRenderer {
                                                String keyName, String keyValue,
                                                boolean parameterValue, RenderState state) {
         String value = parameterValue ? "$" + keyValue : keyValue;
-        if (modelName == null || modelName.isBlank()) {
+        String modelKey = activeModelKey(state);
+        if (modelKey == null || modelKey.isBlank()) {
             return "(" + alias + ":" + label + " {" + keyName + ": " + value + "})";
         }
-        String modelParam = state.newParam(CanonicalGraphEncoding.modelKey(modelName));
+        String modelParam = state.newParam(modelKey);
         return "(" + alias + ":" + label + " {modelKey: $" + modelParam
                 + ", " + keyName + ": " + value + "})";
     }
 
     private String modelPropertyPredicate(String alias, RenderState state) {
-        if (modelName == null || modelName.isBlank()) return "";
-        String modelParam = state.newParam(CanonicalGraphEncoding.modelKey(modelName));
+        String modelKey = activeModelKey(state);
+        if (modelKey == null || modelKey.isBlank()) return "";
+        String modelParam = state.newParam(modelKey);
         return "AND " + alias + ".modelKey = $" + modelParam + " ";
     }
 
     private String modelPropertyConjunction(String alias, RenderState state) {
-        if (modelName == null || modelName.isBlank()) return "";
-        String modelParam = state.newParam(CanonicalGraphEncoding.modelKey(modelName));
+        String modelKey = activeModelKey(state);
+        if (modelKey == null || modelKey.isBlank()) return "";
+        String modelParam = state.newParam(modelKey);
         return " AND " + alias + ".modelKey = $" + modelParam;
     }
 
-    private String classKey(String className) {
-        return modelName == null || modelName.isBlank()
+    private String classKey(String className, RenderState state) {
+        String modelKey = activeModelKey(state);
+        return modelKey == null || modelKey.isBlank()
                 ? className
-                : CanonicalGraphEncoding.classKey(modelName, className);
+                : CanonicalGraphEncoding.classKey(modelKey, className);
     }
 
-    private String attributeKey(OclCypherPlan.AttributeAccessPlan access) {
+    private String attributeKey(OclCypherPlan.AttributeAccessPlan access, RenderState state) {
+        if (access.binding() != null) return access.binding().attributeKey();
         String owner = access.attribute().owner().name();
-        return modelName == null || modelName.isBlank()
+        String modelKey = activeModelKey(state);
+        return modelKey == null || modelKey.isBlank()
                 ? owner + "::" + access.attributeName()
-                : CanonicalGraphEncoding.attributeKey(modelName, owner, access.attributeName());
+                : CanonicalGraphEncoding.attributeKey(modelKey, owner, access.attributeName());
     }
 
-    private String associationKey(String associationName) {
-        return modelName == null || modelName.isBlank()
+    private String associationKey(String associationName, RenderState state) {
+        String modelKey = activeModelKey(state);
+        return modelKey == null || modelKey.isBlank()
                 ? associationName
-                : CanonicalGraphEncoding.associationKey(modelName, associationName);
+                : CanonicalGraphEncoding.associationKey(modelKey, associationName);
+    }
+
+    private String activeModelKey(RenderState state) {
+        if (state.graphBinding() != null) return state.graphBinding().modelKey();
+        return modelName == null || modelName.isBlank()
+                ? null : CanonicalGraphEncoding.modelKey(modelName);
     }
 
     private String renderIteratorSortedBy(String iteratorName, String sourceCypher, String bodyCypher, RenderState state) {
@@ -1290,6 +1358,35 @@ public class OclCypherRenderer {
 
     private boolean isSimpleIdentifier(String expression) {
         return expression != null && expression.matches("[A-Za-z_][A-Za-z0-9_]*");
+    }
+
+    /**
+     * Introduces a scalar expression exactly once before a semantic rule uses
+     * it more than once. This is the concrete lowering of CQM's certified
+     * {@code MATERIALIZE_REUSED_EXPRESSIONS} policy and prevents recursive
+     * textual substitution from multiplying graph pattern comprehensions.
+     */
+    private String materializeOnce(String expression, String aliasStem, RenderState state,
+                                   Function<String, String> body) {
+        if (isAtomicCypher(expression)) return body.apply(expression);
+        String alias = state.newVariableAlias(aliasStem);
+        return "head(COLLECT { WITH " + expression + " AS " + alias
+                + " RETURN " + body.apply(alias) + " AS value })";
+    }
+
+    /** Materializes both operands once before applying a binary semantic rule. */
+    private String materializePair(String left, String right, String aliasStem, RenderState state,
+                                   BiFunction<String, String, String> body) {
+        if (isAtomicCypher(left) && isAtomicCypher(right)) return body.apply(left, right);
+        String leftAlias = state.newVariableAlias(aliasStem + "Left");
+        String rightAlias = state.newVariableAlias(aliasStem + "Right");
+        return "head(COLLECT { WITH " + left + " AS " + leftAlias + ", " + right + " AS "
+                + rightAlias + " RETURN " + body.apply(leftAlias, rightAlias) + " AS value })";
+    }
+
+    private boolean isAtomicCypher(String expression) {
+        return expression != null && expression.matches(
+                "(?:[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?|\\$[A-Za-z_][A-Za-z0-9_]*|null|true|false)");
     }
 
     private String renderExtremumCollection(String operationName, String sourceCypher, RenderState state) {
@@ -1334,22 +1431,25 @@ public class OclCypherRenderer {
      * one bottom value and defines bottom equality as true only against bottom.
      */
     private String renderSemanticScalarEquality(String operator, String leftCypher, String rightCypher,
-                                                RenderState state) {
-        String leftBottom = renderIsBottom(leftCypher, state);
-        String rightBottom = renderIsBottom(rightCypher, state);
-        String equality = "(CASE WHEN (" + leftBottom + " AND " + rightBottom
-                + ") THEN true WHEN (" + leftBottom + " OR " + rightBottom
-                + ") THEN false ELSE coalesce(" + leftCypher + " = " + rightCypher
-                + ", false) END)";
-        return "<>".equals(operator) ? "(NOT " + equality + ")" : equality;
+                                                 RenderState state) {
+        return materializePair(leftCypher, rightCypher, "equality", state, (left, right) -> {
+            String leftBottom = renderIsBottom(left, state);
+            String rightBottom = renderIsBottom(right, state);
+            String equality = "(CASE WHEN (" + leftBottom + " AND " + rightBottom
+                    + ") THEN true WHEN (" + leftBottom + " OR " + rightBottom
+                    + ") THEN false ELSE coalesce(" + left + " = " + right
+                    + ", false) END)";
+            return "<>".equals(operator) ? "(NOT " + equality + ")" : equality;
+        });
     }
 
     /** Bottom is absorbing for certified ordering and arithmetic operations. */
     private String renderBottomPropagatingBinary(String operator, String leftCypher, String rightCypher,
-                                                 RenderState state) {
-        return "(CASE WHEN " + renderIsBottom(leftCypher, state) + " OR "
-                + renderIsBottom(rightCypher, state) + " THEN null ELSE ("
-                + leftCypher + " " + operator + " " + rightCypher + ") END)";
+                                                  RenderState state) {
+        return materializePair(leftCypher, rightCypher, "binary", state,
+                (left, right) -> "(CASE WHEN " + renderIsBottom(left, state) + " OR "
+                        + renderIsBottom(right, state) + " THEN null ELSE ("
+                        + left + " " + operator + " " + right + ") END)");
     }
 
     /** Recognizes both concrete representations of the typed semantic bottom. */
@@ -1365,16 +1465,18 @@ public class OclCypherRenderer {
 
     /** Extensional, order-independent equality for the certified finite-set fragment. */
     private String renderFiniteSetComparison(String operator, String leftCypher, String rightCypher,
-                                             RenderState state) {
+                                              RenderState state) {
         String leftAlias = state.newVariableAlias("setLeft");
         String rightAlias = state.newVariableAlias("setRight");
         String left = renderFiniteCollectionValue(leftCypher, state);
         String right = renderFiniteCollectionValue(rightCypher, state);
-        String equality = "(all(" + leftAlias + " IN " + left + " WHERE any(" + rightAlias + " IN " + right +
-                " WHERE " + renderSetEquality(leftAlias, rightAlias, state) + ")) AND all(" + rightAlias +
-                " IN " + right + " WHERE any(" + leftAlias + " IN " + left + " WHERE " +
-                renderSetEquality(leftAlias, rightAlias, state) + ")))";
-        return "<>".equals(operator) ? "(NOT " + equality + ")" : equality;
+        return materializePair(left, right, "setComparison", state, (leftValue, rightValue) -> {
+            String equality = "(all(" + leftAlias + " IN " + leftValue + " WHERE any(" + rightAlias
+                    + " IN " + rightValue + " WHERE " + renderSetEquality(leftAlias, rightAlias, state)
+                    + ")) AND all(" + rightAlias + " IN " + rightValue + " WHERE any(" + leftAlias
+                    + " IN " + leftValue + " WHERE " + renderSetEquality(leftAlias, rightAlias, state) + ")))";
+            return "<>".equals(operator) ? "(NOT " + equality + ")" : equality;
+        });
     }
 
     public record RenderedInvariant(String cypher, Map<String, Object> parameters) {
@@ -1396,8 +1498,14 @@ public class OclCypherRenderer {
         private int variableCounter = 0;
         private int relationshipCounter = 0;
         private String bottomTokenParam;
+        private final OclCypherPlan.GraphContextBinding graphBinding;
 
         private RenderState() {
+            this(null);
+        }
+
+        private RenderState(OclCypherPlan.GraphContextBinding graphBinding) {
+            this.graphBinding = graphBinding;
             scopes.push(new LinkedHashMap<>());
             variableAliases.push(new LinkedHashMap<>());
             expressionBindings.push(new LinkedHashMap<>());
@@ -1482,6 +1590,10 @@ public class OclCypherRenderer {
 
         private Map<String, Object> parameters() {
             return Map.copyOf(parameters);
+        }
+
+        private OclCypherPlan.GraphContextBinding graphBinding() {
+            return graphBinding;
         }
     }
 }

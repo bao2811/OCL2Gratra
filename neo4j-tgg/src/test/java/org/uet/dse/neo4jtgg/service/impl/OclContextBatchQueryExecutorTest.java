@@ -54,4 +54,34 @@ class OclContextBatchQueryExecutorTest {
         assertEquals("Bob", plan.parameters().get("r1_p0"));
         assertEquals(2, plan.aliasToRule().size());
     }
+
+    @Test
+    void splitsLargeRuleSetsBeforeBuildingAUnionQuery() {
+        List<OclContextBatchQueryExecutor.BatchRule> rules = java.util.stream.IntStream
+                .range(0, OclContextBatchQueryExecutor.MAX_RULES_PER_QUERY + 1)
+                .mapToObj(OclContextBatchQueryExecutorTest::rule)
+                .toList();
+
+        var plans = OclContextBatchQueryExecutor.prepareBatches(rules);
+
+        assertEquals(2, plans.size());
+        assertEquals(OclContextBatchQueryExecutor.MAX_RULES_PER_QUERY, plans.get(0).aliasToRule().size());
+        assertEquals(1, plans.get(1).aliasToRule().size());
+    }
+
+    private static OclContextBatchQueryExecutor.BatchRule rule(int index) {
+        String name = "Rule" + index;
+        return new OclContextBatchQueryExecutor.BatchRule(
+                index,
+                new OclRuleDescriptor(OclRuleOwnerKind.CLASS, OclRuleKind.INV, "Person", null, null,
+                        List.of(), name, null, null),
+                new OclRuleCompilationResult(OclRuleOwnerKind.CLASS, OclRuleKind.INV,
+                        "Person", null, null, name,
+                        new CypherCompilationResult(true,
+                                "MATCH (n:Person) RETURN n.use_id AS useId", Map.of(), "", true),
+                        1L,
+                        new OclResultLocation("Person", name, null, null, null, null, null, null, List.of()),
+                        List.of()),
+                name + " violated");
+    }
 }
