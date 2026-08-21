@@ -50,7 +50,9 @@ A5. GraphAdequate(MM,M,G) holds: G contains the required M2 schema, M1
     instance, and typing projections and satisfies R1--R7, including
     resolver-equivalent M2 lookup. Writing G=Phi(MM,M) is permitted only when
     Phi has separately been shown to establish GraphAdequate.
-A6. opt=T_OPT(va) is a current-version production artifact,
+A6. opt=T_NORM(va) is the certified production theorem artifact;
+    the concrete Java T_OPT artifact is runtime evidence only until PO-18
+    discharges its semantic refinement,
     T_TEXT^prod(C,R,opt)=(tq,pi) is defined,
     parse_Cypher(tq)=q in CYPHER5_val, the selected runtime satisfies
     CY1--CY9, and PlanAdequacy(MM,C,nva,opt,q,pi,G) holds
@@ -1713,7 +1715,7 @@ resolveClass_MM(cName)=C
 BInvariant(C,R,b) = T_BIND_INV(astInv,MM)
 va  = T_VA(b)
 nva = T_NORM(va)
-opt = T_OPT(va)
+opt = T_NORM(va)
 (Qspec,pispec) = ExpandI(BuildCQInvariant(C,nva),pi0(MM))
 (tq,pi) = T_TEXT^prod(C,R,opt)
 q = parse_Cypher(tq)
@@ -6520,8 +6522,8 @@ allows shape-specific private parameters only when their values are justified
 by that rule. In particular, eagerly reserved but unused codec entries in
 `pispec` do not need production counterparts.
 
-For a production invocation, the arguments are fixed independently by
-`opt=T_OPT(va)`, `(tprod,piprod)=T_TEXT^prod(C,R,opt)`, and
+For a certified production-theorem invocation, the arguments are fixed independently by
+`opt=T_NORM(va)`, `(tprod,piprod)=T_TEXT^prod(C,R,opt)`, and
 `Qprod=parse_Cypher(tprod)`.  Consequently the predicate has no free `MM`,
 resolver, source, or optimizer variables; changing any one of those inputs
 requires a new adequacy derivation.
@@ -7368,8 +7370,8 @@ give:
 returnedIds(Qspec,G,pispec)=ViolIds_{M,G}(C,nva).
 ```
 
-For the production query, if
-`opt=T_OPT(va)`, `(tq,pi)=T_TEXT^prod(C,R,opt)`,
+For the certified production query, if
+`opt=T_NORM(va)`, `(tq,pi)=T_TEXT^prod(C,R,opt)`,
 `q=parse_Cypher(tq)`, and
 `PlanAdequacy(MM,C,nva,opt,q,pi,G)` and
 `ProdPlanSim_sound(MM,C,nva,opt,Qspec,pispec,q,pi,G)`, then:
@@ -7887,7 +7889,7 @@ resolveClass_MM(cName)=C
 T_BIND_INV(astInv,MM)=BInvariant(C,R,b)
 va = T_VA(b)
 nva = T_NORM(va)
-opt = T_OPT(va)
+opt = T_NORM(va)
 (Qspec,pispec) = ExpandI(BuildCQInvariant(C,nva),pi0(MM))
 (tq,pi) = T_TEXT^prod(C,R,opt)
 q = parse_Cypher(tq)

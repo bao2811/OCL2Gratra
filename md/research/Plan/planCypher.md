@@ -272,5 +272,7 @@ universal theorem gap is explicit rather than hidden.
   `examples/ocl-dataset` submodule remains outside the proof-input scope and
   is not modified by this plan.
 
-Thus P1--P3 and P5--P7 are implemented; P0.2 and P4 remain intentionally
-partial until the universal Java optimizer/planner refinement is formalized.
+Thus P1--P3 and P5--P7 are implemented, and P4 is closed by the safe theorem
+scope choice: the normative production contract uses `T_NORM`, while Java
+`T_OPT` remains runtime-only. P0.2 remains intentionally partial until the
+universal Java optimizer/planner refinement is formalized.
