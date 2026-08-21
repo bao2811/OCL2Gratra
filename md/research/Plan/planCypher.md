@@ -272,7 +272,10 @@ universal theorem gap is explicit rather than hidden.
   `examples/ocl-dataset` submodule remains outside the proof-input scope and
   is not modified by this plan.
 
-Thus P1--P3 and P5--P7 are implemented, and P4 is closed by the safe theorem
-scope choice: the normative production contract uses `T_NORM`, while Java
-`T_OPT` remains runtime-only. P0.2 remains intentionally partial until the
-universal Java optimizer/planner refinement is formalized.
+Thus P0.2--P7 are implemented under the explicit theorem contract: the
+constructor-induction result and CQM/AST structural rules are certified, while
+`PlanAdequacy` remains an explicit semantic premise. P4 is closed by the safe
+scope choice that the normative production contract uses `T_NORM`; Java
+`T_OPT` remains runtime-only. The optional PO-18 extension (universal Java
+optimizer/planner refinement) is recorded as a recommended research follow-up,
+not silently presented as proved by this plan.
