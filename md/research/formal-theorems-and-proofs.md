@@ -7,7 +7,7 @@ This document gives a paper-ready technical foundation for the preservation
 claim of the framework:
 
 ```text
-The generated Cypher invariant query returns exactly the same violating
+The reference Cypher invariant query returns exactly the same violating
 objects as the OCL validation semantics over the source UML object model.
 ```
 
@@ -50,16 +50,16 @@ A5. GraphAdequate(MM,M,G) holds: G contains the required M2 schema, M1
     instance, and typing projections and satisfies R1--R7, including
     resolver-equivalent M2 lookup. Writing G=Phi(MM,M) is permitted only when
     Phi has separately been shown to establish GraphAdequate.
-A6. opt=T_NORM(va) is the certified production theorem artifact;
-    the concrete Java T_OPT artifact is runtime evidence only until PO-18
-    discharges its semantic refinement,
-    T_TEXT^prod(C,R,opt)=(tq,pi) is defined,
+A6. nva=T_NORM(va) is the only normative normalized artifact,
+    ValidNVA(nva) holds, plan=T_CQM^spec(C,R,nva) is defined, and
+    T_TEXT^spec(plan)=(tq,pi) is defined,
     parse_Cypher(tq)=q in CYPHER5_val, the selected runtime satisfies
-    CY1--CY9, and PlanAdequacy(MM,C,nva,opt,q,pi,G) holds
-    for nva=T_NORM(va). PlanAdequacy is the structural bridge contract;
-    the separate constructor-universal ProdPlanSim_sound obligation is
-    required to derive the returned-ID equality. Neither obligation is
-    implied merely by the opaque artifact gate.
+    CY1--CY9, and SpecPlanAdequacy(MM,C,nva,plan,q,pi,G) holds.
+    SpecPlanAdequacy is structural only. Returned-ID equality is the
+    conclusion of SpecPlanSim_sound, proved by constructor induction from the
+    local NVA/CQM rules; it is not a field or premise of adequacy.
+    Java T_OPT, its planner, runtime tests, and performance measurements are
+    non-normative implementation evidence and do not occur in this theorem.
     Every collection boundary implements finiteSet(bottom_Set(tau))=empty
     rather than exposing backend null to a set operator.
 A7. q has exactly one public result column named useId. returnedIds(q,G,pi) is
@@ -95,6 +95,49 @@ Cypher plan. Likewise,
 `bottom`, Boolean collapse, and Set-image `collect` below define OCL_val; they
 must not be cited as the denotation of full OMG OCL.
 
+## 1.0 Normative specification pipeline
+
+The only theorem-bearing pipeline in this report is:
+
+```text
+OCL_val -> OVA -> T_NORM -> NVA -> T_CQM^spec -> CQM -> T_TEXT^spec -> Cypher
+```
+
+`NVA` is the typed normal-form subtype described by
+`specification/metamodel/Normalized-Validation-Algebra.emf`. Its concrete
+grammar contains exactly the reachable rows marked *reachable* in the
+Theorem 4 constructor matrix. It has no constructors for `ForAll`, `Implies`,
+`Xor`, `Reject`, `Includes`, `Excludes`, `Size`, `IsEmpty`, `NotEmpty`, or the
+two count-on-navigation redexes. Define:
+
+```text
+ValidNVA(nva)
+iff EcoreConforms_NVA(nva)
+  and WF_NVA(nva)
+  and NF_R(nva).
+
+CertifiedNVA(va,nva)
+iff ValidNVA(nva)
+  and Ref_OVA_NVA(va,nva)
+  and nva=T_NORM(va)
+  and [[nva]]_I=[[va]]_I for I in {obj,graph}.
+```
+
+The last two conjuncts are relational proof facts. They are never represented
+by a mutable `correct:Boolean` model attribute. `WF_NVA` checks rooted finite
+containment, unique IDs, constructor typing, nearest lexical binding,
+`sourceCollectionType`, finite-Set shape, bottom safety, and absence of every
+redex in `R`. Theorem 3 supplies determinism, totality on certified OVA,
+termination, type/scope/alpha preservation, bottom/finite-set preservation,
+and denotational preservation.
+
+The scope excludes arbitrary OCL, the full OMG invalid/null and collection-kind
+semantics, arbitrary Cypher, encodings outside `GraphAdequate`, unbounded or
+unprobed Neo4j behavior, and correctness of the Java optimizer. Java `T_OPT`,
+the Java planner/renderer, real-Neo4j runs, and performance measurements are
+implementation evidence only. The optional proposition
+`OptRefines(T_OPT(va),T_NORM(va))` is not used by Theorems 0--6.
+
 ## 1.1 Canonical Theorem Contracts
 
 The following dependency rows are normative. A theorem's prose statement may
@@ -113,6 +156,18 @@ not an independent authority.
 {
   "version": "PC-2026-07-22.3",
   "registrySchemaVersion": 4,
+  "claimStatusVocabulary": {
+    "proved": "kernel-checked theorem under its explicitly quantified premises",
+    "conditional": "mathematical conclusion requiring named graph/Cypher assumptions",
+    "partial": "a proof boundary with undisclosed local cases still prohibited",
+    "empirical": "finite implementation or runtime evidence, never universal proof"
+  },
+  "claimInventory": [
+    { "id": "CLAIM-SPEC-NORM", "status": "proved", "scope": "T_NORM termination, relative normal form, typing and denotation under Theorem 3 premises" },
+    { "id": "CLAIM-SPEC-PLAN", "status": "conditional", "scope": "NVA-to-CQM-to-reference-Cypher realization under LR/C/BR/CY local agreements" },
+    { "id": "CLAIM-JAVA-OPT", "status": "partial", "scope": "optional OptRefines(T_OPT(va),T_NORM(va)); excluded from Theorems 0--6" },
+    { "id": "CLAIM-NEO4J-RUNTIME", "status": "empirical", "scope": "finite executions on the pinned selected runtime profile" }
+  ],
   "authority": {
     "kind": "derived_projection_metadata",
     "canonicalPath": "md/research/formal-theorems-and-proofs.md",
@@ -124,7 +179,7 @@ not an independent authority.
     { "id": "A3", "key": "finite_set_validation_semantics" },
     { "id": "A4", "key": "valid_finite_conforming_model" },
     { "id": "A5", "key": "adequate_graph_encoding" },
-    { "id": "A6", "key": "supported_cypher_subset_and_plan_adequacy" },
+    { "id": "A6", "key": "reference_nva_cqm_cypher_and_structural_adequacy" },
     { "id": "A7", "key": "single_well_typed_use_id_result_column" },
     { "id": "A8", "key": "scalar_closed" },
     { "id": "A9", "key": "bottom_separated" }
@@ -143,7 +198,7 @@ not an independent authority.
     { "id": "PC-T2", "number": 2, "title": "Validation Algebra Abstraction", "titleVi": "Trừu tượng hóa Đại số Kiểm tra", "statement": "erased Bound denotation equals typed object-VA denotation", "statementVi": "Ngữ nghĩa Bound sau xóa thẻ bằng ngữ nghĩa VA có kiểu phía đối tượng", "assumptions": ["A2", "A3", "A4", "A8"], "requires": ["M2", "M3", "M3a", "VA1", "VA2", "VA3", "BV0", "B4"] },
     { "id": "PC-T3", "number": 3, "title": "Normalization Preservation", "titleVi": "Bảo toàn chuẩn hóa", "statement": "deterministic bottom-up normalization terminates, preserves type/denotation and reachable closure, and reaches `NF_R` modulo alpha-equivalence", "statementVi": "Chuẩn hóa bottom-up dừng, bảo toàn kiểu/ngữ nghĩa/miền đóng và đạt NF_R theo alpha", "assumptions": ["A2", "A3", "A8"], "requires": ["N0", "N1", "N2", "N3", "N4"] },
     { "id": "PC-T4", "number": 4, "title": "Validation Preservation", "titleVi": "Bảo toàn kiểm tra", "statement": "typed object and graph VA denotations commute with `encodeValue` on reachable closed evaluations", "statementVi": "Đánh giá VA có kiểu giao hoán với mã hóa trên các đánh giá reachable đóng", "assumptions": ["A2", "A3", "A4", "A5", "A8"], "requires": ["T0", "G1", "G2", "G3", "G3a", "G4"] },
-    { "id": "PC-T5", "number": 5, "title": "Cypher Realization under Cypher Assumptions", "titleVi": "Hiện thực hóa Cypher dưới các giả thiết Cypher", "statement": "production query returns exactly normalized graph-VA violation IDs and no ghost IDs", "statementVi": "Truy vấn production trả về chính xác ID vi phạm VA đồ thị và không có ID ma", "assumptions": ["A2", "A3", "A5", "A6", "A7", "A8", "A9"], "requires": ["C1", "C2", "C3", "C3a", "C4", "C5", "C5a", "C5b", "C6", "PlanAdequacy", "ProdPlanSim_sound", "TXT1", "TXT2", "TXT3", "TXT4", "TXT5", "BR1-BR10", "CY1-CY9"] },
+    { "id": "PC-T5", "number": 5, "title": "Reference Cypher Realization under Cypher Assumptions", "titleVi": "Hiện thực hóa Cypher tham chiếu dưới các giả thiết Cypher", "statement": "the reference NVA-to-CQM-to-Cypher query returns exactly normalized graph-VA violation IDs and no ghost IDs", "statementVi": "Truy vấn tham chiếu NVA--CQM--Cypher trả về chính xác ID vi phạm VA đồ thị và không có ID ma", "assumptions": ["A2", "A3", "A5", "A6", "A7", "A8", "A9"], "requires": ["C1", "C2", "C3", "C3a", "C4", "C5", "C5a", "C5b", "C6", "SpecPlanAdequacy", "SpecPlanSim_sound", "TXT1", "TXT2", "TXT3", "TXT4", "TXT5", "BR1-BR10", "CY1-CY9"] },
     { "id": "PC-T6", "number": 6, "title": "End-to-End Validation Equivalence", "titleVi": "Tương đương kiểm tra đầu-cuối", "statement": "`returnedIds(q,G,pi)=id[Viol_OCL(e,C,M)]`", "statementVi": "Tập ID trả về bằng ảnh ID của tập vi phạm OCL", "assumptions": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"], "requires": ["T0", "T1", "T2", "T3", "T4", "T5"] }
   ],
   "semanticFunctions": [
@@ -206,6 +261,17 @@ not an independent authority.
     { "id": "EV-PO17-MUTATIONS", "kind": "source", "path": "verification/scripts/check-verification-contract-mutations.ps1", "symbol": "Machine verification mutation tests PASS" },
     { "id": "EV-PO18-LEAN", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem java_ir_eval_refinement" },
     { "id": "EV-PO18-PRODPLAN-INDUCTION", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem prod_plan_sim_sound" },
+    { "id": "EV-SPEC-NVA-GRAMMAR", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem certified_nva_grammar_complete" },
+    { "id": "EV-SPEC-PLANSIM", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem spec_plan_sim_sound" },
+    { "id": "EV-SPEC-NVA-METAMODEL", "kind": "source", "path": "md/research/specification/metamodel/Normalized-Validation-Algebra.emf", "symbol": "package nva;" },
+    { "id": "EV-SPEC-NVA-ECORE", "kind": "file", "path": "md/research/specification/metamodel/Normalized-Validation-Algebra.ecore" },
+    { "id": "EV-SPEC-NVA-INSTANCE", "kind": "file", "path": "verification/instances/nva-certified-v1.xmi" },
+    { "id": "EV-SPEC-NVA-VALIDATOR", "kind": "source", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/NvaCertifiedModelValidator.java", "symbol": "class NvaCertifiedModelValidator" },
+    { "id": "EV-SPEC-NVA-VALIDATOR-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/DynamicEmfModelValidatorTest.java", "symbol": "nvaStructuralValidityDoesNotForgeSemanticCertification" },
+    { "id": "EV-SPEC-PLANSIM-CATALOG", "kind": "source", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/SpecPlanSimContract.java", "symbol": "class SpecPlanSimContract" },
+    { "id": "EV-SPEC-TOTAL-FEATURES", "kind": "file", "path": "verification/coverage/ova_cqm_total_feature_refinement.csv" },
+    { "id": "EV-SPEC-TOTAL-FEATURES-GUARD", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/MetamodelFeatureRefinementCoverageTest.java", "symbol": "everyDeclaredOvaAndCqmFeatureHasOneExplicitPolicy" },
+    { "id": "EV-SPEC-PGMM-EMF", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/CanonicalPgmmEmfConformanceTest.java", "symbol": "canonicalInstanceConformsToFullPgmmAndJavaEncoding" },
     { "id": "EV-PO18-CHECKER", "kind": "source", "path": "verification/scripts/check-mechanized-proof.ps1", "symbol": "Mechanized proof check PASS" },
     { "id": "EV-PO18-MUTATIONS", "kind": "source", "path": "verification/scripts/check-mechanized-proof-mutations.ps1", "symbol": "Mechanized proof mutation tests PASS" },
     { "id": "EV-PO18-NORM-BOUNDARY", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/OclRewritePreservationTest.java", "symbol": "formalNormalizerAndGraphOptimizerAreSemanticNotSyntacticCounterparts" },
@@ -280,7 +346,7 @@ not an independent authority.
     { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j capture at revision ebc1a4da verified CY1--CY9=9/9 on Neo4j 2026.06.0, Cypher 5, enterprise/demo, with current renderer and source hashes", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
     { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j differential capture at revision ebc1a4da agrees with USE for all 47 admitted OCL_val cases, including 19 profile-tautology and 28 non-vacuous mixed cases", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
     { "id": "PO-17", "title": "Semantic proof synchronization", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO17-CHECKER", "EV-PO17-MUTATIONS"] },
-    { "id": "PO-18", "title": "Mechanized core lemmas", "classification": "recommended", "status": "partial", "scope": "payload-parametric relational refinement over all 16 production OptimizedExpression constructors is mechanized and explicitly carries sourceCollectionType; named prod_plan_sim_sound now exposes the constructor-induction kernel under local AlgebraAgreement; executable OVA/CQM refinement relations and reflection-checked matrices cover the normative metamodel classifiers and mark general aggregation constructors EXCLUDED; field/reference/cardinality/erasure witnesses, CQM AST structural rules, reproducible Ecore and checked OVA/CQM instances, and PGMM-to-Java conformance are now executable; concrete primitive OCL/graph commutation, every Java normalization rule, and universal Java/Neo4j ProdPlanSim_sound/PlanAdequacy instantiation are still not formalized, so the evidence is not a universal Java/Neo4j proof", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-PRODPLAN-INDUCTION", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD", "EV-PO18-JAVA-MATRIX", "EV-PO18-JAVA-GUARD", "EV-PO18-JAVA-REFINEMENT", "EV-PO18-JAVA-WITNESSES", "EV-PO18-METAMODEL-REFINEMENT", "EV-PO18-OVA-REFINEMENT-MATRIX", "EV-PO18-CQM-REFINEMENT-MATRIX", "EV-PO18-METAMODEL-REFINEMENT-GUARD", "EV-PO18-FIELD-REFINEMENT", "EV-PO18-FIELD-REFINEMENT-GUARD", "EV-PO18-AST-LOWERING-CATALOG", "EV-PO18-AST-LOWERING-GUARD", "EV-PO18-CQM-AST-SHAPE", "EV-PO18-METAMODEL-ECORE", "EV-PO18-OVA-ECORE", "EV-PO18-CQM-ECORE", "EV-PO18-METAMODEL-INSTANCES", "EV-PO18-CQM-INSTANCE", "EV-PO18-METAMODEL-INSTANCES-GUARD", "EV-PO18-PGMM-CONFORMANCE", "EV-PO18-PGMM-CONFORMANCE-GUARD", "EV-PO18-PGMM-INSTANCE", "EV-PO18-RUNTIME-CONSTRUCTORS"] },
+    { "id": "PO-18", "title": "Mechanized core lemmas and optional Java optimization refinement", "classification": "recommended", "status": "partial", "scope": "the normative NVA grammar is enumerated and spec_plan_sim_sound composes every recursive NVA/CQM case under explicit local AlgebraAgreement; executable NVA Ecore/XMI/WF_NVA, total OVA/CQM feature coverage, SpecPlanSim catalog, and full PGMM EMF conformance are checked. The partial remainder is only the optional non-normative Java OptRefines(T_OPT(va),T_NORM(va)) and universal Java/Neo4j instantiation; it is not a premise of Theorems 0--6", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-PRODPLAN-INDUCTION", "EV-SPEC-NVA-GRAMMAR", "EV-SPEC-PLANSIM", "EV-SPEC-NVA-METAMODEL", "EV-SPEC-NVA-ECORE", "EV-SPEC-NVA-INSTANCE", "EV-SPEC-NVA-VALIDATOR", "EV-SPEC-NVA-VALIDATOR-GUARD", "EV-SPEC-PLANSIM-CATALOG", "EV-SPEC-TOTAL-FEATURES", "EV-SPEC-TOTAL-FEATURES-GUARD", "EV-SPEC-PGMM-EMF", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD", "EV-PO18-JAVA-MATRIX", "EV-PO18-JAVA-GUARD", "EV-PO18-JAVA-REFINEMENT", "EV-PO18-JAVA-WITNESSES", "EV-PO18-METAMODEL-REFINEMENT", "EV-PO18-OVA-REFINEMENT-MATRIX", "EV-PO18-CQM-REFINEMENT-MATRIX", "EV-PO18-METAMODEL-REFINEMENT-GUARD", "EV-PO18-FIELD-REFINEMENT", "EV-PO18-FIELD-REFINEMENT-GUARD", "EV-PO18-AST-LOWERING-CATALOG", "EV-PO18-AST-LOWERING-GUARD", "EV-PO18-CQM-AST-SHAPE", "EV-PO18-METAMODEL-ECORE", "EV-PO18-OVA-ECORE", "EV-PO18-CQM-ECORE", "EV-PO18-METAMODEL-INSTANCES", "EV-PO18-CQM-INSTANCE", "EV-PO18-METAMODEL-INSTANCES-GUARD", "EV-PO18-PGMM-CONFORMANCE", "EV-PO18-PGMM-CONFORMANCE-GUARD", "EV-PO18-PGMM-INSTANCE", "EV-PO18-RUNTIME-CONSTRUCTORS"] },
     { "id": "PO-19", "title": "Clean machine-verification artifact", "classification": "required", "status": "discharged", "scope": "discharged 2026-08-09 for CI/artifact provenance: GitHub Actions completed successfully for clean commit 7b7bdd2538434d64e2e77c9321b93b12feee1a42 and uploaded proof-contract-PC-2026-07-22.3 plus the build package; the recorded clean aggregate baseline is rooted at f09385197460d3a9b91fc878354583062bacdfb1 with contract/mutations, Lean 32/32, Lean mutations 6/6, 311/311 selected conformance tests, and zero failures/errors/skips; this discharge does not expand the conditional semantic scope", "evidenceIds": ["EV-PO19-ARTIFACT-GATE", "EV-PO19-REPORT"] },
     { "id": "PO-20", "title": "Paper publication build (local only)", "classification": "out_of_scope", "status": "open", "scope": "paper sources remain local and ignored under md/ by explicit repository policy; GitHub Actions neither compiles nor uploads the paper, and publication evidence is excluded from the machine-correctness contract", "evidenceIds": [] },
     { "id": "PO-21", "title": "AdapterAdequate composition from PA1--PA9", "classification": "required", "status": "discharged", "scope": "PA1--PA9 static composition and fresh real-Neo4j certificate agree on one shared snapshot: observations=6, plans=2, and wrong-label mutation is killed under canonical joint model scope", "evidenceIds": ["EV-PO21-LEAN", "EV-PO21-CERTIFICATE", "EV-PO21-SNAPSHOT-READER", "EV-PO21-SERVICE-GATE", "EV-PO21-RESEARCH-GATE", "EV-PO21-MATRIX", "EV-PO21-MATRIX-GUARD", "EV-PO21-MUTATIONS", "EV-PO21-LABEL", "EV-PO21-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
@@ -422,7 +488,7 @@ not an independent authority.
       "root_rewrite_strictly_decreases", "typed_rewrite_preserves_type",
       "scoped_rename_preserves_binder_boundary", "named_to_scoped_semantic_correspondence",
       "java_capture_guard_sound", "java_guarded_rename_preserves_scoped_semantics",
-      "structural_preservation", "java_ir_eval_refinement", "prod_plan_sim_sound", "bound_va_abstraction", "pa_comp", "theorem6_forward",
+      "structural_preservation", "java_ir_eval_refinement", "prod_plan_sim_sound", "certified_nva_grammar_complete", "spec_plan_sim_sound", "bound_va_abstraction", "pa_comp", "theorem6_forward",
       "theorem6_backward", "theorem6_at_object"
     ],
     "axiomAudit": {
@@ -435,6 +501,8 @@ not an independent authority.
         { "name": "Ocl2CypherProof.Formula.structural_preservation", "expected": ["propext"] },
         { "name": "Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement", "expected": ["propext"] },
         { "name": "Ocl2CypherProof.JavaIrRefinement.prod_plan_sim_sound", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.SpecificationPlanRefinement.certified_nva_grammar_complete", "expected": ["propext"] },
+        { "name": "Ocl2CypherProof.SpecificationPlanRefinement.spec_plan_sim_sound", "expected": [] },
         { "name": "Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction", "expected": [] },
         { "name": "Ocl2CypherProof.AdapterComposition.pa_comp", "expected": [] },
         { "name": "Ocl2CypherProof.theorem6_at_object", "expected": [] },
@@ -456,6 +524,7 @@ not an independent authority.
       { "id": "MK-NORMALIZE", "status": "partial", "scope": "all eleven listed rewrite-family semantic equations over validation Bool/finite List, intrinsic Bool/Nat/Elem/Set N2 indexes, lexical named-to-de-Bruijn semantic correspondence, soundness and scoped-semantic preservation of the exact three-disjunct Java capture guard over the Boolean binder kernel, relative normal form, idempotence, and lexicographic root decrease; concrete semantic premises for every production optimization rule remain open" },
       { "id": "MK-T4", "status": "mechanized", "scope": "payload-parametric relational structural induction over all 16 production OclIr.OptimizedExpression constructors, including sourceCollectionType on collection and iterator operations, every other non-recursive record payload, recursive expression lists, and optional predicates, under one explicit primitive-agreement premise per constructor" },
       { "id": "MK-PRODPLAN", "status": "mechanized", "scope": "named prod_plan_sim_sound theorem composes the constructor-wise evaluation relation under the same explicit local AlgebraAgreement premise used by the formal ProdPlanSim contract" },
+      { "id": "MK-SPECPLAN", "status": "mechanized", "scope": "axiom-free structural induction over independent finite NVA trees whose tag ranges over exactly the 26 certified constructors; composes SpecPlanSim under an explicit LR/C/BR/CY local equation for every constructor tag" },
       { "id": "MK-BOUND-VA", "status": "mechanized", "scope": "axiom-free recursive evaluation equality for the alpha abstraction from all eleven production BoundExpression record families, with BoundProperty split into the twelve SemanticExpression targets and every sourceCollectionType payload retained, under an arbitrary shared primitive algebra" },
       { "id": "MK-PA-COMP", "status": "mechanized", "scope": "six AdapterAdequate observation equalities derived from exact-M2 and PA1--PA9 over one explicit shared source/graph snapshot premise" },
       { "id": "MK-T6", "status": "mechanized", "scope": "forward/backward pointwise violation-ID inclusions under agreement and ID injectivity" }
@@ -464,6 +533,7 @@ not an independent authority.
       "nested collection encodeValue injectivity",
       "metamodel-specific OCL subtyping/coercion and concrete semantic agreement for every Java T_OPT normalization rule",
       "instantiation of the 16-constructor relational algebra with the actual object and graph evaluators, including Java payload semantics",
+      "instantiation of the 26-constructor NVA algebra with the concrete graph and reference-Cypher evaluators; CLAIM-SPEC-PLAN remains conditional on the registered LR/C/BR/CY local agreements",
       "Neo4j/Cypher semantics beyond the selected runtime-profile assumptions and non-invariant/fallback entry points",
       "universal Theorem 6 composition beyond the abstract agreement premises"
     ]
@@ -491,7 +561,7 @@ not an independent authority.
 | PC-T2 | erased Bound denotation equals typed object-VA denotation | A2, A3, A4, A8 | M2, M3, M3a, VA1, VA2, VA3, BV0, B4 |
 | PC-T3 | deterministic bottom-up normalization terminates, preserves type/denotation and reachable closure, and reaches `NF_R` modulo alpha-equivalence | A2, A3, A8 | N0, N1, N2, N3, N4 |
 | PC-T4 | typed object and graph VA denotations commute with `encodeValue` on reachable closed evaluations | A2, A3, A4, A5, A8 | T0, G1, G2, G3, G3a, G4 |
-| PC-T5 | production query returns exactly normalized graph-VA violation IDs and no ghost IDs | A2, A3, A5, A6, A7, A8, A9 | C1, C2, C3, C3a, C4, C5, C5a, C5b, C6, PlanAdequacy, TXT1, TXT2, TXT3, TXT4, TXT5, BR1-BR10, CY1-CY9 |
+| PC-T5 | the reference NVA-to-CQM-to-Cypher query returns exactly normalized graph-VA violation IDs and no ghost IDs | A2, A3, A5, A6, A7, A8, A9 | C1, C2, C3, C3a, C4, C5, C5a, C5b, C6, SpecPlanAdequacy, SpecPlanSim_sound, TXT1, TXT2, TXT3, TXT4, TXT5, BR1-BR10, CY1-CY9 |
 | PC-T6 | `returnedIds(q,G,pi)=id[Viol_OCL(e,C,M)]` | A1, A2, A3, A4, A5, A6, A7, A8, A9 | T0, T1, T2, T3, T4, T5 |
 <!-- PROTOTYPE-CORRECTNESS-CLAIM: CONDITIONAL -->
 <!-- BLOCKING-OPEN-OR-PARTIAL: PO-18 -->
@@ -499,7 +569,7 @@ not an independent authority.
 <!-- END GENERATED PROOF-CONTRACT-KERNEL -->
 
 <!-- PROOF-CONTRACT: PC-2026-07-22.3; A1-A9; M1,M2,M3,M3a,M4,M5; PC-T0-PC-T6; SF-01-SF-29 -->
-<!-- PROOF-REGISTRY-SHA256: 93831c1735e81b1d20071c04462234eaa83b43604c93397213f619636bd1d4f0 -->
+<!-- PROOF-REGISTRY-SHA256: 2b07b56376633f6f441ef81da73ec87a4a97169a7f3b83af77bbf5f9396cd074 -->
 
 ## 1.2 Current Theory--Implementation Alignment Audit (2026-08-22)
 
@@ -1715,13 +1785,11 @@ resolveClass_MM(cName)=C
 BInvariant(C,R,b) = T_BIND_INV(astInv,MM)
 va  = T_VA(b)
 nva = T_NORM(va)
-opt = T_NORM(va)
-(Qspec,pispec) = ExpandI(BuildCQInvariant(C,nva),pi0(MM))
-(tq,pi) = T_TEXT^prod(C,R,opt)
+plan = T_CQM^spec(C,R,nva)
+(tq,pi) = T_TEXT^spec(plan)
 q = parse_Cypher(tq)
 GraphAdequate(MM,M,G)
-PlanAdequacy(MM,C,nva,opt,q,pi,G)
-ProdPlanSim_sound(MM,C,nva,opt,Qspec,pispec,q,pi,G)
+SpecPlanAdequacy(MM,C,nva,plan,q,pi,G)
 ```
 
 Writing `G=Phi(MM,M)` is an optional specialization only after `Phi` has been
@@ -6402,12 +6470,62 @@ specification of the final pipeline stage is factored as:
 T_TEXT^spec(C,nva) = (renderRaw(Qspec),pispec).
 ```
 
-This equation specifies the certified transformation. A prototype that renders
-directly from another internal plan is covered only after a conformance argument
-shows a constructor-wise semantic refinement to this `ExpandI` result. The
-production renderer may use a different but extensionally equivalent raw shape;
-the equation does not claim that the current Java renderer stores the displayed
-AST classes.
+This equation specifies the reference transformation. `BuildCQInvariant` is
+the definitional presentation of `T_CQM^spec`, and `renderRaw o ExpandI` is the
+definitional presentation of `T_TEXT^spec`; Raw Cypher AST is not a separately
+trusted normative layer. A Java implementation that renders from another plan
+is supporting evidence only until a separate implementation-refinement theorem
+is supplied.
+
+Define the structural reference relation:
+
+```text
+SpecPlanAdequacy(MM,C,nva,plan,q,pi,G)
+iff ValidNVA(nva)
+  and WF_CQM(plan)
+  and SpecPlanSim(MM,C,nva,plan)
+  and ParamCorr(plan,q,pi)
+  and AliasCorr(nva,plan,q)
+  and ScopeCorr(nva,plan,q)
+  and MultiplicityCorr(nva,plan)
+  and CollectionShapeCorr(nva,plan)
+  and q=parse_Cypher(T_TEXT^spec(plan))
+  and AdmissibleExec(MM,C,nva,plan,q,pi,G).
+```
+
+No evaluation equality occurs in this definition. `SpecPlanSim` has exactly
+one rule for each of the 26 concrete reachable NVA constructors and carries the
+parameter, alias, scope, multiplicity, and collection-shape conditions. The
+base rules are `NvaVariable` and `NvaLiteral`; list and optional children use
+the corresponding pointwise relation; binder rules extend the related
+environments with the same declared type.
+
+**SpecPlanSim_sound.** If every local NVA/CQM constructor pair satisfies its
+typed primitive evaluation equation under CY1--CY9, then structural induction
+over `SpecPlanSim` gives:
+
+```text
+SpecPlanAdequacy(MM,C,nva,plan,q,pi,G)
+implies
+ExecCypher(q,G,pi) = EvalGraph(nva,G)
+```
+
+and the invariant wrapper/C6 specialization gives:
+
+```text
+returnedIds(q,G,pi)=ViolIds_{M,G}(C,nva).
+```
+
+The induction composition is mechanized by
+`SpecificationPlanRefinement.spec_plan_sim_sound`; the local primitive
+equations are exactly the `LR-*`, `C*`, `BR*`, and `CY*` obligations enumerated
+in the constructor-coverage certificate. Thus equality is a theorem conclusion,
+not an adequacy premise.
+
+### Non-normative Java optimizer/planner bridge
+
+The remainder of this bridge subsection records the optional Java `T_OPT`
+refinement obligation. It is not consumed by Theorems 5--6.
 
 Make that bridge an explicit predicate. Let:
 
@@ -6522,11 +6640,13 @@ allows shape-specific private parameters only when their values are justified
 by that rule. In particular, eagerly reserved but unused codec entries in
 `pispec` do not need production counterparts.
 
-For a certified production-theorem invocation, the arguments are fixed independently by
-`opt=T_NORM(va)`, `(tprod,piprod)=T_TEXT^prod(C,R,opt)`, and
-`Qprod=parse_Cypher(tprod)`.  Consequently the predicate has no free `MM`,
-resolver, source, or optimizer variables; changing any one of those inputs
-requires a new adequacy derivation.
+For a hypothetical Java-production theorem, the arguments would be fixed by
+`opt=T_OPT(va)`, `(tprod,piprod)=T_TEXT^prod(C,R,opt)`, and
+`Qprod=parse_Cypher(tprod)`, together with the still-optional premise
+`OptRefines(opt,T_NORM(va))`. This paragraph is not used by the reference
+theorem. Consequently the implementation predicate has no free `MM`, resolver,
+source, or optimizer variables; changing any input requires a new adequacy
+derivation.
 
 `PlanAdequacy` is therefore graph-specific and contains no free execution
 variable.  A future universal production theorem must prove this predicate for
@@ -7315,7 +7435,7 @@ to a Boolean result gives the invariant-truth corollary.
 
 ---
 
-# 12. Theorem 5: Cypher Realization under Cypher Assumptions
+# 12. Theorem 5: Reference Cypher Realization under Cypher Assumptions
 
 ## Statement
 
@@ -7370,11 +7490,11 @@ give:
 returnedIds(Qspec,G,pispec)=ViolIds_{M,G}(C,nva).
 ```
 
-For the certified production query, if
-`opt=T_NORM(va)`, `(tq,pi)=T_TEXT^prod(C,R,opt)`,
-`q=parse_Cypher(tq)`, and
-`PlanAdequacy(MM,C,nva,opt,q,pi,G)` and
-`ProdPlanSim_sound(MM,C,nva,opt,Qspec,pispec,q,pi,G)`, then:
+For the reference query, let `plan=T_CQM^spec(C,R,nva)`,
+`(tq,pi)=T_TEXT^spec(plan)`, and `q=parse_Cypher(tq)`. If
+`SpecPlanAdequacy(MM,C,nva,plan,q,pi,G)` holds, then
+`SpecPlanSim_sound`, derived by constructor induction rather than assumed as
+result equality, gives:
 
 ```text
 returnedIds(q,G,pi)
@@ -7520,7 +7640,7 @@ C5 Finite-Set and Cardinality Realization
 C5a Collection-Bottom Boundary
 C5b Extensional Set Equality
 C6 Invariant Wrapper and No-Ghost Realization
-PlanAdequacy for the production plan/text
+SpecPlanAdequacy and SpecPlanSim_sound for the reference plan/text
 TXT1--TXT4 Translation Determinism, Kind, Closure, and Realization
 TXT5 Raw-AST Closure and Totality
 Neo4j subset assumptions
@@ -7817,7 +7937,7 @@ an already realized finite set. These are D9--D10. `IsUnique` compares the
 source cardinality with the distinct, bottom-tokenized projection cardinality;
 D11 proves that this is equivalent to injectivity of the VA body image.
 
-Production cardinality operations use
+The reference cardinality lowering uses
 `size(COLLECT { ... RETURN DISTINCT setOut(x) })` over the realized set. The
 reference raw-AST proof may use `COUNT(DISTINCT setOut(x))` only under the CY5
 equivalence stated above. In either form, C5 requires quotienting duplicate
@@ -7868,11 +7988,12 @@ entire prelude `L`, then `Where(NOT truth(predicateExpr))` and
 set equality and no-ghost property. TXT4 composes C1--C5b; TXT5 proves closure
 and rendering of the formal raw AST.
 
-Finally, `PlanAdequacy` transfers `returnedIds` equality from this formal plan
-to `q=parse_Cypher(tq)` for `(tq,pi)=T_TEXT^prod(C,R,opt)`. Without that predicate, parser-tree fixtures
-or successful examples do not justify a universal production-renderer
-conclusion. No individual lemma assumes realization of an arbitrary normalized
-VA expression.
+Finally, `SpecPlanSim_sound` derives `returnedIds` equality for
+`q=parse_Cypher(tq)` and `(tq,pi)=T_TEXT^spec(plan)` from the structural
+`SpecPlanAdequacy` certificate and the local realization lemmas. The equality
+is not projected from adequacy. Finite parser-tree fixtures or successful Java
+examples remain implementation evidence and are not premises of this reference
+theorem.
 
 ---
 
@@ -7889,13 +8010,11 @@ resolveClass_MM(cName)=C
 T_BIND_INV(astInv,MM)=BInvariant(C,R,b)
 va = T_VA(b)
 nva = T_NORM(va)
-opt = T_NORM(va)
-(Qspec,pispec) = ExpandI(BuildCQInvariant(C,nva),pi0(MM))
-(tq,pi) = T_TEXT^prod(C,R,opt)
+plan = T_CQM^spec(C,R,nva)
+(tq,pi) = T_TEXT^spec(plan)
 q = parse_Cypher(tq)
 GraphAdequate(MM,M,G)
-PlanAdequacy(MM,C,nva,opt,q,pi,G)
-ProdPlanSim_sound(MM,C,nva,opt,Qspec,pispec,q,pi,G)
+SpecPlanAdequacy(MM,C,nva,plan,q,pi,G)
 ```
 
 Then:
@@ -7991,7 +8110,7 @@ is extensionally equal to `Viol_OCL(e,C,M)`. Theorem 0 also preserves the
 context observation and maps each such object to its unique canonical graph
 node with property `use_id=id(o)`.
 
-Theorem 5, including C6 and `PlanAdequacy`, supplies the exact target equality:
+Theorem 5, including C6 and `SpecPlanSim_sound`, supplies the exact target equality:
 
 ```text
 returnedIds(q,G,pi)={id(o) | o in Vg}.
@@ -8015,8 +8134,7 @@ applicable when any required boundary is undischargeable. In particular:
 failed admission/binding
 or failed graph-encoding conformance
 or a normalized constructor without a Theorem 5 coverage row
-or the concrete T_OPT artifact lacks a semantic-refinement witness to T_NORM
-or PlanAdequacy is not discharged for the production plan/text
+or SpecPlanAdequacy is not discharged for the reference plan/text
 or a collection-valued bottom can cross a collection boundary without
    normalization to zero rows/[]
 or a selected Neo4j runtime that does not satisfy the mandatory dialect probes
@@ -8051,6 +8169,8 @@ The proof does not establish:
 ```text
 correctness for full OMG OCL
 correctness for arbitrary Cypher
+correctness of the unproved Java T_OPT optimizer or arbitrary Java planning paths
+unbounded Neo4j behavior outside the selected CY1--CY9 runtime profile
 preservation of Bag/Sequence/OrderedSet multiplicities or order
 ordered collection operators such as sortedBy
 deterministic value equality for any without a choice policy
@@ -8073,8 +8193,8 @@ OCL validation fragment over an explicit UML-to-property-graph encoding.
 Use:
 
 ```text
-The generated Cypher query realizes the graph interpretation of the normalized
-validation algebra for the supported Cypher subset.
+The reference NVA-to-CQM-to-Cypher query realizes the graph interpretation of
+the normalized validation algebra for the supported Cypher subset.
 ```
 
 Avoid:

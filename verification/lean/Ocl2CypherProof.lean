@@ -12,7 +12,7 @@ namespace Ocl2CypherProof
 
 def proofContractVersion : String := "PC-2026-07-22.3"
 def proofRegistrySha256 : String :=
-  "93831c1735e81b1d20071c04462234eaa83b43604c93397213f619636bd1d4f0"
+  "2b07b56376633f6f441ef81da73ec87a4a97169a7f3b83af77bbf5f9396cd074"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/
@@ -1573,6 +1573,104 @@ theorem prod_plan_sim_sound
 
 end JavaIrRefinement
 
+/-! ## Normative NVA-to-CQM constructor coverage
+
+This enumeration is the Lean projection of the 26 concrete classes in
+`Normalized-Validation-Algebra.emf`.  Java optimizer-only constructors do not
+occur here.  Each constructor is lowered to one of the structural plan families
+handled by the payload-parametric algebra below.
+-/
+namespace SpecificationPlanRefinement
+
+inductive NvaConstructor where
+  | variable | literal | setLiteral | attribute | navigationOne | navigationMany
+  | viewSet | allInstances | not | and | or | compare | arithmetic | coerce
+  | ite | letE | exists | select | collect | isUnique | setRelation
+  | setCombination | asSet | count | typeKindOf | cast
+deriving Repr, DecidableEq
+
+def certifiedNvaGrammar : List NvaConstructor := [
+  .variable, .literal, .setLiteral, .attribute, .navigationOne, .navigationMany,
+  .viewSet, .allInstances, .not, .and, .or, .compare, .arithmetic, .coerce,
+  .ite, .letE, .exists, .select, .collect, .isUnique, .setRelation,
+  .setCombination, .asSet, .count, .typeKindOf, .cast
+]
+
+theorem certified_nva_grammar_complete (constructor : NvaConstructor) :
+    constructor ∈ certifiedNvaGrammar := by
+  cases constructor <;> simp [certifiedNvaGrammar]
+
+/-
+Unlike the implementation-specific Java IR kernel, this tree is an independent
+projection of NVA. Its constructor tag ranges over exactly the 26 classifiers
+above. Ecore conformance fixes each tag's arity; the induction is stronger and
+permits any finite child list.
+-/
+mutual
+  inductive NvaExpr (Payload : Type u) where
+    | node (constructor : NvaConstructor) (payload : Payload)
+        (children : NvaExprList Payload)
+
+  inductive NvaExprList (Payload : Type u) where
+    | nil
+    | cons (head : NvaExpr Payload) (tail : NvaExprList Payload)
+end
+
+structure Algebra (Payload : Type u) (Value : Type v) where
+  constructorOp : NvaConstructor → Payload → List Value → Value
+
+mutual
+  def eval (algebra : Algebra Payload Value) : NvaExpr Payload → Value
+    | .node constructor payload children =>
+        algebra.constructorOp constructor payload (evalList algebra children)
+
+  def evalList (algebra : Algebra Payload Value) : NvaExprList Payload → List Value
+    | .nil => []
+    | .cons head tail => eval algebra head :: evalList algebra tail
+end
+
+structure AlgebraAgreement (relation : NvaValue → CqmValue → Prop)
+    (nva : Algebra Payload NvaValue) (cqm : Algebra Payload CqmValue) : Prop where
+  constructorCase : ∀ constructor payload nvaChildren cqmChildren,
+    JavaIrRefinement.RelatedList relation nvaChildren cqmChildren →
+      relation (nva.constructorOp constructor payload nvaChildren)
+        (cqm.constructorOp constructor payload cqmChildren)
+
+/-
+`SpecPlanSim` instantiates the two algebras with the NVA graph evaluator and the
+CQM/reference-Cypher evaluator. `constructorCase` is the family of LR/C/BR/CY
+local equations indexed by all 26 `NvaConstructor` values. Result equality is
+therefore composed recursively, not assumed by structural adequacy.
+-/
+mutual
+  theorem spec_plan_sim_sound
+      {Payload : Type u} {NvaValue : Type v} {CqmValue : Type w}
+      {relation : NvaValue → CqmValue → Prop}
+      {nva : Algebra Payload NvaValue} {cqm : Algebra Payload CqmValue}
+      (localRules : AlgebraAgreement relation nva cqm)
+      (expression : NvaExpr Payload) :
+      relation (eval nva expression) (eval cqm expression) := by
+    cases expression with
+    | node constructor payload children =>
+        exact localRules.constructorCase constructor payload _ _
+          (spec_plan_list_sim_sound localRules children)
+
+  theorem spec_plan_list_sim_sound
+      {Payload : Type u} {NvaValue : Type v} {CqmValue : Type w}
+      {relation : NvaValue → CqmValue → Prop}
+      {nva : Algebra Payload NvaValue} {cqm : Algebra Payload CqmValue}
+      (localRules : AlgebraAgreement relation nva cqm)
+      (expressions : NvaExprList Payload) :
+      JavaIrRefinement.RelatedList relation (evalList nva expressions) (evalList cqm expressions) := by
+    cases expressions with
+    | nil => exact .nil
+    | cons head tail =>
+        exact .cons (spec_plan_sim_sound localRules head)
+          (spec_plan_list_sim_sound localRules tail)
+end
+
+end SpecificationPlanRefinement
+
 /-! ## Production Bound-to-VA abstraction kernel
 
 `BoundVaAbstraction.BoundExpr` is the semantic projection of the eleven Java
@@ -1829,6 +1927,8 @@ end Ocl2CypherProof
 #print axioms Ocl2CypherProof.Formula.structural_preservation
 #print axioms Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement
 #print axioms Ocl2CypherProof.JavaIrRefinement.prod_plan_sim_sound
+#print axioms Ocl2CypherProof.SpecificationPlanRefinement.certified_nva_grammar_complete
+#print axioms Ocl2CypherProof.SpecificationPlanRefinement.spec_plan_sim_sound
 #print axioms Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction
 #print axioms Ocl2CypherProof.AdapterComposition.pa_comp
 #print axioms Ocl2CypherProof.theorem6_at_object

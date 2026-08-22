@@ -86,8 +86,14 @@ function Assert-Killed([string]$Name, [object]$Case, [string]$ExpectedText) {
     if ($result.ExitCode -eq 0) {
         throw "Mutation '$Name' survived"
     }
-    $normalized = [regex]::Replace($result.Output, '\s+', ' ')
-    if (-not $normalized.Contains($ExpectedText)) {
+    # PowerShell can inject InvocationInfo between wrapped fragments of a
+    # native child error when the checkout path is long. Match all expected
+    # message tokens in order so the mutation must still fail for the intended
+    # reason without depending on host-specific line wrapping.
+    $expectedTokens = @([regex]::Split($ExpectedText.Trim(), '\s+') |
+        Where-Object { $_ } | ForEach-Object { [regex]::Escape($_) })
+    $expectedPattern = '(?s)' + ($expectedTokens -join '.*?')
+    if (-not [regex]::IsMatch($result.Output, $expectedPattern)) {
         throw "Mutation '$Name' failed for the wrong reason; expected '$ExpectedText'. Output: $($result.Output)"
     }
     $script:passed++

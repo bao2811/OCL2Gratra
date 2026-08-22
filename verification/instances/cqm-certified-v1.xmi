@@ -4,17 +4,15 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:cqm="https://uet-dse.org/cypher/query-model/1.0"
     languageVersion="cqm-certified-v2" certificationProfile="OCL_VAL_FINITE_SET_V1">
-  <invariants>
-    <cqm:InvariantPlan planId="plan_person_name" invariantName="PersonNameInvariant"
-        contextClassName="Person" violationPolicy="NOT_VALIDATION_TRUE"
-        evaluationPolicy="MATERIALIZE_REUSED_EXPRESSIONS">
-      <graphBinding profileId="canonical-v1" modelKey="Families" contextClassKey="Families::class::Person"
-          objectLabel="Object" classLabel="UmlClass" conformanceRelationship="ObjectInstanceOf"
-          identityProperty="use_id"/>
-      <predicate xsi:type="cqm:LiteralPlan" nodeId="literal_true" kind="BOOLEAN" lexicalValue="true">
-        <resultType kind="BOOLEAN" typeName="Boolean" collectionKind="NONE"/>
-      </predicate>
-    </cqm:InvariantPlan>
+  <invariants planId="plan_person_name" invariantName="PersonNameInvariant"
+      contextClassName="Person" violationPolicy="NOT_VALIDATION_TRUE"
+      evaluationPolicy="MATERIALIZE_REUSED_EXPRESSIONS">
+    <graphBinding profileId="canonical-v1" modelKey="Families" contextClassKey="Families::class::Person"
+        objectLabel="Object" classLabel="UmlClass" conformanceRelationship="ObjectInstanceOf"
+        identityProperty="use_id"/>
+    <predicate xsi:type="cqm:LiteralPlan" nodeId="literal_true" kind="BOOLEAN" lexicalValue="true">
+      <resultType kind="BOOLEAN" typeName="Boolean" collectionKind="NONE"/>
+    </predicate>
   </invariants>
   <astLoweringContract cypherDialect="Cypher5" parserImplementation="neo4j-cypher5-parser"
       requireIndependentParse="true" requireBoundedExpansion="true">

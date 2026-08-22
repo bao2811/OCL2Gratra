@@ -393,7 +393,8 @@ $expectedMechanizationTheorems = @(
     'root_rewrite_strictly_decreases','typed_rewrite_preserves_type',
     'scoped_rename_preserves_binder_boundary','named_to_scoped_semantic_correspondence',
     'java_capture_guard_sound','java_guarded_rename_preserves_scoped_semantics',
-    'structural_preservation','java_ir_eval_refinement','prod_plan_sim_sound','bound_va_abstraction','pa_comp',
+    'structural_preservation','java_ir_eval_refinement','prod_plan_sim_sound','certified_nva_grammar_complete',
+    'spec_plan_sim_sound','bound_va_abstraction','pa_comp',
     'theorem6_forward','theorem6_backward','theorem6_at_object'
 )
 if ($null -eq $registry.mechanization) {
@@ -407,7 +408,7 @@ if ($null -eq $registry.mechanization) {
     Test-ExactSequence @($registry.mechanization.requiredTheorems) $expectedMechanizationTheorems 'Registry mechanization theorems'
     Test-ExactSequence @($registry.mechanization.coverage | ForEach-Object { "$($_.id):$($_.status)" }) @(
         'MK-FINITE-SET:mechanized','MK-LIFT1:mechanized','MK-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:mechanized',
-        'MK-PRODPLAN:mechanized','MK-BOUND-VA:mechanized','MK-PA-COMP:mechanized','MK-T6:mechanized'
+        'MK-PRODPLAN:mechanized','MK-SPECPLAN:mechanized','MK-BOUND-VA:mechanized','MK-PA-COMP:mechanized','MK-T6:mechanized'
     ) 'Registry mechanization coverage'
     if (@($registry.mechanization.openScope).Count -eq 0) {
         Add-CheckError 'Mechanization contract must state its open scope'

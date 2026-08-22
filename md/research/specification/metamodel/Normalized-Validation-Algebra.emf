@@ -1,0 +1,231 @@
+@namespace(uri="https://uet-dse.org/nva/1.0", prefix="nva")
+@GenModel(documentation="Normative Normalized Validation Algebra for the reference OCL_VAL_FINITE_SET_V1 pipeline. Every concrete expression class is one constructor reachable after T_NORM. Java T_OPT constructors are intentionally absent.")
+package nva;
+
+enum NvaTypeKind {
+  BOOLEAN;
+  INTEGER;
+  REAL;
+  STRING;
+  OBJECT;
+  SET;
+  BOTTOM;
+}
+
+enum NvaLiteralKind {
+  NULL;
+  BOTTOM;
+  BOOLEAN;
+  INTEGER;
+  REAL;
+  STRING;
+}
+
+enum NvaCompareOperator {
+  EQ;
+  NEQ;
+  LT;
+  LE;
+  GT;
+  GE;
+}
+
+enum NvaArithmeticOperator {
+  ADD;
+  SUBTRACT;
+  MULTIPLY;
+  DIVIDE;
+}
+
+enum NvaSetRelationOperator {
+  INCLUDES_ALL;
+  EXCLUDES_ALL;
+}
+
+enum NvaSetCombinationOperator {
+  UNION;
+  INTERSECTION;
+}
+
+enum NvaNavigationDirection {
+  OUTGOING;
+  INCOMING;
+}
+
+class NvaModule {
+  attr String[1] languageVersion = "nva-certified-v1";
+  attr String[1] certificationProfile = "OCL_VAL_FINITE_SET_V1";
+  val NvaInvariant[*] invariants;
+}
+
+class NvaInvariant {
+  id attr String[1] invariantId;
+  attr String[1] name;
+  attr String[1] contextClassName;
+  attr String[1] producerVersion = "t-norm-v1";
+  val NvaVariableDeclaration[1] selfVariable;
+  val NvaExpression[1] predicate;
+}
+
+class NvaType {
+  attr NvaTypeKind[1] kind;
+  attr String[1] typeName;
+  val NvaType elementType;
+}
+
+class NvaVariableDeclaration {
+  id attr String[1] symbolId;
+  attr String[1] name;
+  val NvaType[1] declaredType;
+}
+
+abstract class NvaExpression {
+  id attr String[1] nodeId;
+  val NvaType[1] resultType;
+}
+
+class NvaVariable extends NvaExpression {
+  ref NvaVariableDeclaration[1] declaration;
+}
+
+class NvaLiteral extends NvaExpression {
+  attr NvaLiteralKind[1] kind;
+  attr String lexicalValue;
+}
+
+class NvaSetLiteral extends NvaExpression {
+  val NvaExpression[+] elements;
+}
+
+class NvaAttribute extends NvaExpression {
+  attr String[1] ownerClassName;
+  attr String[1] attributeName;
+  val NvaExpression[1] source;
+}
+
+abstract class NvaNavigation extends NvaExpression {
+  attr String[1] associationName;
+  attr String[1] associationKey;
+  attr String[1] sourceClassName;
+  attr String[1] targetClassName;
+  attr String sourceRole;
+  attr String targetRole;
+  attr NvaNavigationDirection[1] direction;
+  val NvaExpression[1] source;
+  val NvaExpression[*] qualifiers;
+}
+
+class NvaNavigationOne extends NvaNavigation {
+}
+
+class NvaNavigationMany extends NvaNavigation {
+}
+
+class NvaViewSet extends NvaExpression {
+  val NvaExpression[1] source;
+  val NvaType[1] sourceCollectionType;
+}
+
+class NvaAllInstances extends NvaExpression {
+  attr String[1] className;
+  attr String[1] classKey;
+}
+
+class NvaNot extends NvaExpression {
+  val NvaExpression[1] operand;
+}
+
+class NvaAnd extends NvaExpression {
+  val NvaExpression[1] left;
+  val NvaExpression[1] right;
+}
+
+class NvaOr extends NvaExpression {
+  val NvaExpression[1] left;
+  val NvaExpression[1] right;
+}
+
+class NvaCompare extends NvaExpression {
+  attr NvaCompareOperator[1] operator;
+  val NvaExpression[1] left;
+  val NvaExpression[1] right;
+}
+
+class NvaArithmetic extends NvaExpression {
+  attr NvaArithmeticOperator[1] operator;
+  val NvaExpression[1] left;
+  val NvaExpression[1] right;
+}
+
+class NvaCoerce extends NvaExpression {
+  val NvaType[1] sourceType;
+  val NvaType[1] targetType;
+  val NvaExpression[1] operand;
+}
+
+class NvaIf extends NvaExpression {
+  val NvaExpression[1] condition;
+  val NvaExpression[1] thenBranch;
+  val NvaExpression[1] elseBranch;
+}
+
+class NvaLet extends NvaExpression {
+  val NvaVariableDeclaration[1] declaration;
+  val NvaExpression[1] value;
+  val NvaExpression[1] body;
+}
+
+abstract class NvaIterator extends NvaExpression {
+  val NvaExpression[1] source;
+  val NvaType[1] sourceCollectionType;
+  val NvaVariableDeclaration[1] iterator;
+  val NvaExpression[1] body;
+}
+
+class NvaExists extends NvaIterator {
+}
+
+class NvaSelect extends NvaIterator {
+}
+
+class NvaCollect extends NvaIterator {
+}
+
+class NvaIsUnique extends NvaIterator {
+}
+
+class NvaSetRelation extends NvaExpression {
+  attr NvaSetRelationOperator[1] operator;
+  val NvaExpression[1] left;
+  val NvaExpression[1] right;
+  val NvaType[1] sourceCollectionType;
+}
+
+class NvaSetCombination extends NvaExpression {
+  attr NvaSetCombinationOperator[1] operator;
+  val NvaExpression[1] left;
+  val NvaExpression[1] right;
+  val NvaType[1] sourceCollectionType;
+}
+
+class NvaAsSet extends NvaExpression {
+  val NvaExpression[1] source;
+  val NvaType[1] sourceCollectionType;
+}
+
+class NvaCount extends NvaExpression {
+  val NvaExpression[1] source;
+  val NvaType[1] sourceCollectionType;
+}
+
+class NvaTypeKindOf extends NvaExpression {
+  attr String[1] targetClassName;
+  attr String[1] targetClassKey;
+  val NvaExpression[1] source;
+}
+
+class NvaCast extends NvaExpression {
+  attr String[1] targetClassName;
+  attr String[1] targetClassKey;
+  val NvaExpression[1] source;
+}

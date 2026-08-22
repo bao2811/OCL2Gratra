@@ -1,0 +1,95 @@
+@namespace(uri="https://uet-dse.org/ocl/source-ast/1.0", prefix="oclast")
+@GenModel(documentation="Concrete-to-abstract syntax model for the certified OCL validation fragment. This metamodel describes parser output only; binding and admission are specified separately.")
+package oclast;
+
+enum SourceLiteralKind {
+  NULL;
+  BOOLEAN;
+  INTEGER;
+  REAL;
+  STRING;
+}
+
+enum SourceBinaryOperator {
+  AND;
+  OR;
+  XOR;
+  IMPLIES;
+  EQ;
+  NEQ;
+  LT;
+  LE;
+  GT;
+  GE;
+  ADD;
+  SUBTRACT;
+  MULTIPLY;
+  DIVIDE;
+}
+
+enum SourceIteratorKind {
+  EXISTS;
+  FORALL;
+  SELECT;
+  REJECT;
+  COLLECT;
+}
+
+class OclSourceDocument {
+  attr String[1] languageVersion = "OCL_VAL_FINITE_SET_V1";
+  val OclInvariant[*] invariants;
+}
+
+class OclInvariant {
+  id attr String[1] invariantId;
+  attr String[1] name;
+  attr String[1] contextClassName;
+  val OclExpression[1] body;
+}
+
+abstract class OclExpression {
+  id attr String[1] nodeId;
+}
+
+class OclVariable extends OclExpression {
+  attr String[1] name;
+}
+
+class OclLiteral extends OclExpression {
+  attr SourceLiteralKind[1] kind;
+  attr String[1] lexicalValue;
+}
+
+class OclPropertyCall extends OclExpression {
+  attr String[1] propertyName;
+  val OclExpression[1] source;
+}
+
+class OclBinaryCall extends OclExpression {
+  attr SourceBinaryOperator[1] operator;
+  val OclExpression[1] left;
+  val OclExpression[1] right;
+}
+
+class OclIf extends OclExpression {
+  val OclExpression[1] condition;
+  val OclExpression[1] thenBranch;
+  val OclExpression[1] elseBranch;
+}
+
+class OclLet extends OclExpression {
+  attr String[1] variableName;
+  val OclExpression[1] value;
+  val OclExpression[1] body;
+}
+
+class OclIterator extends OclExpression {
+  attr SourceIteratorKind[1] kind;
+  attr String[1] iteratorName;
+  val OclExpression[1] source;
+  val OclExpression[1] body;
+}
+
+class OclCollectionLiteral extends OclExpression {
+  val OclExpression[*] elements;
+}

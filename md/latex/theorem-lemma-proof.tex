@@ -1,0 +1,2745 @@
+\documentclass[11pt,a4paper]{article}
+
+% HISTORICAL-NON-NORMATIVE: retained only for provenance; do not cite this
+% narrative for any current formula, proof obligation, or theorem statement.
+% CANONICAL-SOURCE: ../research/formal-theorems-and-proofs.md
+% CURRENT-GENERATED-PROJECTION: theorem-lemma-proof-en.tex
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage[hidelinks]{hyperref}
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{lmodern}
+
+% PROOF-CONTRACT: PC-2026-07-22.3; A1-A9; M1,M2,M3,M3a,M4,M5; PC-T0-PC-T6; SF-01-SF-29
+% REGISTRY-ASSUMPTIONS: A1 A2 A3 A4 A5 A6 A7 A8 A9
+% REGISTRY-SCOPE-LEMMAS: M1 M2 M3 M3a M4 M5
+% PROOF-REGISTRY-SHA256: 2b07b56376633f6f441ef81da73ec87a4a97169a7f3b83af77bbf5f9396cd074
+
+\newtheorem{theorem}{Định lý}
+\newtheorem{lemma}{Bổ đề}
+\newtheorem{assumption}{Giả thiết}
+\theoremstyle{definition}
+\newtheorem{definition}{Định nghĩa}
+\newtheorem{remark}{Nhận xét}
+
+\newcommand{\OCLval}{\mathrm{OCL}_{val}}
+\newcommand{\ASTval}{\mathrm{AST}_{val}}
+\newcommand{\BoundOCLval}{\mathrm{BoundOCL}_{val}}
+\newcommand{\Obj}{\mathrm{Obj}}
+\newcommand{\Class}{\mathrm{Class}}
+\newcommand{\Node}{\mathrm{Node}}
+\newcommand{\Rel}{\mathrm{Rel}}
+\newcommand{\id}{\mathrm{id}}
+\newcommand{\node}{\mathrm{node}}
+\newcommand{\classNode}{\mathrm{classNode}}
+\newcommand{\RepG}{\mathrm{Rep}_{G}}
+\newcommand{\Adm}{\mathrm{Adm}}
+\newcommand{\prop}{\mathrm{prop}}
+\newcommand{\src}{\mathrm{src}}
+\newcommand{\trg}{\mathrm{trg}}
+\newcommand{\PhiEnc}{\Phi}
+\newcommand{\boolval}{\mathrm{bool}_{val}}
+\newcommand{\finiteSet}{\mathrm{finiteSet}}
+\newcommand{\asSources}{\mathrm{asSources}}
+\newcommand{\eqval}{\mathrm{eq}_{val}}
+\newcommand{\ObjNodeVal}{\mathrm{ObjNode}_{val}}
+\newcommand{\ObsObj}{\mathrm{Obs}_{obj}}
+\newcommand{\ObsGraph}{\mathrm{Obs}_{graph}}
+\newcommand{\liftNode}{\mathrm{lift}_{node}}
+\newcommand{\encodeValue}{\mathrm{encodeValue}}
+\newcommand{\returnedIds}{\mathrm{returnedIds}}
+\newcommand{\Viol}{\mathrm{Viol}}
+\newcommand{\sem}[2]{\llbracket #1 \rrbracket_{#2}}
+\newcommand{\EvalCypher}{\mathrm{Eval}_{Cypher}}
+\newcommand{\DenoteGraph}{\mathrm{Denote}_{graph}}
+\newcommand{\Params}{\mathrm{Params}}
+\newcommand{\ParamEnv}{\mathrm{ParamEnv}}
+\newcommand{\Rows}{\mathrm{Rows}}
+\newcommand{\RowCorr}{\mathrm{RowCorr}}
+\newcommand{\projectSet}{\mathrm{projectSet}}
+\newcommand{\reprC}{\mathrm{repr}_{C}}
+\newcommand{\absC}{\mathrm{abs}_{C}}
+
+\title{Báo cáo chứng minh chi tiết về bảo toàn ngữ nghĩa kiểm tra OCL-to-Cypher có điều kiện}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\fbox{\parbox{0.94\linewidth}{\textbf{Historical draft -- not
+normative.} This file predates current corrections to the certified grammar,
+BR1--BR10, production-plan adequacy, and Theorems T0--T6. Use
+\texttt{../research/formal-theorems-and-proofs.md} or the generated English
+report for every current formula and claim.}}
+\medskip
+
+\begin{abstract}
+Báo cáo này trình bày cơ sở hình thức đầy đủ cho phép chuyển invariant từ mảnh
+$\OCLval$ sang truy vấn Cypher trên property graph. Kết quả trung tâm là tương
+đương có điều kiện giữa tập đối tượng UML vi phạm invariant và tập đối tượng có
+định danh được truy vấn sinh ra trả về. Chứng minh phân rã chuỗi biến đổi thành
+các nghĩa vụ về biểu diễn Source--AST, binding và định kiểu, trừu tượng hóa
+Validation Algebra, chuẩn hóa, tương ứng mô hình đối tượng--đồ thị và hiện thực
+hóa Cypher. Báo cáo phát biểu tường minh các giả thiết A1--A9, hợp đồng biểu
+diễn R1--R7 và BR1--BR7, các tiên đề Cypher CY1--CY9, các bổ đề cục bộ cùng bảy
+định lý T0--T6. Phạm vi chỉ bao phủ ngữ nghĩa kiểm tra theo tập hữu hạn và
+không được hiểu là chứng minh cho toàn bộ OMG OCL, mọi phép mã hóa graph hoặc
+Cypher tùy ý.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Phát biểu đóng góp và phạm vi}
+
+Tài liệu chứng minh phát biểu có điều kiện sau:
+
+\begin{quote}
+Chúng tôi chứng minh sự bảo toàn đầu-cuối có điều kiện của tập đối tượng vi
+phạm đối với một mảnh kiểm tra OCL theo ngữ nghĩa tập hữu hạn, trên một phép mã
+hóa UML sang đồ thị thuộc tính được phát biểu tường minh.
+\end{quote}
+
+Kết quả được giới hạn có chủ ý. Tài liệu không tuyên bố tính đúng đắn cho toàn
+bộ OMG OCL, ngữ nghĩa đầy đủ của null/invalid, Bag/Sequence/OrderedSet, tập hợp
+có thứ tự, Cypher tùy ý, phép mã hóa đồ thị tùy ý hoặc các cấu trúc chỉ được xử
+lý bằng cơ chế dự phòng.
+
+\begin{assumption}[Phạm vi chứng minh]
+Mọi định lý dưới đây đều giả thiết rằng:
+\begin{enumerate}[label=(A\arabic*)]
+  \item $e\in\OCLval$, $ast=\mathrm{Parse}(e)$ thành công và
+  $decode_{val}(ast)=e$, nên $ast\in\ASTval$.
+  \item $b=T_{\mathrm{BIND}}(ast,MM)$ thành công và $b$ là một biểu thức
+  invariant định kiểu đúng trong $\BoundOCLval(MM)$. Ở runtime, đối số này có
+  thể được cung cấp bởi một view siêu mô hình phía đồ thị tương đương resolver
+  với $MM$.
+  \item Kiểm tra sử dụng ngữ nghĩa tập hữu hạn.
+  \item $MM=M_2$ là siêu mô hình miền hữu hạn và $M=M_1$ là mô hình đối tượng
+  UML hữu hạn, hợp lệ, phù hợp với $MM$.
+  \item $G=\PhiEnc(MM,M)$ thỏa hợp đồng mã hóa đồ thị repository: $G$ lưu cả
+  phần siêu mô hình $G_{M_2}$, phần instance $G_{M_1}$ và các cạnh typing giữa
+  chúng; view siêu mô hình đọc từ $G_{M_2}$ đầy đủ và tương đương resolver với
+  $MM$.
+  \item $T_{\mathrm{TEXT}}$ chỉ sinh mảnh Cypher được hỗ trợ.
+  \item Truy vấn Cypher được sinh là truy vấn kiểm tra invariant, trả về các đối
+  tượng vi phạm bằng định danh ổn định.
+  \item $ScalarClosed(e,M)$ đúng với mọi phép đánh giá con vô hướng có thể đạt tới.
+  \item $BottomSeparated(MM,M,e)$ đúng: biểu diễn dành riêng cho bottom không
+  giao với mọi giá trị mô hình, định danh, khóa siêu mô hình và payload
+  qualifier có thể đạt tới.
+\end{enumerate}
+
+Trong adapter chuẩn, A9 được giải phóng theo construction: scalar và khóa mô
+hình được chấp nhận chỉ thuộc Boolean, Int64, Real64 hữu hạn hoặc String, entity
+được biểu diễn bằng node, còn bottom trong tập là map tag riêng
+\texttt{\{\_\_oclBottom:true\}}. Kho thuộc tính và codec qualifier được chứng
+nhận không nhận map làm scalar mô hình. Verifier fixture kiểm tra điều kiện miền
+này trước khi coi A9 đã được giải phóng. A8 vẫn là premise theo từng
+model/expression vì số học động có thể tràn hoặc sinh mẫu chia không xác định dù
+các toán hạng đều định kiểu đúng.
+\end{assumption}
+
+\subsection*{Hợp đồng định lý chuẩn}
+
+Phiên bản hợp đồng là \texttt{PC-2026-07-22.3}. Các dòng dưới đây là hình chiếu
+LaTeX đã đồng bộ từ canonical JSON block trong
+\texttt{md/research/formal-theorems-and-proofs.md}; phần
+diễn giải của định lý có thể mở rộng một dòng nhưng không được loại bỏ giả
+thiết hoặc phụ thuộc của dòng đó.
+
+% BEGIN GENERATED PROOF-CONTRACT-KERNEL
+\begin{longtable}{p{1.2cm}p{4.5cm}p{2.4cm}p{5.0cm}}
+\toprule
+ID & Statement kernel & Assumptions & Required results\\
+\midrule
+PC-T0 & Các quan sát kiểm tra trên đối tượng và đồ thị đủ điều kiện trùng khớp & A4, A5 & R1, R2, R3, R4, R5, R6, R7\\
+PC-T1 & Ngữ nghĩa Source đã giải mã và Bound duy nhất tương ứng sau khi xóa thẻ & A1, A2, A4, A8 & M2, M3, M3a, M4, B0, B1, B2, B3, B4, SB0\\
+PC-T2 & Ngữ nghĩa Bound sau xóa thẻ bằng ngữ nghĩa VA có kiểu phía đối tượng & A2, A3, A4, A8 & M2, M3, M3a, VA1, VA2, VA3, BV0, B4\\
+PC-T3 & Chuẩn hóa bottom-up dừng, bảo toàn kiểu/ngữ nghĩa/miền đóng và đạt NF\_R theo alpha & A2, A3, A8 & N0, N1, N2, N3, N4\\
+PC-T4 & Đánh giá VA có kiểu giao hoán với mã hóa trên các đánh giá reachable đóng & A2, A3, A4, A5, A8 & T0, G1, G2, G3, G3a, G4\\
+PC-T5 & Truy vấn tham chiếu NVA--CQM--Cypher trả về chính xác ID vi phạm VA đồ thị và không có ID ma & A2, A3, A5, A6, A7, A8, A9 & C1, C2, C3, C3a, C4, C5, C5a, C5b, C6, SpecPlanAdequacy, SpecPlanSim_sound, TXT1, TXT2, TXT3, TXT4, TXT5, BR1-BR10, CY1-CY9\\
+PC-T6 & Tập ID trả về bằng ảnh ID của tập vi phạm OCL & A1, A2, A3, A4, A5, A6, A7, A8, A9 & T0, T1, T2, T3, T4, T5\\
+\bottomrule
+\end{longtable}
+% PROTOTYPE-CORRECTNESS-CLAIM: CONDITIONAL
+% BLOCKING-OPEN-OR-PARTIAL: PO-18
+% RUNTIME-PROFILE: RP-NEO4J-2026.06-CYPHER5-CANONICAL-V1
+% END GENERATED PROOF-CONTRACT-KERNEL
+
+\section{Siêu mô hình nguồn $\OCLval$, biểu diễn AST và $\BoundOCLval$}
+
+$\OCLval$ là siêu mô hình của mảnh ngôn ngữ nguồn và được định nghĩa trước biểu
+diễn parser. Nó quy định các constructor nguồn được hỗ trợ nhưng chưa chứa tham
+chiếu UML đã phân giải. Hàm $encode_{ast}:\OCLval\to\ASTval$ tạo biểu diễn AST,
+còn hàm bộ phận $decode_{val}:AST_{OCL}\rightharpoonup\OCLval$ nhận ra đúng các
+AST thuộc mảnh nguồn. Sau đó, và chỉ sau binding thành công, ta thu được mô hình
+đã phân giải và định kiểu $\BoundOCLval(MM)$. Vì vậy thứ tự đặc tả là
+$\OCLval\to\ASTval\to\BoundOCLval(MM)$, trong khi pipeline thực thi vẫn là
+OCL Text $\to$ Parse $\to$ OCL AST $\to T_{\mathrm{BIND}}$ Bound OCL.
+
+\subsection{Siêu mô hình nguồn $\OCLval$}
+
+Siêu mô hình nguồn chứa tên cú pháp chưa phân giải. Với tên biến $x$, tên lớp
+$cn$, tên property $pn$ và danh sách qualifier nguồn $\bar q$, các biểu thức
+nguồn được sinh bởi:
+\[
+\begin{array}{rcl}
+s &::=& self \mid x \mid c \mid Set\{s_1,\ldots,s_n\} \mid s.pn[\bar q]
+ \mid cn.allInstances() \mid not\ s \mid s\ op\ s\\
+&\mid& if\ s\ then\ s\ else\ s
+ \mid let\ x:T=s\ in\ s
+ \mid s\to iop(x\mid s)\\
+&\mid& s\to cop(s?)
+ \mid s.oclIsKindOf(cn)
+ \mid s.oclAsType(cn).
+\end{array}
+\]
+với $n\geq 1$ trong trường hợp Set literal.
+Ở tầng này, $pn$ chưa được phân loại thành attribute hay association role,
+$cn$ chưa phải tham chiếu lớp và navigation chưa có association, role hoặc
+direction. Các thông tin đó chỉ xuất hiện trong $\BoundOCLval(MM)$.
+
+\subsection{Các lớp siêu mô hình và đặc trưng cấu trúc}
+
+Các lớp siêu mô hình trong bảng sau thuộc $\BoundOCLval(MM)$. Mọi tham chiếu có
+đối miền thuộc $MM$ đều là tham chiếu đến phần tử mô hình đã
+phân giải, không phải tên String không định danh đầy đủ. Mọi containment đều là
+hợp thành và mỗi biểu thức có đúng một container; vị từ gốc nằm trong invariant,
+còn invariant nằm trong module.
+
+\begingroup\small
+\begin{longtable}{p{0.25\textwidth}p{0.47\textwidth}p{0.22\textwidth}}
+\toprule
+Lớp siêu mô hình & Đặc trưng cấu trúc & Lực lượng/kiểu\\
+\midrule
+$BoundValModule$ & $invariants$ & containment $0..*$ của $BoundValInvariant$\\
+$BoundValInvariant$ & $contextClass$, $name$, $predicate$ & $Class(MM)$ đã phân giải, String, containment $1$\\
+$BoundValExpr\langle\tau\rangle$ (trừu tượng) & $staticType$ & đúng một $\tau$\\
+$VSelf$ & không có đặc trưng bổ sung & $ValExpr\langle C\rangle$\\
+$VVariable$ & $declaration$ & một khai báo từ vựng có kiểu $\tau$\\
+$VLiteral$ & $kind$, $value$ & một literal nguyên thủy được hỗ trợ\\
+$VSetLiteral$ & $elements$ & containment $1..*$ của các phần tử cùng kiểu chuẩn\\
+$VAttribute$ & $source$, $attribute$ & containment $1$; $Attribute(C,\tau)$ đã phân giải\\
+$VNavigation$ & $source$, $association$, $fromRole$, $toRole$, $direction$, $qualifiers$ & containment $1$ và $0..*$; metadata nhị phân đã phân giải\\
+$VAllInstances$ & $referredClass$ & một tham chiếu $Class(MM)$\\
+$VNot$ & $operand$ & containment $1$\\
+$VBinary$ & $operator$, $left$, $right$ & toán tử và hai containment\\
+$VIf$ & $condition$, $thenBranch$, $elseBranch$ & ba containment\\
+$VLet$ & $declaration$, $init$, $body$ & khai báo và hai containment\\
+$VIterator$ & $operation$, $declaration$, $source$, $body$ & thẻ iterator và hai containment\\
+$VCollectionOp$ & $operation$, $source$, $argument?$ & source và nhiều nhất một đối số\\
+$VTypeOp$ & $operation$, $source$, $referredClass$ & chỉ kind-of hoặc cast\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Các miền liệt kê đóng là:
+\[
+\begin{split}
+BinaryOp={}&\{and,or,xor,implies,=,<>,<,\leq,>,\geq,+,-,*,/\},\\
+IteratorOp={}&\{exists,forAll,select,reject,collect,isUnique\},\\
+CollectionOp={}&\{includes,excludes,includesAll,excludesAll,\\
+&\hspace{1.4cm}union,intersection,asSet,size,isEmpty,notEmpty\},\\
+TypeOp={}&\{kindOf,cast\},\qquad Direction=\{forward,reverse\}.
+\end{split}
+\]
+Đặc biệt, $typeOf$ không phải phần tử của $TypeOp$.
+
+\subsection{Cú pháp trừu tượng của $\BoundOCLval(MM)$}
+
+Với $C,D\in Class(MM)$ và biến có kiểu $x$, thành phần biểu thức là họ nhỏ nhất
+được sinh bởi:
+\[
+\begin{array}{rcl}
+e &::=& self \mid x \mid c \mid SetLiteral([e_1,\ldots,e_n]) \mid Attribute(e,a)\\
+  &\mid& Navigation(e,A,fr,tr,dir,[q_1,\ldots,q_k])\\
+  &\mid& AllInstances(C) \mid Not(e) \mid Binary(op,e,e)\\
+  &\mid& If(e,e,e) \mid Let(x:T,e,e)\\
+  &\mid& Iterator(iop,e,x,e) \mid CollectionOp(cop,e,e?)\\
+  &\mid& TypeKindOf(e,C) \mid Cast(e,C).
+\end{array}
+\]
+với $n\geq 1$ trong trường hợp $SetLiteral$.
+Gốc duy nhất được Định lý~6 bao phủ là $Invariant(C,R,p)$ với $p:Boolean$.
+Truy vấn mức cao nhất của prototype không phải gốc invariant của $\OCLval$.
+
+\subsection{Các ràng buộc hợp lệ cấu trúc}
+
+Một thể hiện thuộc $\BoundOCLval(MM)$ khi và chỉ khi mọi điều kiện sau đều đúng.
+
+\begin{enumerate}[label=(MV-WF\arabic*)]
+  \item Đồ thị containment hợp thành là hữu hạn, có gốc, không chu trình và
+  không chia sẻ nút biểu thức.
+  \item Mỗi invariant có lớp ngữ cảnh đã phân giải và vị từ Boolean được định
+  kiểu trong môi trường chứa $self:C$.
+  \item Mỗi biểu thức có kiểu chuẩn duy nhất do các luật định kiểu gán; $\bot$
+  ở thời gian chạy là một giá trị và không bao giờ là kiểu tĩnh.
+  \item Tham chiếu thuộc tính và lớp thuộc $MM$. Mỗi navigation là navigation
+  liên kết nhị phân được phân giải duy nhất, với role, hướng, lớp đích, số lượng
+  qualifier và kiểu qualifier cố định.
+  \item Biểu thức có giá trị collection chỉ dùng $Set(\tau)$. Navigation được
+  nâng thống nhất thành $Set(C)$, kể cả đầu mút UML có bội số $0..1$ hoặc $1$.
+  \item Khai báo iterator và let chỉ có phạm vi trong thân của nó. Tra cứu chọn
+  khai báo gần nhất và đổi tên alpha tránh bắt giữ biến.
+  \item Thân $collect$ có kiểu không phải collection. Kết quả là ảnh của tập
+  hữu hạn; không biểu diễn flatten ngầm, bội số hoặc thứ tự.
+  \item Qualifier là danh sách có thứ tự, lực lượng cố định của các biểu thức vô
+  hướng nguyên thủy được hỗ trợ, với phép tuần tự hóa đơn ánh do profile mã hóa
+  quy định.
+  \item Set literal là hữu hạn, không rỗng, không lồng collection và có một kiểu
+  phần tử chuẩn suy ra duy nhất. Thân $isUnique$ không có kiểu collection;
+  $union$, $intersection$ và $asSet$ chỉ thao tác trên $Set$ tương thích.
+  \item Chỉ xuất hiện các miền toán tử đóng ở trên. Do đó $any$, $one$,
+  $sortedBy$, $iterate$, $closure$, $count(element)$,
+  \texttt{oclIsTypeOf} và ràng buộc không phải invariant không có trường hợp
+  trong siêu mô hình.
+\end{enumerate}
+
+\begin{lemma}[M1 Biểu diễn Source--AST]
+Hai hàm $encode_{ast}$ và $decode_{val}$ tạo thành một retraction:
+\[
+decode_{val}(encode_{ast}(s))=s\qquad(s\in\OCLval).
+\]
+Mỗi $ast\in\ASTval$ có đúng một biểu thức nguồn được decode, tới phép đổi tên
+alpha tránh bắt giữ biến bị ràng buộc.
+\end{lemma}
+\begin{proof}
+Định nghĩa $encode_{ast}$ bằng đệ quy cấu trúc: mỗi constructor nguồn ánh xạ
+sang đúng một constructor AST và mã hóa đệ quy các phần tử con. Ngược lại,
+$decode_{val}$ có đúng một phương trình cho mỗi dạng AST được hỗ trợ và không
+xác định trên mọi dạng khác. Quy nạp trên cây nguồn hữu hạn chứng minh phương
+trình retraction; quy nạp trên AST được chấp nhận chứng minh tính duy nhất. Tên
+binder chỉ có thể khác bởi đổi tên alpha tránh bắt giữ.
+\end{proof}
+
+\begin{lemma}[M2 Tính đóng của biểu thức Bound con và quy nạp cấu trúc]
+Mọi biểu thức được chứa trong một biểu thức $\BoundOCLval(MM)$ tự nó là biểu thức
+$\BoundOCLval(MM)$ hợp lệ và định kiểu đúng dưới môi trường từ vựng do các nút tổ
+tiên tạo ra. Hơn nữa, quan hệ containment nghiêm ngặt là chính quy tốt.
+\end{lemma}
+\begin{proof}
+MV-WF1 làm containment nghiêm ngặt thành quan hệ hữu hạn không chu trình, do đó
+là quan hệ chính quy tốt. Ràng buộc định kiểu của lớp siêu mô hình yêu cầu mọi
+tiền đề của nút con trước khi chấp nhận nút cha. Với thân iterator và let,
+MV-WF6 thêm đúng binding đã khai báo; các nút con khác giữ môi trường của nút
+cha. Quy nạp theo đường đi duy nhất từ gốc chứng minh tính đóng và môi trường
+phù hợp cho từng nút con. Vì thế quy nạp cấu trúc và đệ quy cấu trúc toàn phần
+là hợp lệ trên các thể hiện $\BoundOCLval$.
+\end{proof}
+
+\begin{lemma}[M3 Tính duy nhất của kiểu chuẩn]
+Nếu biểu thức được chấp nhận $e$ có các suy dẫn định kiểu chuẩn
+$MM;\Gamma\vdash e:\tau_1$ và $MM;\Gamma\vdash e:\tau_2$, thì
+$\tau_1=\tau_2$.
+\end{lemma}
+\begin{proof}
+Quy nạp trên lớp siêu mô hình của $e$. Kiểu cơ sở được xác định bởi luật
+literal, khai báo hoặc lớp ngữ cảnh. Kết quả thuộc tính, navigation,
+all-instances và toán tử kiểu được cố định bởi tham chiếu đã phân giải có tính
+hàm. Toán tử Boolean và collection có kiểu kết quả cố định. Số học dùng hàm bộ
+phận $arithResult$, còn định kiểu nhánh dùng hàm bộ phận $join$; cả hai đều có
+tính hàm. Set literal và hợp/giao dùng hàm bộ phận $setJoin$ có tính hàm theo
+M3a; $asSet$ giữ kiểu nguồn và $isUnique$ trả Boolean. Trường hợp iterator và let dùng giả thiết quy nạp dưới phép mở rộng
+môi trường duy nhất từ MV-WF6. Không có luật subsumption tổng quát làm thay đổi
+chú thích kiểu chuẩn. Do đó hai kiểu kết quả bằng nhau.
+\end{proof}
+
+\begin{lemma}[M4 Tính đúng đắn của admission và binding]
+Nếu $decode_{val}(ast)=s$ và binder được chứng nhận suy dẫn
+$MM;\Gamma\vdash ast\Rightarrow b:\tau$, thì $s\in\OCLval$,
+$ast\in\ASTval$, $b\in\BoundOCLval(MM)$ và $MM;\Gamma\vdash b:\tau$.
+\end{lemma}
+\begin{proof}
+Quy nạp trên suy dẫn binding thành công. Mỗi luật binder tạo đúng một lớp siêu
+mô hình đã liệt kê. Giả thiết quy nạp cho nút con thiết lập containment hữu hạn
+có kiểu. Resolver có tính hàm thiết lập tham chiếu đã phân giải và metadata
+navigation duy nhất; luật iterator và let dùng phép mở rộng từ vựng đã nêu;
+luật collect và isUnique buộc thân không có kiểu collection. B-SetLit và
+B-SetComb chỉ áp dụng khi $setJoin$ xác định duy nhất, còn B-AsSet giữ kiểu
+phần tử. Kiểu kết quả của luật là kiểu
+của lớp siêu mô hình tương ứng. Vì bảng được chứng nhận không có luật cho toán
+tử bị loại, MV-WF10 được bảo toàn. Các trường hợp là đầy đủ vì phán đoán binding
+được định hướng cú pháp.
+\end{proof}
+
+\begin{lemma}[M5 Tính ổn định của phạm vi loại trừ]
+Không cặp source/AST được chấp nhận nào và không kết quả
+$\BoundOCLval(MM)$ tương ứng nào có thể chứa toán tử bị loại, kiểu collection
+nhạy với thứ tự hoặc bội số, navigation không nhị phân hoặc gốc không phải invariant.
+\end{lemma}
+\begin{proof}
+Theo M1, không có phương trình $decode_{val}$ cho constructor AST bị loại. Theo
+M2, mỗi biểu thức Bound con có một lớp siêu mô hình đã liệt kê. Miền toán tử
+đóng, kiểu collection chỉ do $Set$ sinh và metadata navigation là nhị phân.
+Vì vậy không có trường hợp biểu diễn nguồn, AST hoặc Bound cho construct bị loại.
+\end{proof}
+
+M1--M5, bao gồm M3a, cung cấp chứng nhận phạm vi cho các chứng minh phía sau. M2 biện minh cho
+quy nạp cấu trúc Bound, M3 cung cấp tính hàm của kiểu, M4 nối admission AST với
+$\BoundOCLval(MM)$, và F1 bên dưới chứng minh biểu diễn Source--AST cùng erase--rebind theo
+chiều ngược dưới các resolver ổn định. Chúng không thêm constructor hoặc mở
+rộng Định lý~6.
+
+\begin{definition}[Chân lý kiểm tra]
+Vị từ chân lý ở mức kiểm tra được định nghĩa bởi:
+\[
+\boolval(v)=\mathrm{true} \iff v=\mathrm{true}.
+\]
+Mọi giá trị khác, gồm bottom, giá trị giống null, giống invalid hoặc giá trị
+runtime không được hỗ trợ, đều không được xem là đúng theo kiểm tra. Đây là một
+chính sách kiểm tra, không phải hình thức hóa đầy đủ các bảng chân lý OMG OCL.
+\end{definition}
+
+\begin{definition}[Phép hoàn chỉnh toàn phần ở mức kiểm tra]
+Trong miền định lý, hàm ngữ nghĩa là toàn phần vào vũ trụ giá trị có gắn thẻ.
+Truy cập thuộc tính trên $\bot$ cho $\bot$; phép nâng nguồn navigation ánh xạ
+$\bot$ thành tập rỗng; phép toán số học không xác định, kể cả chia cho không,
+cho $\bot$; phép so sánh thứ tự không xác định cũng cho $\bot$. Đẳng thức có
+kiểu là toàn phần:
+\[
+\eqval(\bot,\bot)=true,
+\qquad
+\eqval(\bot,v)=false\quad(v\neq\bot).
+\]
+Các vị từ kiểu trên $\bot$ cho false và ép kiểu $\bot$ cho $\bot$.
+$Collect$ giữ $\bot$ như một phần tử ảnh. Kiểu thân được chấp nhận của nó không
+phải collection, vì vậy không tuyên bố phép làm phẳng ngầm hay hiện thực hóa
+collection lồng nhau. Các mệnh đề này là chính sách kiểm tra, không phải ngữ
+nghĩa invalid của OMG OCL.
+\end{definition}
+
+\begin{definition}[Nâng nguồn navigation và đẳng thức có kiểu]
+Receiver của navigation sử dụng
+\[
+\asSources(\mathrm{Set}(S))=S,\qquad
+\asSources(v)=\{v\}\ \text{khi }v\text{ là một Entity},\qquad
+\asSources(\bot)=\emptyset.
+\]
+Định kiểu navigation nhị phân bảo đảm mọi phần tử được nâng đều là Entity.
+Các miền giá trị là những hợp rời nhau có gắn thẻ. Đẳng thức có kiểu
+$\eqval(v_1,v_2)$ đúng khi và chỉ khi hai toán hạng có cùng loại giá trị và biểu
+thị cùng giá trị; đẳng thức thực thể là định danh đối tượng ở phía đối tượng và
+định danh nút ở phía đồ thị. So sánh thứ tự vẫn chỉ áp dụng cho các kiểu vô
+hướng tương thích.
+\end{definition}
+
+\begin{definition}[Hàm hỗ trợ tập hữu hạn]
+Các toán tử collection sử dụng:
+\[
+\finiteSet(\mathrm{Set}(S))=S,\qquad
+\finiteSet(\bot)=\emptyset.
+\]
+Với các biểu thức thuộc phạm vi định lý, ngữ nghĩa có giá trị collection là tập
+hữu hạn hoặc bottom. Việc xem bottom như tập rỗng tại vị trí collection là một
+phần của chính sách ở mức kiểm tra.
+\end{definition}
+
+\begin{definition}[Giá trị và môi trường có kiểu]
+Với $I\in\{obj,graph\}$, các giá trị được chỉ số hóa theo kiểu tĩnh:
+\[
+Val_I(Boolean)=\{true,false\},\quad
+Val_I(Integer),\ Val_I(Real),\ Val_I(String),
+\]
+\[
+Val_{obj}(C)=\{o\mid classOf(o)\mathrel{conformsTo}C\},\qquad
+Val_{graph}(C)=\{\node(o)\mid o\in Val_{obj}(C)\},
+\]
+\[
+Val_I(Set(\tau))=\mathcal P_{fin}(Val_I(\tau)\cup\{\bot\}),\qquad
+Val_I^\bot(\tau)=Val_I(\tau)\cup\{\bot\}.
+\]
+Ta viết $\rho\models_M\Gamma$ khi và chỉ khi $\rho$ và $\Gamma$ có cùng miền,
+đồng thời $\rho(x)\in Val_{obj}^\bot(\Gamma(x))$ với mọi $x$; định nghĩa
+$\eta\models_G\Gamma$ tương tự. Ngoài ra,
+\[
+\rho\sim_\Phi\eta\iff
+\operatorname{dom}(\rho)=\operatorname{dom}(\eta)\ \land\
+\forall x:\eta(x)=\encodeValue(\rho(x)).
+\]
+Profile vô hướng chính xác là
+\[
+Int64=\{n\in\mathbb Z\mid -2^{63}\le n\le 2^{63}-1\},
+\]
+và $Real64$ là tập các giá trị IEEE-754 binary64 hữu hạn, trong đó đẳng thức số
+đồng nhất hai số không có dấu khác nhau. Phép toán số thực làm tròn tới giá trị
+gần nhất, trường hợp hòa làm tròn về số chẵn, và chỉ được chấp nhận khi kết quả
+sau làm tròn là hữu hạn. Các phép $+,-,*$ trên số nguyên là phép toán toán học
+có kiểm tra trong $Int64$; phép chia yêu cầu mẫu khác không và trả về $Real64$.
+Ép số nguyên sang số thực chỉ được chấp nhận với $|n|\le 2^{53}$, nên phép
+chuyển đổi là chính xác. Chuỗi là dãy hữu hạn các scalar value Unicode, có đẳng
+thức chính xác và không có thứ tự. Đẳng thức thực thể là đẳng thức định danh.
+$ScalarClosed(e,M)$ nghĩa là mọi đánh giá con vô hướng có thể đạt tới, kể cả
+các mở rộng iterator và let, đều thỏa các tiền đề này. Tràn số, NaN, vô cực,
+chia cho không, ép kiểu không chính xác, đối chiếu phụ thuộc locale và các loại
+vô hướng không được hỗ trợ nằm ngoài định lý.
+\end{definition}
+
+\begin{definition}[Chính sách thống nhất cho kết quả navigation]
+Mọi navigation nhị phân được chấp nhận đều có kiểu tĩnh $Set(C)$. Một
+navigation UML có bội số nguồn $0..1$ hoặc $1$ được nâng thành tập rỗng hoặc tập
+đơn. Đây là chính sách kiểm tra theo tập hữu hạn của $\OCLval$, không phải định
+kiểu kết quả collection đầy đủ của OMG OCL.
+\end{definition}
+
+\section{Ký hiệu cốt lõi}
+
+\begin{longtable}{ll}
+\toprule
+Ký hiệu & Ý nghĩa\\
+\midrule
+$MM$ & siêu mô hình nguồn dạng UML\\
+$M$ & mô hình đối tượng phù hợp với $MM$\\
+$G$ & đồ thị thuộc tính\\
+$\PhiEnc(MM,M)$ & phép mã hóa đồ thị của $MM$ và $M$\\
+$\Obj(M)$ & tập hữu hạn các đối tượng trong $M$\\
+$\Class(MM)$ & tập hữu hạn các lớp trong $MM$\\
+$\Node(G)$, $\Rel(G)$ & các nút và quan hệ của đồ thị\\
+$\id(o)$ & định danh đối tượng ổn định\\
+$\node(o)$ & nút đồ thị biểu diễn đối tượng $o$\\
+$\classNode(C)$ & nút đồ thị biểu diễn lớp $C$\\
+$\RepG(o,n)$ & nút $n$ được $\PhiEnc$ sinh để biểu diễn đối tượng $o$\\
+$\ObjNodeVal(G)$ & các nút đối tượng đồ thị nhìn thấy bởi kiểm tra\\
+\bottomrule
+\end{longtable}
+
+\subsection*{Danh mục hàm ngữ nghĩa chuẩn}
+
+Đây là bảng chữ ký chuẩn tắc duy nhất trong tài liệu. Các định danh của bảng
+được đồng bộ với phiên bản registry \texttt{PC-2026-07-22.3}. Các lần sử dụng
+phía sau chỉ được phép bỏ chỉ số trên về kiểu khi suy dẫn định kiểu xác định duy
+nhất chỉ số đó; việc lược bỏ này không tạo ra một hàm ngữ nghĩa thứ hai.
+
+\scriptsize
+\begin{longtable}{p{1.15cm}p{3.0cm}p{8.8cm}}
+\toprule
+ID & Ký hiệu & Miền và đối miền\\
+\midrule
+SF-01 & $\sem{\cdot}{S}$ & $Expr_S(\tau)\times Model\times Env_S\to Val_S^\bot(\tau)$\\
+SF-02 & $\sem{\cdot}{B}$ & $Expr_B(\tau)\times Model\times Env_B\to Val_B^\bot(\tau)$\\
+SF-03 & $erase_S$ & $Val_S^\bot(\tau)\to Val_{obj}^\bot(\tau)$\\
+SF-04 & $erase_B$ & $Val_B^\bot(\tau)\to Val_{obj}^\bot(\tau)$\\
+SF-05 & $\sem{\cdot}{OCLval}$ & $Expr_S(\tau)\times Model\times Env_S\to Val_{obj}^\bot(\tau)$, được định nghĩa bởi $erase_S\circ\sem{\cdot}{S}$\\
+SF-06 & $\sem{\cdot}{Bound}$ & $Expr_B(\tau)\times Model\times Env_B\to Val_{obj}^\bot(\tau)$, được định nghĩa bởi $erase_B\circ\sem{\cdot}{B}$\\
+SF-07 & $\sem{\cdot}{obj}^{\tau}$ & $Expr_{VA}(\tau)\times Model\times Env_{obj}\to Val_{obj}^\bot(\tau)$\\
+SF-08 & $\sem{\cdot}{graph}^{\tau}$ & $Expr_{VA}(\tau)\times Graph\times Env_{graph}\to Val_G^\bot(\tau)$\\
+SF-09 & $\DenoteGraph^{\tau}$ & Bí danh của SF-08 giới hạn cho các accessor đồ thị nguyên thủy\\
+SF-10 & $\encodeValue$ & $Val_{obj}^\bot(\tau)\to Val_G^\bot(\tau)$\\
+SF-11 & $\finiteSet_\tau$ & $Val_I^\bot(Set(\tau))\to\mathcal P_{fin}(Val_I^\bot(\tau))$\\
+SF-12 & $\asSources_C$ & receiver navigation dạng Entity/tập/bottom $\to\mathcal P_{fin}(Val_I(C))$\\
+SF-13 & $\boolval$ & $Val_I^\bot(Boolean)\to Boolean$\\
+SF-14 & $\eqval^\tau$ & $Val_I^\bot(\tau)^2\to Boolean$\\
+SF-15 & $I_{attr}^{\tau}$ & $Val_I^\bot(C)\times Attribute(C,\tau)\to Val_I^\bot(\tau)$\\
+SF-16 & $I_{nav}$ & receiver có kiểu, metadata liên kết và giá trị qualifier $\to\mathcal P_{fin}(Val_I(D))$\\
+SF-17 & $I_{class}$ & $Class\to\mathcal P_{fin}(Val_I(C))$\\
+SF-18 & $\reprC$ & $Val_G^C\to CyVal_C$\\
+SF-19 & $\absC$ & $CyVal_C\to Val_G^C$, với $\absC(\reprC(v))=v$\\
+SF-20 & $EvalExpr_{G,\sigma}$ & $CExpr\times Row\to CyVal_C$\\
+SF-21 & $EvalRows_{G,\sigma}$ & $CQuery\times Bag(Row)\to Bag(Row)$\\
+SF-22 & $\EvalCypher$ & $CQuery\times Graph\times ParamEnv\to Bag(Row)$\\
+SF-23 & $ExecPrelude$ & $List(Clause)\times Row\to Bag(Row)$\\
+SF-24 & $\projectSet$ & $Alias\times Bag(Row)\to\mathcal P_{fin}(Val_G^C)$\\
+SF-25 & $params$ & $CQuery\to ParamEnv$\\
+SF-26 & $\Params$ & $CQuery\to\mathcal P(ParamName)$\\
+SF-27 & $\returnedIds$ & $CQuery\times Graph\times ParamEnv\to\mathcal P(ObjectId)$\\
+SF-28 & $\Viol$ & $Expr_S(Boolean)\times Class\times Model\to\mathcal P(Obj(M))$\\
+SF-29 & $navCollectionView$ & $Val_I^\bot(C)\to\mathcal P_{fin}(Val_I(C))$, singleton/empty view chỉ tại biên collection trực tiếp của navigation to-one\\
+\bottomrule
+\end{longtable}
+\normalsize
+
+Với truy vấn được sinh, dạng viết tắt hai đối số là
+$\returnedIds(q,G):=\returnedIds(q,G,params(q))$.
+
+Trong toàn bộ chứng minh, $MM=M_2$ ký hiệu siêu mô hình miền và $M=M_1$ ký hiệu
+mô hình instance phù hợp. $\PhiEnc$ ký hiệu hàm mã hóa repository và
+$G=\PhiEnc(MM,M)$ ký hiệu đồ thị cụ thể đã mã hóa. Về mặt quan sát, ta phân rã
+\[
+G=G_{M_2}\cup G_{M_1}\cup G_{typing},
+\]
+trong đó $G_{M_2}$ lưu khai báo lớp, thuộc tính, liên kết, đầu mút, role,
+qualifier và kế thừa; $G_{M_1}$ lưu đối tượng, giá trị thuộc tính và liên kết
+instance; còn $G_{typing}$ nối đối tượng M1 với lớp M2. Đây là các phép chiếu
+logic của cùng một repository graph, không bắt buộc là ba cơ sở dữ liệu vật lý.
+Ta dùng $G$ cho đánh giá phía đồ thị để tránh ký hiệu tự tham chiếu.
+
+Đặt $GraphMMView(G_{M_2})$ là giao diện resolver đọc metadata M2 đã mã hóa.
+Hợp đồng A5 yêu cầu view này tương đương resolver với $MM$: mọi lời gọi có thể
+đạt tới của $resolveClass$, $resolveAttribute$, $resolveNavigation$,
+$resolveInheritance$ và $resolveQualifier$ đều trả cùng phần tử hoặc cùng trạng
+thái không xác định. Vì vậy, ở runtime có thể dùng
+\[
+T_{\mathrm{BIND}}(ast,GraphMMView(G_{M_2}))
+\]
+thay cho $T_{\mathrm{BIND}}(ast,MM)$ mà không đổi kết quả Bound, tới đồng cấu
+tham chiếu. Đây là đọc lại schema được mã hóa tường minh, không phải suy diễn
+schema từ các link instance đang có trong $G_{M_1}$.
+
+Chuỗi biến đổi thành công là:
+\[
+\mathrm{ast}=\mathrm{Parse}(e),\quad
+s=decode_{val}(\mathrm{ast}),\quad
+b=T_{\mathrm{BIND}}(\mathrm{ast},MM),\quad
+va=T_{\mathrm{VA}}(b),\quad
+nva=T_{\mathrm{NORM}}(va),\quad
+q=T_{\mathrm{TEXT}}(nva).
+\]
+
+Ba miền được nối bởi các hàm sau:
+\[
+encode_{ast}:\OCLval\to\ASTval,\qquad
+decode_{val}:AST_{OCL}\rightharpoonup\OCLval,
+\]
+\[
+decode_{val}(encode_{ast}(s))=s,\qquad
+T_{\mathrm{BIND}}:\ASTval\times MM\rightharpoonup\BoundOCLval(MM),
+\]
+\[
+\Adm_{MM}(ast)\iff ast\in\ASTval\ \land\
+T_{\mathrm{BIND}}(ast,MM)\downarrow.
+\]
+
+Hợp đồng mã hóa còn yêu cầu khóa tra cứu lớp đơn ánh và phép tuần tự hóa đơn ánh
+cho danh sách qualifier nguyên thủy có thứ tự:
+\[
+key(C_1)=key(C_2)\iff C_1=C_2,
+\qquad
+encodeQualifierList(\bar q_1)=encodeQualifierList(\bar q_2)
+\iff \bar q_1=\bar q_2.
+\]
+Phép tuần tự hóa này hoạt động theo từng thành phần, bảo toàn thứ tự cùng số
+ngôi qualifier đã khai báo và chỉ áp dụng cho các loại qualifier vô hướng
+nguyên thủy được định lý hỗ trợ. Mỗi nút lớp có nhãn \texttt{Class} và lưu
+\texttt{classKey}$=key(C)$. Chỉ khi tên lớp là duy nhất toàn cục trong $MM$ mới
+được thay khóa này bằng \texttt{name} không định tính; nếu không, các pattern
+context, all-instances và kind-of phải dùng \texttt{classKey}. Kiểu chính xác
+không thuộc mảnh được chứng nhận; việc bổ sung nó đòi hỏi một quan sát kiểu
+runtime trực tiếp, đơn ánh và các trường hợp chứng minh riêng.
+Do đó $\OCLval$ là mảnh ngôn ngữ nguồn; $\ASTval$ là biểu diễn parser; và
+$\BoundOCLval(MM)$ là siêu mô hình định kiểu đã phân giải.
+
+\begin{definition}[Tương đương quan sát kiểm tra]
+Định nghĩa các bộ quan sát có kiểu
+\[
+\ObsObj(MM,M)=(Obj,Id,Type,Attr,Link,Nav,AllInst)_{obj},
+\]
+\[
+\ObsGraph(MM,G)=(ObjNode,Id,Type,Attr,Link,Nav,AllInst)_{graph}.
+\]
+Mỗi thành phần chỉ xét các phần tử được $\OCLval$ chấp nhận; các liên kết đồ thị
+là một tập ngữ nghĩa, trong đó các quan hệ trùng cho cùng liên kết UML được đồng
+nhất. Cho $\liftNode$ ánh xạ từng điểm mọi thành phần có giá trị đối tượng qua
+$\node$ và giữ nguyên các giá trị vô hướng. Khi đó
+\[
+(MM,M)\equiv_{val}G
+\iff
+\liftNode(\ObsObj(MM,M))=\ObsGraph(MM,G),
+\]
+với đẳng thức ngoại diên theo từng thành phần có kiểu. Bộ đọc bộ phận
+$\Psi_{val}$ trả về chính xác bộ quan sát này và không tái dựng metadata UML
+không phục vụ kiểm tra.
+\end{definition}
+
+Ngữ nghĩa nguồn được định nghĩa trên $\OCLval$:
+\[
+\sem{s}{OCL_{val}}(M,\rho):=
+erase_S(\sem{s}{S}(M,tag_S(\rho))).
+\]
+Tính đầy đủ của parser cung cấp $decode_{val}(Parse(text(s)))=s$; phương trình
+này nối biểu diễn text/AST với ngữ nghĩa nguồn mà không đồng nhất các siêu mô hình.
+
+\section{Các phán đoán định kiểu tĩnh và binding}
+
+Các kiểu tĩnh là
+\[
+\tau ::= Boolean\mid Integer\mid Real\mid String\mid C\mid Set(\tau).
+\]
+$\bot$ tại runtime không phải kiểu tĩnh. Quan hệ phù hợp $\leq$ gồm quan hệ phù
+hợp lớp UML, $Integer\leq Real$, tính phản xạ và tính hiệp biến của tập hữu hạn.
+Các bộ phân giải bộ phận tất định
+\[
+resolveClass,quad resolveAttribute,quad resolveNavigation,quad
+resolveTypeOperation
+\]
+được giả thiết là đầy đủ đối với siêu mô hình và có tính hàm trên miền của
+chúng; tra cứu mơ hồ hoặc không được hỗ trợ là không xác định.
+
+Môi trường định kiểu $\Gamma$ là một stack và phép tra cứu chọn binding gần
+nhất. Các phán đoán chính là
+\[
+MM;\Gamma\vdash b:\tau,
+\qquad
+MM;\Gamma\vdash ast\Rightarrow b:\tau.
+\]
+Kiểu kết quả số học và kiểu kết quả nhánh dùng các hàm bộ phận tất định. Cụ thể,
+cộng, trừ và nhân số nguyên trả về $Integer$; chia số nguyên trả về $Real$; số
+học trộn kiểu số trả về $Real$; và $join(\tau_1,\tau_2)$ là siêu kiểu chung nhỏ
+nhất duy nhất khi tồn tại. Hàm kết quả không xác định làm admission thất bại.
+
+Với literal tập và các phép hợp/giao tập, định nghĩa hàm bộ phận chuẩn
+$setJoin$ trên kiểu phần tử như sau:
+\[
+\begin{array}{rcl}
+setJoin(\tau,\tau)&=&\tau,\\
+setJoin(Integer,Real)&=&setJoin(Real,Integer)=Real,\\
+setJoin(C,D)&=&\operatorname{lub}_{MM}(C,D)
+\quad\text{khi siêu lớp chung nhỏ nhất là duy nhất}.
+\end{array}
+\]
+Hàm nhiều đối số, chỉ dùng cho danh sách không rỗng, là phép gấp trái của các
+phương trình trên và chỉ xác định khi mọi bước trung gian xác định. Không có
+phương trình giữa kiểu nguyên thủy không tương thích, giữa kiểu nguyên thủy và
+lớp, hoặc cho kiểu collection lồng nhau.
+
+Khi $\tau\leq\upsilon$ là một quan hệ nâng kiểu được $setJoin$ tạo ra, định
+nghĩa phép nhúng chuẩn có kiểu
+\[
+\iota^I_{\tau\hookrightarrow\upsilon}:
+Val_I^\bot(\tau)\longrightarrow Val_I^\bot(\upsilon)
+\]
+như sau: nó là đồng nhất khi $\tau=\upsilon$; ánh xạ Integer sang giá trị
+Real64 chính xác khi $\tau=Integer,\upsilon=Real$; giữ nguyên định danh thực
+thể hoặc nút khi $\tau=C,\upsilon=D$ và $C$ phù hợp với $D$; và ánh xạ
+$\bot$ sang $\bot$. Điều kiện $ScalarClosed$ bảo đảm phép nâng Integer--Real
+được xác định. Với $S:Set(\tau)$, đặt
+\[
+\operatorname{upSet}^{I}_{\tau\hookrightarrow\upsilon}(S)
+=\{\iota^I_{\tau\hookrightarrow\upsilon}(v)\mid
+v\in\finiteSet(S)\}.
+\]
+Ngữ nghĩa Set literal, $union$ và $intersection$ trước hết nâng mọi phần tử
+vào kiểu kết quả $\upsilon=setJoin(\ldots)$; giao tập và loại trùng sau đó dùng
+$\eqval^{\upsilon}$. Vì vậy không có so sánh không kiểu giữa hai miền phần tử.
+Các phép $setJoin$, $\iota$ và $\operatorname{upSet}$ là helper định kiểu của
+các hàm ngữ nghĩa SF-01--SF-08, không định nghĩa thêm một bộ đánh giá độc lập.
+
+\begin{lemma}[M3a Tính hàm của $setJoin$]
+Nếu $setJoin(\tau_1,\ldots,\tau_n)=\sigma_1$ và
+$setJoin(\tau_1,\ldots,\tau_n)=\sigma_2$, thì $\sigma_1=\sigma_2$.
+Khi được xác định, kết quả là siêu kiểu chung nhỏ nhất chuẩn duy nhất của các
+kiểu phần tử. Nếu kết quả là $\upsilon$, thì mỗi
+$\iota^I_{\tau_i\hookrightarrow\upsilon}$ là một hàm toàn phần trên các giá
+trị được chấp nhận và $\operatorname{upSet}^{I}$ cũng có tính hàm.
+\end{lemma}
+\begin{proof}
+Mỗi phương trình cơ sở có các miền rời nhau và trả về một kết quả duy nhất.
+Trường hợp lớp dùng $\operatorname{lub}_{MM}$ chỉ khi phần tử nhỏ nhất là duy
+nhất; nếu có hai ứng viên tối tiểu không so sánh được thì hàm không xác định.
+Quy nạp trên số đối số của phép gấp trái, dùng tính hàm ở bước trước và của
+phương trình nhị phân, cho $\sigma_1=\sigma_2$. Tính chất siêu kiểu và tính nhỏ
+nhất được bảo toàn qua từng bước gấp.
+Với phép nhúng, phân trường hợp theo phương trình cuối cùng của $setJoin$.
+Trường hợp đồng nhất
+là trực tiếp. Trường hợp Integer--Real dùng tính chính xác của phép đổi sang
+binary64 do $ScalarClosed$ yêu cầu, nên hai phía nhận cùng giá trị Real64 hữu
+hạn. Trường hợp lớp chỉ thay chú thích kiểu tĩnh và giữ nguyên thực thể hoặc
+nút; bottom được giữ nguyên. Đây là toàn bộ miền của $setJoin$, nên phép nhúng
+có tính hàm và toàn phần trên miền được chấp nhận. Tính hàm của
+$\operatorname{upSet}^{I}$ suy ra bằng phép dựng ảnh hữu hạn.
+\end{proof}
+
+Phán đoán thứ hai được định hướng theo cú pháp và định nghĩa
+$T_{\mathrm{BIND}}$. $resolveProperty$ là bộ phân loại rời nhau có tính hàm,
+trả về một thuộc tính hoặc một bộ navigation. Bảng sau là đầy đủ đối với
+$\OCLval$; $e\Rightarrow b:\tau$ viết tắt cho
+$MM;\Gamma\vdash e\Rightarrow b:\tau$.
+
+\begingroup\small
+\begin{longtable}{p{0.12\textwidth}p{0.45\textwidth}p{0.35\textwidth}}
+\toprule
+Luật & Tiền đề & Kết quả/kiểu Bound\\
+\midrule
+B-Inv & $resolveClass(ctx)=C$; bind $p$ thành Boolean dưới $\{self:C\}$ &
+$ContextInvariant(ctx,R,p)\Rightarrow BInvariant(C,R,b)$\\
+B-Self & $\Gamma(self)=C$ & $self\Rightarrow BSelf(C):C$\\
+B-Var & $nearest(\Gamma,x)=\tau$ & $x\Rightarrow BVar(x,\tau):\tau$\\
+B-Lit & $typeOfLiteral(c)=\tau$ & $c\Rightarrow BLiteral(c,\tau):\tau$\\
+B-SetLit & $n\geq1$; $e_i\Rightarrow b_i:\tau_i$; $setJoin(\tau_1,\ldots,\tau_n)=\tau$;
+không $\tau_i$ nào là collection & $Set\{e_1,\ldots,e_n\}\Rightarrow BSetLiteral([b_1,\ldots,b_n]):Set(\tau)$\\
+B-Attr & $e\Rightarrow b:D$; $resolveProperty(D,n,[])=Attr(a,\tau)$ &
+$e.n\Rightarrow BAttribute(b,a,\tau):\tau$\\
+B-Nav & $e\Rightarrow b:\sigma$, $\sigma\in\{D,Set(D)\}$;
+$q_i\Rightarrow b_i:\sigma_i$; resolver trả về $(A,fr,tr,dir,E,\bar\sigma)$ &
+$e.r[\bar q]\Rightarrow BNavigation(b,A,fr,tr,dir,\bar b):Set(E)$\\
+B-AllInst & $resolveClass(name)=C$ & $C.allInstances()\Rightarrow BAllInstances(C):Set(C)$\\
+B-Not & $p\Rightarrow b:Boolean$ & $not\ p\Rightarrow BNot(b):Boolean$\\
+B-Bool & $e_i\Rightarrow b_i:Boolean$; $op\in\{and,or,xor,implies\}$ &
+$e_1\ op\ e_2\Rightarrow BBinary(op,b_1,b_2):Boolean$\\
+B-Eq & $e_i\Rightarrow b_i:\tau_i$; các kiểu so sánh được; $op\in\{=,<>\}$ &
+$BBinary(op,b_1,b_2):Boolean$\\
+B-Ord & $\tau_i$ tương thích số; $op\in\{<,\leq,>,\geq\}$ &
+$BBinary(op,b_1,b_2):Boolean$\\
+B-Arith & $arithResult(op,\tau_1,\tau_2)=\tau$ &
+$BBinary(op,b_1,b_2):\tau$\\
+B-If & $c:Boolean$, các nhánh $\tau_1,\tau_2$; $join(\tau_1,\tau_2)=\tau$ &
+$BIf(b_c,b_t,b_f,\tau):\tau$\\
+B-Let & $init\Rightarrow b_i:\tau_1$, $\tau_1\leq T$; thân $\tau_2$ dưới $\Gamma[x:T]$ &
+$BLet(x,T,b_i,b_b,\tau_2):\tau_2$\\
+B-Exists/ForAll & $S:Set(\tau)$; $P:Boolean$ dưới $\Gamma[x:\tau]$ &
+$BIterator(op,b_S,x,b_P):Boolean$\\
+B-Select/Reject & cùng tiền đề nguồn và thân Boolean &
+$BIterator(op,b_S,x,b_P):Set(\tau)$\\
+B-Collect & $S:Set(\tau)$; $E:\sigma$ dưới $\Gamma[x:\tau]$; $\sigma\neq Set(\_)$ &
+$BIterator(collect,b_S,x,b_E):Set(\sigma)$\\
+B-IsUnique & $S:Set(\tau)$; $E:\sigma$ dưới $\Gamma[x:\tau]$; $\sigma\neq Set(\_)$ &
+$BIterator(isUnique,b_S,x,b_E):Boolean$\\
+B-Member & $S:Set(\tau)$; $e:\sigma$; các kiểu so sánh được &
+$BCollectionOp(includes/excludes,b_S,[b_e]):Boolean$\\
+B-SetRel & $S:Set(\tau)$; $T:Set(\sigma)$; các kiểu phần tử so sánh được &
+$BCollectionOp(includesAll/excludesAll,b_S,[b_T]):Boolean$\\
+B-SetComb & $S:Set(\tau)$; $T:Set(\sigma)$; $setJoin(\tau,\sigma)=\upsilon$ &
+$BCollectionOp(union/intersection,b_S,[b_T]):Set(\upsilon)$\\
+B-AsSet & $S:Set(\tau)$ & $BCollectionOp(asSet,b_S,[]):Set(\tau)$\\
+B-Size & $S:Set(\tau)$ & $BCollectionOp(size,b_S,[]):Integer$\\
+B-Empty & $S:Set(\tau)$ & $BCollectionOp(isEmpty/notEmpty,b_S,[]):Boolean$\\
+B-Kind & $e:D$; $resolveClass(name)=C$ & $BTypeOp(kindOf,b,C):Boolean$\\
+B-Cast & $e:D$; $resolveClass(name)=C$ & $BTypeOp(cast,b,C):C$\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Mọi phán đoán con bị lược bỏ trong một dòng rút gọn đều là tiền đề dưới
+$\Gamma$ hiện tại. Chỉ thân iterator và let dùng mở rộng được hiển thị. Nếu bất
+kỳ tiền đề nào thất bại thì binder bộ phận không xác định. $TopLevelQuery$
+không phải gốc invariant và nằm ngoài Định lý~6. \texttt{oclIsTypeOf} là phần
+mở rộng của prototype/parser và không có luật binder được chứng nhận.
+
+\subsection{Chứng nhận ngữ nghĩa Source/Bound đầy đủ}
+
+Đánh giá Source và Bound được định nghĩa trên các miền có gắn thẻ rời nhau
+$Val_S$ và $Val_B$. Các họ phép toán của chúng
+$truth_S,finite_S,eq_S,ord_S,arith_S,nav_S$ và
+$truth_B,finite_B,eq_B,ord_B,arith_B,nav_B$ được định nghĩa độc lập từ cú pháp
+và thông tin định kiểu tương ứng; không bộ đánh giá nào gọi ngữ nghĩa VA. Viết
+$S(a,\rho_S)=\sem{a}{S}(M,\rho_S)$ và
+$B(b,\rho_B)=\sem{b}{B}(M,\rho_B)$.
+
+Định nghĩa quan hệ logic có kiểu nhỏ nhất $\sim_{SB}$ bằng các thẻ Boolean, vô
+hướng, thực thể, bottom và tập hữu hạn tương ứng, trong đó các tập hữu hạn liên
+hệ theo ngoại diên. Các môi trường liên hệ theo từng điểm. Định nghĩa các phép
+xóa thẻ toàn phần
+\[
+erase_S:Val_S\to Val_{obj},\qquad erase_B:Val_B\to Val_{obj}
+\]
+theo từng thành phần trên bottom, các thẻ Boolean/vô hướng/thực thể và đệ quy
+trên tập hữu hạn. Cầu nối xóa thẻ là
+\[
+v_S\sim_{SB}v_B\Longrightarrow erase_S(v_S)=erase_B(v_B).
+\]
+Với môi trường không gắn thẻ $\rho$, cho $tag_S(\rho)$ và $tag_B(\rho)$ áp dụng
+các thẻ tương ứng theo từng điểm, rồi định nghĩa ngữ nghĩa công khai bởi
+\[
+\sem{s}{OCL_{val}}(M,\rho)
+=erase_S(\sem{s}{S}(M,tag_S(\rho))),
+\]
+\[
+\sem{b}{Bound}(M,\rho)
+=erase_B(\sem{b}{B}(M,tag_B(\rho))).
+\]
+Bảng sau bao phủ mọi dòng binder thành công; ngữ nghĩa con tương ứng sinh ra
+ngữ nghĩa cha tương ứng.
+
+\begingroup\scriptsize
+\begin{longtable}{p{0.20\textwidth}p{0.35\textwidth}p{0.38\textwidth}}
+\toprule Dạng Source/Bound & Phương trình Source & Phương trình Bound / lý do\\ \midrule
+self, biến, literal & giá trị môi trường hoặc literal gắn thẻ Source & giá trị gắn thẻ Bound tương ứng\\
+Set literal & nâng từng phần tử Source tới kiểu $setJoin$ rồi lấy tập ngoại diên & cùng phép nâng có kiểu trên các phần tử Bound tương ứng\\
+thuộc tính & quan sát thuộc tính Source trên $S(src,\rho_S)$ & quan sát thuộc tính Bound trên $B(b,\rho_B)$\\
+navigation có qualifier & hợp của $nav_S$ trên các receiver gắn thẻ Source sau khi đánh giá qualifier có thứ tự & hợp của $nav_B$ với liên kết, role, hướng, số ngôi và thứ tự qualifier đã phân giải\\
+$allInstances(C)$ & $allInstances_{obj}(C)$ & cùng tập lớp đã phân giải\\
+not/Boolean nhị phân & $truth_S/bool_S$ được định nghĩa độc lập & $truth_B/bool_B$ được định nghĩa độc lập\\
+đẳng thức/thứ tự & $eq_S/ord_S$ trên các thẻ Source & $eq_B/ord_B$ dùng các kiểu tĩnh đã phân giải\\
+số học & $arith_S(op,S(e_1,\rho_S),S(e_2,\rho_S))$ & $arith_B(op,B(b_1,\rho_B),B(b_2,\rho_B))$\\
+if & nhánh được $truth_S$ chọn & nhánh tương ứng được $truth_B$ chọn\\
+let & mở rộng môi trường Source & mở rộng môi trường Bound tương ứng\\
+exists/forAll & lượng hóa trên $finite_S$ & lượng hóa trên $finite_B$ dưới các mở rộng tương ứng\\
+isUnique & tính đơn ánh của ảnh thân trên nguồn hữu hạn & cùng phép kiểm tra đơn ánh hữu hạn trên thân Bound\\
+select/reject & giữ phần tử có thân đúng/không đúng theo kiểm tra & cùng phép bao hàm tập hữu hạn cho thân Bound\\
+collect theo tập hữu hạn & $\{S(E,\rho[x\mapsto s])\mid s\in\finiteSet(S(src,\rho))\}$ & cùng ảnh dùng $B(b_E,\rho[x\mapsto s])$; không làm phẳng hoặc giữ bội số\\
+quan hệ thuộc/quan hệ tập & quan hệ thuộc, tập con hoặc rời nhau trên $\finiteSet$ & cùng quan hệ tập hữu hạn có kiểu\\
+union/intersection/asSet & nâng về kiểu kết quả rồi hợp, giao hoặc đồng nhất ngoại diên & cùng phép nâng và phép toán tập hữu hạn trên Bound\\
+size/tính rỗng & lực lượng hoặc tính rỗng của $\finiteSet(S(src,\rho))$ & cùng phép toán trên $\finiteSet(B(b_S,\rho))$\\
+kindOf/cast & quan hệ phù hợp hoặc giá trị/bottom có guard cho $C$ đã phân giải & phép toán Bound tương ứng được định nghĩa độc lập\\
+gốc invariant & $\boolval(S(p,\rho[self\mapsto o]))$ cho từng đối tượng ngữ cảnh & $\boolval(B(b,\rho[self\mapsto o]))$\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\begin{lemma}[SB0 Tương ứng toán tử độc lập]
+Với mọi dòng định kiểu được chấp nhận, các toán hạng tương ứng sinh kết quả
+tương ứng dưới các phép toán Source và Bound được định nghĩa độc lập. Mở rộng
+môi trường bằng các giá trị tương ứng bảo toàn quan hệ theo từng điểm.
+\end{lemma}
+\begin{proof}
+Phân tích hữu hạn các trường hợp trên thẻ Boolean/vô hướng được chấp nhận và
+lập luận ngoại diên cho tập hữu hạn. Set literal, hợp và giao dùng cùng phép
+nhúng chuẩn có tính hàm từ M3a trước khi so sánh ngoại diên. Navigation
+dùng metadata đã phân giải duy nhất của B3; mở rộng iterator và let dùng B4.
+Không constructor VA nào xuất hiện trong chứng minh này.
+\end{proof}
+Do đó bảng là phân hoạch trường hợp cục bộ đầy đủ cho Định lý~1.
+
+\section{Danh mục bổ đề}
+
+\subsection{Các bổ đề biểu diễn cho Định lý 0}
+
+\begin{lemma}[R1 Tính đơn ánh của đối tượng]
+Với mọi $o_1,o_2\in \Obj(M)$,
+\[
+\node(o_1)=\node(o_2) \iff o_1=o_2.
+\]
+\end{lemma}
+\begin{proof}
+Theo hợp đồng mã hóa, mỗi đối tượng được gán một định danh ổn định, đơn ánh và
+chính xác một nút đồ thị lưu định danh đó. Nếu hai nút đối tượng bằng nhau thì
+chúng có cùng \texttt{use\_id}; tính đơn ánh của định danh đối tượng cho
+$o_1=o_2$. Ngược lại, nếu $o_1=o_2$ thì tính hàm của phép dựng nút cho
+$\node(o_1)=\node(o_2)$ sau khi thay hai đối số bằng cùng một đối tượng.
+\end{proof}
+
+\begin{lemma}[R2 Tính chính xác đối tượng--nút]
+Với mọi $o\in \Obj(M)$, tồn tại duy nhất $n\in \Node(G)$ sao cho
+\[
+\RepG(o,n).
+\]
+Ngược lại, với mọi nút đối tượng nhìn thấy bởi kiểm tra
+$n\in\ObjNodeVal(G)$, tồn tại duy nhất $o\in\Obj(M)$ sao cho
+$\RepG(o,n)$. Tương đương,
+\[
+\ObjNodeVal(G)=\{\node(o)\mid o\in\Obj(M)\}.
+\]
+Ký hiệu $\node(o)$ chỉ nút duy nhất này; do đó
+$\prop(\node(o),\texttt{use\_id})=\id(o)$.
+\end{lemma}
+\begin{proof}
+Theo mệnh đề kiến tạo đối tượng--nút, $\PhiEnc$ sinh ít nhất một nút từ mỗi đối
+tượng và lưu $\id(o)$ làm \texttt{use\_id}. Mệnh đề mỗi đối tượng một nút cho
+tính duy nhất. Mệnh đề không có nút đối tượng giả cung cấp sự tồn tại và duy
+nhất theo chiều ngược cho mọi nút trong $\ObjNodeVal(G)$. Vì vậy $\node$ là
+song ánh giữa $\Obj(M)$ và $\ObjNodeVal(G)$; đẳng thức accessor suy ra từ định
+nghĩa $\RepG$.
+\end{proof}
+
+\begin{lemma}[R3 Bảo toàn kiểu]
+Với mọi đối tượng $o$ và lớp $C$,
+\[
+o \ \mathrm{conformsTo}\ C
+\iff
+\node(o)\in I^{graph}_{class}(C).
+\]
+Tương đương,
+\[
+o \ \mathrm{conformsTo}\ C
+\iff
+(\node(o))-[:\mathrm{ObjectInstanceOf}]\to(\classNode(C)).
+\]
+\end{lemma}
+\begin{proof}
+Chiều thuận đúng vì phép mã hóa vật chất hóa các cạnh
+\texttt{ObjectInstanceOf} cho lớp runtime và mọi siêu kiểu phù hợp. Chiều
+ngược suy ra từ điều kiện không có cạnh kiểu giả: mọi cạnh kiểu nhìn thấy bởi
+kiểm tra đều được sinh từ một sự kiện phù hợp thực sự.
+\end{proof}
+
+\begin{lemma}[R4 Bảo toàn thuộc tính]
+Với mọi đối tượng $o$ và thuộc tính $a$,
+\[
+\mathrm{attrVal}_M(o,a)=I^{graph}_{attr}(\node(o),a).
+\]
+\end{lemma}
+\begin{proof}
+Đây chính là mệnh đề accessor thuộc tính của hợp đồng mã hóa đồ thị: accessor
+đồ thị chuẩn $I^{graph}_{attr}$ quan sát cùng giá trị với phép tra cứu thuộc
+tính trên mô hình đối tượng.
+\end{proof}
+
+\begin{lemma}[R5 Bảo toàn liên kết]
+Với mọi liên kết nhị phân $A$,
+\[
+(o_1,sr,\bar q_s,o_2,tr,\bar q_t)\in \mathrm{links}_M(A)
+\]
+khi và chỉ khi tồn tại $r\in \Rel(G)$ sao cho:
+\[
+\src(r)=\node(o_1),\quad \trg(r)=\node(o_2),
+\]
+\[
+\prop(r,\texttt{associationKey})=associationKey_{MM}(A),\quad
+\prop(r,\texttt{sourceRole})=sr,\quad
+\prop(r,\texttt{targetRole})=tr,
+\]
+và hai danh sách qualifier đã mã hóa khớp theo đúng đầu:
+\[
+\mathrm{qualifierMatches}(\mathrm{encodeQualifierList}(\bar q_s),
+  \prop(r,\texttt{sourceQualifiers}))
+\]
+\[
+\land\quad
+\mathrm{qualifierMatches}(\mathrm{encodeQualifierList}(\bar q_t),
+  \prop(r,\texttt{targetQualifiers})).
+\]
+\end{lemma}
+\begin{proof}
+Nếu liên kết UML tồn tại, $\PhiEnc$ xuất ít nhất một quan hệ \texttt{Link*}
+tương ứng có cùng \texttt{associationKey}, role, đầu mút và hai danh sách
+qualifier có hướng. Ngược lại,
+theo điều kiện không có liên kết giả, mọi quan hệ \texttt{Link*} nhìn thấy bởi
+kiểm tra đều được sinh từ một liên kết UML. Tính duy nhất của đầu mút suy ra từ
+R1 và R2. Chiều phản xạ của đẳng thức qualifier dùng tính đơn ánh của
+$\mathrm{encodeQualifierList}$ trên các danh sách có thứ tự, đúng số ngôi đã
+khai báo và thuộc các loại qualifier nguyên thủy được hỗ trợ. Không cần tính
+duy nhất của quan hệ vì các hiện thực hóa phía sau dùng ngữ nghĩa tập.
+\end{proof}
+
+\begin{lemma}[R6 Bảo toàn navigation]
+Với mọi navigation nhị phân được hỗ trợ có các biểu thức qualifier
+$\bar q=[q_1,\ldots,q_k]$, đặt
+$rawQs=[\sem{q_1}{obj}(\rho),\ldots,\sem{q_k}{obj}(\rho)]$ và
+$encodedQs=\mathrm{encodeQualifierList}(rawQs)$. Khi đó
+\[
+\{\node(y)\mid y\in nav_{obj}(o,A,fromRole,toRole,direction,rawQs)\}
+=
+nav_{graph}(\node(o),A,fromRole,toRole,direction,encodedQs).
+\]
+Theo quy ước association-end của OCL/USE, navigation thuận đối chiếu $rawQs$
+với qualifier của đầu nguồn và trường \texttt{sourceQualifiers}; navigation
+ngược đối chiếu qualifier của đầu đích và trường \texttt{targetQualifiers}.
+Quy ước này là một phần của metadata hướng đã phân giải, không được suy ra từ
+tên role tại thời gian render.
+\end{lemma}
+\begin{proof}
+Hai bao hàm suy ra từ R5. Một kết quả navigation UML tương ứng với liên kết
+được xuất thành quan hệ đồ thị, nên nút đích của nó xuất hiện trong
+$nav_{graph}$. Ngược lại, mọi kết quả navigation đồ thị đến từ một quan hệ
+\texttt{Link*} khớp; theo điều kiện không có liên kết giả, quan hệ đó tương ứng
+với một liên kết UML. Metadata navigation đã phân giải cố định việc khớp hướng
+và role. Các biểu thức qualifier được đánh giá trước; sau đó phép so sánh dùng
+phép tuần tự hóa danh sách đơn ánh, theo từng thành phần và bảo toàn thứ tự.
+\end{proof}
+
+\begin{lemma}[R7 Bảo toàn allInstances]
+Với mọi lớp $C$,
+\[
+\{\node(o)\mid o\in allInstances_{obj}(C)\}
+=
+allInstances_{graph}(C).
+\]
+\end{lemma}
+\begin{proof}
+Theo ngữ nghĩa đối tượng hữu hạn, $o\in allInstances_{obj}(C)$ khi và chỉ khi
+$o$ phù hợp với $C$. Theo R3, điều này tương đương với việc $\node(o)$ có cạnh
+\texttt{ObjectInstanceOf} tới $\classNode(C)$, tức chính xác là quan hệ thuộc
+$allInstances_{graph}(C)$.
+\end{proof}
+
+\begin{remark}[Vị thế kiến tạo của $\Phi$]
+Định lý~0 là tính đầy đủ dưới hợp đồng mã hóa tường minh, không phải định lý về
+mọi bộ mã hóa tùy ý. Định nghĩa $\Phi^{\star}(MM,M)$ là đồ thị nhỏ nhất nhìn
+thấy bởi kiểm tra, được sinh bởi: một schema subgraph $G_{M_2}$ lưu đầy đủ các
+khai báo M2 cần cho resolver được chấp nhận, gồm lớp, thuộc tính và kiểu, liên
+kết nhị phân và đầu mút, role, qualifier cùng kế thừa; chính xác một nút
+\texttt{Class} có
+$classKey$ đơn ánh cho mỗi lớp; chính xác một nút đối tượng có
+\texttt{use\_id} đơn ánh cho mỗi đối tượng; chính xác một cạnh
+\texttt{ObjectInstanceOf} cho mỗi cặp phù hợp đúng; chính xác một nút
+\texttt{AttributeValue} và cạnh \texttt{ObjectHasAttribute} cho mỗi vị trí
+$(o,a)$ được chấp nhận, dùng khóa $attributeKey_{MM}(a)$ và lưu
+$storeScalar(attrVal_M(o,a))$; cùng chính xác một quan hệ \texttt{Link} cụ thể
+cho mỗi liên kết UML nhị phân được chấp nhận, lưu $associationKey_{MM}(A)$,
+các role và hai danh sách \texttt{sourceQualifiers}/\texttt{targetQualifiers}
+có thứ tự. Không có sự kiện nào khác nhìn thấy
+bởi kiểm tra. Ở đây $storeScalar$ đơn ánh và
+$readScalar(storeScalar(v))=v$. Các chiều thuận của R2--R5 suy ra từ phép sinh,
+các chiều ngược suy ra từ tính nhỏ nhất/chính xác; R6--R7 suy ra theo ngoại diên.
+\end{remark}
+
+\begin{definition}[Tính đầy đủ của adapter mã hóa cụ thể]
+Với đồ thị cụ thể $G_{impl}$, profile adapter $P$ cung cấp các quan sát về đối
+tượng/định danh, lớp, kiểu, thuộc tính, navigation, all-instances và một
+$GraphMMView_P$ trên schema subgraph M2.
+$AdapterAdequate(P,G_{impl},MM,M)$ đúng khi và chỉ khi mọi quan sát có thể đạt
+tới bởi định lý đều được định nghĩa và bằng quan sát tương ứng của
+$\Phi^{\star}(MM,M)$ sau ánh xạ đối tượng--nút bảo toàn định danh. Vì vậy,
+prototype hiện dùng tra cứu chính xác \texttt{classKey},
+\texttt{attributeKey}, \texttt{associationKey}, cùng
+\texttt{sourceQualifiers}/\texttt{targetQualifiers} theo hướng; các quan sát đó
+phải được chứng minh đầy đủ, không giả và duy nhất trong profile đã công bố.
+Vì production sinh text trực tiếp, bridge implementation phải kiểm tra text đó
+bằng parser độc lập, expected formal tree và parser Neo4j đã ghim; nó không được
+giả định production đi qua \texttt{RawCypherAst}. Cho tới khi các nghĩa vụ phổ
+quát còn lại được thỏa, Định lý~0--6 áp dụng cho profile chuẩn, không tự động áp
+dụng cho toàn bộ prototype.
+\end{definition}
+
+\begin{remark}[Ranh giới binding và thực thi]
+Binder hoặc adapter siêu mô hình được phép duyệt các relationship trong
+$G_{M_2}$ để phân giải association end, role, hướng ngữ nghĩa, kiểu đích,
+qualifier và kế thừa. Nó không được duyệt các relationship link của $G_{M_1}$
+để đoán ý nghĩa property hoặc chuyên biệt hóa truy vấn theo dataset hiện tại.
+Kết quả binding chứa metadata M2 đã phân giải; $T_{\mathrm{TEXT}}$ dùng metadata
+đó cùng profile mã hóa để sinh pattern, và chỉ khi thực thi pattern mới khớp
+các relationship instance của M1.
+\end{remark}
+
+\begin{remark}[Trạng thái adapter của prototype]
+Prototype hiện tại cung cấp bằng chứng bộ phận, chưa hoàn thành nghĩa vụ
+$AdapterAdequate$. Adapter chuẩn dùng khóa định tính cho lớp, thuộc tính và liên
+kết, lưu role cùng qualifier có thứ tự theo cả hai hướng, và có thể dựng M2 view
+từ siêu mô hình USE hoặc từ phần M2 trong graph. Oracle snapshot độc lập không
+tìm thấy fact R1--R7 thiếu hoặc giả trên ba fixture khác nhau; chín mutation về
+định danh, kiểu, thuộc tính, link, hướng qualifier, all-instances và khóa đều bị
+phát hiện. Trên fixture kế thừa có qualifier, hai M2 view bằng nhau ngoại diên
+và sinh cùng Cypher cùng ánh xạ tham số. Tuy nhiên, đây vẫn là bằng chứng hữu hạn
+đa fixture, không phải chứng minh phổ quát của $AdapterAdequate$.
+
+Production sinh text trực tiếp từ query plan. Parser độc lập đã chuẩn hóa ổn
+định 47 truy vấn admitted; witness bao phủ 17/17 constructor plan; 52 truy vấn
+đã khớp chính xác canonical token/group tree được duyệt, gồm nested shadowing.
+Parser Neo4j Cypher 5 từ artifact \texttt{cypher-parser-factory-2026.06.0.jar}
+cũng chấp nhận 52/52 và selected internal-AST-kind projection khớp các witness;
+direction, \texttt{COUNT}/\texttt{COLLECT} và nested scope/alias được giữ. Đây
+là bằng chứng hữu hạn, chưa chứng minh full-AST, semantic-analysis hoặc tương
+đương phổ quát với raw AST hình thức.
+
+Từ ngày 2026-08-01, document và single-rule validation dùng
+\texttt{compileFileWithCertifiedContextInvariants}; mọi \texttt{Class::inv}
+được compile đều đi qua pre-admission, certified binder và post-binding
+admission như instrumented path. Trước execution, service đối chiếu lại
+text/parameter với instrumented result và chạy expression-level
+\texttt{ScalarClosed} bằng exact \texttt{attributeKey} observations từ graph.
+Research Tool chạy graph \texttt{BottomSeparated}, stored-scalar scan,
+USE-observed expression \texttt{ScalarClosed} và generated-bottom gate. Full
+static gate sau integration đạt 247/247, mutation score 20/20. Runtime
+follow-up trên Neo4j Kernel 2026.06.0 Enterprise/Cypher 5/database
+\texttt{demo} đạt 47/47 violation sets với premise gate mới; năm dialect smoke probe
+và ba bottom/scalar/receiver probe đều pass, không skip. Kết quả này không thay
+thế ngữ nghĩa hình thức đầy đủ của Neo4j. Chứng minh giấy hiện cũng chưa được cơ
+giới hóa trong proof assistant.
+\end{remark}
+
+\begin{lemma}[PA14d: Đồng thuận projection với parser Neo4j đã chọn]
+Gọi $parseN5$ là \texttt{AstParserFactory(CypherVersion.Cypher5)} phiên bản
+2026.06.0 và $projN5$ là phép chiếu AST nội bộ bỏ source position/object identity
+nhưng giữ constructor/field order, schema/property/function name, parameter,
+literal, direction và alias. Với 52 trường hợp đã kiểm tra (gồm 47 certified),
+$parseN5(text(P_i))$ được định nghĩa. Mọi yêu cầu AST-kind của witness theo
+17/17 constructor đều có đồng thời một quan sát từ parser fragment độc lập và
+một node/type tương ứng trong $projN5(parseN5(text(P_i)))$.
+\end{lemma}
+\begin{proof}
+\texttt{Neo4jCypherAstBridgeTest} ghim đúng JAR, parse 52/52, kiểm projection lặp
+lại là deterministic, từ chối hai syntax mutant và phân biệt hai direction cùng
+\texttt{CountExpression}/\texttt{CollectExpression}. Fixture shadowing có hai
+\texttt{FilterScope} và giữ alias tường minh. \texttt{ExpectedFormalCypherTreeVerifier}
+chỉ chấp nhận AST-kind khi cả hai oracle cùng witness. Focused suite đạt 6/6;
+checkpoint static khi đó đạt 250/250 cả bình thường và Maven offline, không
+failure/error/skip. Đây là chứng minh kiểm
+tra hữu hạn của selected projection, không phải full-AST hoặc ngữ nghĩa Neo4j.
+\end{proof}
+
+\begin{remark}[PO-15: bằng chứng runtime một-hàng-mỗi-CY]
+Ngày 2026-08-01, \texttt{Cypher5ValDialectRealNeo4jTest} chạy đúng một query,
+fixture và oracle cho mỗi CY1--CY9. Fixture transaction có hai physical link
+paths tới một semantic target, hai hướng navigation, exact
+\texttt{associationKey}/role/qualifier, bottom được biểu diễn, null, duplicate,
+alias tường minh và nhánh tương quan lồng nhau. Kết quả 9/9 pass trên Neo4j
+Kernel 2026.06.0 Enterprise, Cypher 5, database \texttt{demo}, driver dependency
+5.21.0. Manifest TSV ghim profile và SHA-256 của renderer, canonical encoding,
+probe matrix và runtime harness; guard 2/2 bắt duplicate/FAIL row, altered
+observation và stale hash.
+Checkpoint static sau đó đạt 252/252 từ Maven cache, mutation score
+20/20, proof sync pass. Manifest đó hiện là schema-v1/contract-.2, dirty và bị
+freshness guard của contract-.3 từ chối; vì vậy PO-15 đã mở lại cho clean capture.
+CY1--CY9 vẫn là tiên đề hành vi tin cậy chứ không thành bổ đề toán học.
+\end{remark}
+
+\begin{remark}[PO-16: non-vacuity và exact-ID differential]
+Manifest kỳ vọng được duyệt trước khi chạy Cypher cố định exact violation IDs
+và lý do ngữ nghĩa cho C01--C47. Fixture hợp lệ multiplicity tạo đồng thời
+satisfying và violating objects cho cả 28 case có countermodel. Native USE và
+Neo4j Kernel 2026.06.0 cùng trả đúng các tập đã chốt: 47/47 equivalent, 28 mixed,
+19 all-pass, không all-violate hoặc empty context. Mười chín all-pass là các
+profile tautology: identity/reflexivity (C01,C02,C16,C24), literal/order/control
+(C03,C15,C26), multiplicity/context/type (C09,C11,C33,C34,C40,C41), arithmetic
+không overflow dưới \texttt{ScalarClosed} (C22,C23), và luật cardinality/tập hữu
+hạn (C30,C31,C35,C37). Guard evidence ghim expected manifest, fixture, renderer,
+encoding, runtime harness và profile; checkpoint static khi đó đạt 255/255,
+mutation score 20/20. Manifest hiện là schema-v1/contract-.2, dirty và stale,
+nên PO-16 mở cho clean schema-v2 recapture. Đây vẫn là evidence hữu hạn, không phải equivalence cho
+mọi model/OCL input.
+\end{remark}
+
+\subsection{Các bổ đề biến đổi và hiện thực hóa}
+
+\begin{lemma}[F1 Biểu diễn $\OCLval$ và rebinding Bound]
+Với mọi $s\in\OCLval$, $encode_{ast}(s)\in\ASTval$ và
+$decode_{val}(encode_{ast}(s))=s$. Nếu binding thành công với
+$T_{\mathrm{BIND}}(encode_{ast}(s),MM)=v$, thì:
+\begin{enumerate}[label=(\roman*)]
+  \item $encode_{ast}(s)$ phù hợp siêu mô hình OCL AST;
+  \item $v\in\BoundOCLval(MM)$;
+  \item $erase_{bound}(v)\equiv_{\alpha}encode_{ast}(s)$;
+  \item mọi construct trong $s$ và $v$ thuộc phạm vi định lý;
+  \item không construct bị loại nào xuất hiện.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+M1 chứng minh mệnh đề Source--AST. Với round trip Bound, quy nạp trên suy dẫn
+binding thành công. Constructor cơ sở xóa thành nút parser tương ứng; constructor
+hợp thành dùng giả thiết quy nạp cho các phần tử con. B1 khôi phục tham chiếu UML,
+B3 khôi phục tuple navigation duy nhất và B4 khôi phục phạm vi iterator/let.
+Hai cây chỉ có thể khác bởi tên mới, nên tương đương alpha. Construct bị loại
+không có phương trình decode hoặc trường hợp binding.
+\end{proof}
+
+\begin{lemma}[B1 Tính đúng đắn của phân giải tên]
+Nếu $MM;\Gamma\vdash ast\Rightarrow b:\tau$, mọi tham chiếu biến biểu thị
+binding gần nhất trong $\Gamma$, và mọi tham chiếu UML được lưu là phần tử duy
+nhất do resolver đầy đủ trả về. Vì vậy nó biểu thị cùng thực thể ngữ nghĩa với
+AST nguồn được chấp nhận.
+\end{lemma}
+\begin{proof}
+Quy nạp trên suy dẫn binding. Các trường hợp biến và self dùng tra cứu gần nhất
+trên stack. Các trường hợp lớp, thuộc tính, navigation và toán tử kiểu dùng
+tính đầy đủ của resolver và lưu phần tử UML được trả về thay vì tên bề mặt.
+Các trường hợp phức hợp dùng giả thiết quy nạp; tra cứu không được hỗ trợ không
+có suy dẫn.
+\end{proof}
+
+\begin{lemma}[B2 Tính đúng đắn của gán kiểu]
+Nếu $MM;\Gamma\vdash ast\Rightarrow b:\tau$ thì
+$MM;\Gamma\vdash b:\tau$. Mọi suy dẫn con có kiểu đều có tính chất tương tự;
+khi đánh giá của nó cho giá trị khác bottom, giá trị đó thuộc diễn giải của
+kiểu đã gán.
+\end{lemma}
+\begin{proof}
+Quy nạp trên suy dẫn binding. Mọi luật binding kết luận bằng luật định kiểu
+tương ứng đã nêu. Một quy nạp đồng thời chứng minh quan hệ thuộc của giá trị
+bằng tính đầy đủ kiểu của resolver, tính đóng của phép toán vô hướng, phép dựng
+tập hữu hạn và các giả thiết quy nạp dưới mở rộng môi trường.
+\end{proof}
+
+\begin{lemma}[B3 Tính tất định của phân giải navigation]
+Nếu binding một lời gọi thuộc tính được hỗ trợ thành navigation thành công, nó
+sinh một bộ duy nhất
+\[
+(A,fromRole,toRole,direction,qualifierTypes)
+\]
+tương thích với kiểu receiver và $MM$. Navigation mơ hồ hoặc không được hỗ trợ
+bị từ chối.
+\end{lemma}
+\begin{proof}
+$resolveNavigation$ là hàm bộ phận. Do đó hai suy dẫn thành công cho cùng kiểu
+receiver, role và kiểu qualifier nhận các bộ bằng nhau. Tra cứu mơ hồ hoặc
+không được hỗ trợ là không xác định và không có suy dẫn binding.
+\end{proof}
+
+\begin{lemma}[B4 Bảo toàn phạm vi từ vựng và che khuất]
+Các biến iterator và let được bind trong cùng phạm vi từ vựng như trong OCL,
+kể cả che khuất.
+\end{lemma}
+\begin{proof}
+Các luật binding dùng $\Gamma[x:\tau]$ đúng trong khi suy dẫn thân iterator
+hoặc let và khôi phục $\Gamma$ sau đó. Tra cứu gần nhất phân giải $x$ tới
+binding mới và bảo toàn mọi $y\neq x$. Quy nạp theo độ sâu lồng nhau chứng minh
+mệnh đề; đổi tên alpha bằng tên mới không đổi ngữ nghĩa.
+\end{proof}
+
+\begin{lemma}[A1 Bảo toàn kiểu từ Bound sang VA]
+Nếu $MM;\Gamma\vdash b:\tau$ và $T_{\mathrm{VA}}(b)=v$ thì
+$MM;\Gamma\vdash v:\tau$ trong hệ định kiểu VA.
+\end{lemma}
+\begin{proof}
+Quy nạp cấu trúc trên suy dẫn định kiểu Bound. Các trường hợp self, biến và
+literal trực tiếp bảo toàn kiểu đã khai báo. Các trường hợp thuộc tính,
+navigation và toán tử kiểu sao chép phần tử siêu mô hình đã phân giải và dùng
+luật định kiểu VA tương ứng. Các trường hợp vô hướng và Boolean áp dụng cùng
+tiền đề tương thích toán hạng. Các trường hợp iterator, collection, let và if
+dùng giả thiết quy nạp dưới cùng mở rộng môi trường; B4 cung cấp kiểu binder và
+kỷ luật che khuất. Do đó mỗi constructor được sinh có chính xác kiểu kết quả
+nguồn đã dịch, kể cả kiểu phần tử tập hữu hạn.
+\end{proof}
+
+\begin{lemma}[A2 Mô phỏng cục bộ từ Bound sang VA]
+$T_{\mathrm{VA}}$ là hàm cấu trúc toàn phần trên các term đã binding thành
+công, được cho bởi bảng đầy đủ sau, trong đó $V=T_{\mathrm{VA}}$.
+
+\begingroup\small
+\begin{longtable}{p{0.48\textwidth}p{0.45\textwidth}}
+\toprule Constructor Bound & Kết quả VA\\ \midrule
+$BSelf(C)$; $BVar(x,\tau)$; $BLiteral(c,\tau)$ & $Self$; $Var(x)$; $Literal(c)$\\
+$BSetLiteral([e_1,\ldots,e_n],Set(\tau))$ & $SetLiteral([V(e_1),\ldots,V(e_n)])$\\
+$BAttribute(e,a,\tau)$ & $Attribute(V(e),a)$\\
+$BNavigation(e,A,fr,tr,dir,\bar q,Set(E))$ & $Navigation(V(e),A,fr,tr,dir,V(\bar q))$\\
+$BAllInstances(C)$; $BNot(e)$ & $AllInstances(C)$; $Not(V(e))$\\
+$BBinary(and/or/implies,e_1,e_2)$ & $And/Or/Implies(V(e_1),V(e_2))$\\
+$BBinary(op,e_1,e_2)$, so sánh & $Compare(mapCompare(op),V(e_1),V(e_2))$\\
+$BBinary(op,e_1,e_2)$, số học & $Arith(mapArith(op),V(e_1),V(e_2))$\\
+$BIf(c,t,f,\tau)$ & $If(V(c),V(t),V(f))$\\
+$BLet(x,T,e,b,\tau)$ & $Let(x,V(e),V(b))$\\
+$BIterator(exists/forAll,S,x,P)$ & $Exists/ForAll(V(S),x,V(P))$\\
+$BIterator(select/reject,S,x,P)$ & $Select/Reject(V(S),x,V(P))$\\
+$BIterator(collect,S,x,E)$ & $Collect(V(S),x,V(E))$\\
+$BIterator(isUnique,S,x,E)$ & $IsUnique(V(S),x,V(E))$\\
+$BCollectionOp(includes/excludes,S,[e])$ & $Includes/Excludes(V(S),V(e))$\\
+$BCollectionOp(includesAll/excludesAll,S,[T])$ & $IncludesAll/ExcludesAll(V(S),V(T))$\\
+$BCollectionOp(union/intersection,S,[T])$ & $Union/Intersection(V(S),V(T))$\\
+$BCollectionOp(asSet,S,[])$ & $AsSet(V(S))$\\
+$BCollectionOp(size,S,[])$ & $Count(V(S))$\\
+$BCollectionOp(isEmpty/notEmpty,S,[])$ & $IsEmpty/NotEmpty(V(S))$\\
+$BTypeOp(kindOf,e,C)$ & $TypeKindOf(V(e),C)$\\
+$BTypeOp(cast,e,C)$ & $Cast(V(e),C)$\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+$Count$ là phép hạ chuẩn của $size()$ nguồn; nó không phải
+$count(element)$ của OCL. $Size$ là từ đồng nghĩa ngữ nghĩa trong VA, được
+chuẩn hóa trước các phép viết lại so sánh count. Với mỗi phương trình, đẳng thức
+ngữ nghĩa đối tượng của các nút con kéo theo đẳng thức ngữ nghĩa của hai
+constructor cục bộ.
+\end{lemma}
+\begin{proof}
+Phân trường hợp trên bảng dịch đầy đủ và khai triển hai ngữ nghĩa cục bộ. Các
+trường hợp cơ sở trả về cùng giá trị môi trường hoặc literal. Thuộc tính và
+navigation dùng metadata đã phân giải giống nhau, kể cả hướng và thứ tự
+qualifier đã đánh giá. Các trường hợp Boolean, so sánh và số học dùng phép toán
+vô hướng tương ứng được khai báo độc lập. Iterator và collection áp dụng lập
+luận ngoại diên trên tập hữu hạn dưới cùng mở rộng môi trường; $Collect$ là
+phép dựng ảnh theo tập hữu hạn. Set literal và hợp/giao dùng cùng
+$setJoin$ và phép nhúng chuẩn của M3a ở hai ngữ nghĩa; $asSet$ là đồng nhất.
+$IsUnique$ đúng ở cả hai phía khi và chỉ khi ảnh thân không có va chạm theo
+đẳng thức có kiểu. $Let$ dùng A3 cho tra cứu mở rộng và $If$ chọn
+cùng nhánh theo $\boolval$. Kind-of và cast dùng cùng quan hệ phù hợp. Vì vậy,
+kết quả con bằng nhau kéo theo kết quả cục bộ bằng nhau ở mọi dòng. Đây vẫn là
+bổ đề mô phỏng cục bộ; không dùng mã hóa đồ thị.
+\end{proof}
+
+\begin{lemma}[A3 Bảo toàn tra cứu môi trường]
+$T_{\mathrm{VA}}$ bảo toàn tên của $self$, biến tự do, biến iterator và biến
+let. Các môi trường tương ứng có cùng miền và giá trị phía đối tượng; mở rộng
+stack giống nhau bảo toàn tra cứu gần nhất và che khuất.
+\end{lemma}
+\begin{proof}
+$T_{\mathrm{VA}}$ bảo toàn định danh khai báo gắn với mỗi lần xuất hiện biến.
+Định nghĩa tương ứng môi trường theo từng điểm bằng đẳng thức tại mỗi định danh
+đó. Ban đầu quan hệ đúng với $self$ và các biến tự do. Nếu nó đúng trước một
+binder iterator hoặc let, mở rộng cả hai ánh xạ bằng cùng định danh và giá trị
+làm tra cứu mới bằng nhau, đồng thời giữ nguyên mọi tra cứu khác. Khi thoát
+phạm vi, cả hai ánh xạ trước đó được khôi phục. Quy nạp theo độ lồng binder do
+đó chứng minh đẳng thức tra cứu, kể cả che khuất và đổi tên alpha tránh bắt giữ.
+\end{proof}
+
+\begin{definition}[Tập luật chuẩn hóa $R$]
+Bộ chuẩn hóa dưới-lên tất định sử dụng:
+\begin{align*}
+Size(S)&\to Count(S),\\
+ForAll(S,x,P)&\to Not(Exists(S,x,Not(P))),\\
+NotEmpty(S)&\to Exists(S,z,true),\\
+IsEmpty(S)&\to Not(Exists(S,z,true)),\\
+Reject(S,x,P)&\to Select(S,x,Not(P)),\\
+Implies(A,B)&\to Or(Not(A),B),\\
+Xor(A,B)&\to Or(And(A,Not(B)),And(Not(A),B)),\\
+Includes(S,y)&\to Exists(S,x,Compare(EQ,Var(x),y)),\\
+Excludes(S,y)&\to Not(Exists(S,x,Compare(EQ,Var(x),y))),\\
+Compare(GT,Count(N),0)&\to Exists(N,z,true),\\
+Compare(EQ,Count(N),0)&\to Not(Exists(N,z,true)),
+\end{align*}
+trong đó $N$ là một navigation và mọi $x,z$ được đưa vào đều là tên mới. Phép
+viết lại tránh bắt giữ và các term được đồng nhất tới tương đương alpha.
+\end{definition}
+
+Danh sách này định nghĩa phép biến đổi tham chiếu hình thức $T_{NORM}$; nó không
+khẳng định Java phải tạo cùng cây cú pháp. \texttt{OclIrOptimizer} cài một
+$T_{OPT}$ hướng graph: \texttt{Implies}/\texttt{Xor} được khai triển trực tiếp,
+còn các trường hợp navigation ForAll/rỗng/filter/size có thể trở thành
+\texttt{NavigationPredicateCheck} hoặc \texttt{NavigationCountComparison};
+collection operation tổng quát có thể được giữ lại cho planner. Vì vậy điều
+cần chứng minh là refinement ngữ nghĩa $T_{OPT}(va)\simeq T_{NORM}(va)$, không
+phải đẳng thức cú pháp. Test rewrite/differential hiện chỉ là evidence hữu hạn;
+proof typed và tránh bắt giữ phổ quát vẫn mở.
+
+\begin{lemma}[N1 Bảo toàn ngữ nghĩa của phép viết lại]
+Mỗi phép viết lại chuẩn hóa bảo toàn ngữ nghĩa VA.
+\end{lemma}
+\begin{proof}
+Kiểm tra từng luật đã nêu dưới ngữ nghĩa kiểm tra theo tập hữu hạn. Chân lý phổ
+quát là không có phản ví dụ; không rỗng và rỗng lần lượt là tồn tại và không
+tồn tại; reject là select theo vị từ kiểm tra bị phủ định; kéo theo là
+$\neg A\lor B$; xor đúng chính xác khi một trong hai giá trị
+$\boolval(A),\boolval(B)$ là true, đúng bằng
+$Or(And(A,Not(B)),And(Not(A),B))$; quan hệ thuộc là đẳng thức tồn tại; loại trừ là phủ định quan
+hệ thuộc; $Size$ và $Count$ biểu thị cùng lực lượng hữu hạn; lực lượng
+navigation hữu hạn dương hoặc bằng không chính xác khi tồn tại hoặc không tồn
+tại witness. Các biến iterator mới tránh bắt giữ. Vì vậy hai vế có cùng ngữ
+nghĩa dưới mọi môi trường hợp lệ.
+\end{proof}
+
+\begin{lemma}[N2 Bảo toàn kiểu của phép viết lại]
+Mỗi phép viết lại chuẩn hóa bảo toàn kiểu tĩnh.
+\end{lemma}
+\begin{proof}
+Xem xét các luật định kiểu cho thấy mọi mẫu nguồn Boolean được thay bằng một
+biểu thức Boolean, còn $Reject(S,x,P)$ và $Select(S,x,Not(P))$ có cùng kiểu
+phần tử collection. Các biến mới nhận kiểu phần tử nguồn. Do đó mọi luật bảo
+toàn kiểu kết quả.
+\end{proof}
+
+\begin{longtable}{p{0.13\textwidth}p{0.23\textwidth}p{0.36\textwidth}p{0.20\textwidth}}
+\toprule
+Luật & Tiền đề & Phương trình ngữ nghĩa & Nghĩa vụ kiểu/độ đo\\
+\midrule
+N-Size & $S:Set(\tau)$ & $Size(S)=|\finiteSet(S)|=Count(S)$ & $Integer$; $\#Size-1$\\
+N-ForAll & $S:Set(\tau)$; $P:Boolean$ & chân lý phổ quát khi và chỉ khi không có witness của $Not(P)$ & $Boolean$; $\#ForAll-1$\\
+N-NotEmpty & $S:Set(\tau)$; $x$ mới & không rỗng khi và chỉ khi có witness đúng & $Boolean$; $\#NotEmpty-1$\\
+N-IsEmpty & như trên & rỗng khi và chỉ khi không có witness đúng & $Boolean$; $\#IsEmpty-1$\\
+N-Reject & Boolean $P$ dưới $x:\tau$ & reject theo $P$ bằng select theo $Not(P)$ & $Set(\tau)$; $\#Reject-1$\\
+N-Implies & $A,B:Boolean$ & kéo theo bằng $Or(Not(A),B)$ & $Boolean$; $\#Implies-1$\\
+N-Xor & $A,B:Boolean$ & đúng khi chính xác một toán hạng validation-true & $Boolean$; $\#Xor-1$\\
+N-Includes & $y$ so sánh được; $x$ mới & quan hệ thuộc khi và chỉ khi tồn tại $\eqval(x,y)$ & $Boolean$; $\#Includes-1$\\
+N-Excludes & như trên & loại trừ khi và chỉ khi không có witness đẳng thức & $Boolean$; macro loại cả hai dạng nguồn\\
+N-CountPos & $Nav:Set(E)$; $x$ mới & $|Nav|>0$ khi và chỉ khi có witness & $Boolean$; mẫu count $-1$\\
+N-CountZero & như trên & $|Nav|=0$ khi và chỉ khi không có witness & $Boolean$; mẫu count $-1$\\
+\bottomrule
+\end{longtable}
+
+Mọi phương trình đúng trong cả hai diễn giải. Tránh bắt giữ suy ra từ bổ đề thế
+chuẩn
+$\sem{e[x:=y]}{I}(\rho[y\mapsto v])=\sem{e}{I}(\rho[x\mapsto v])$ với $y$ mới,
+được chứng minh theo cấu trúc. Không đích nào nhân đôi một term con
+chứa redex tại một bước của chiến lược: phép duyệt dưới-lên chỉ viết lại nút
+cha sau khi mọi nút con đã ở dạng chuẩn. Đặc biệt, mặc dù N-Xor sao chép $A$ và
+$B$, hai term này không còn chứa constructor được $\mathcal M$ đếm.
+
+\begin{lemma}[N3 Tính dừng của chuẩn hóa]
+Chiến lược chuẩn hóa tất định luôn dừng. Cụ thể, định nghĩa:
+\[
+\mu(e)=
+\#ForAll(e)+\#Implies(e)+\#Xor(e)+\#Reject(e)+\#IsEmpty(e)+\#NotEmpty(e)
++\#Includes(e)+\#Excludes(e)+\#CountCompareOnNavigation(e).
+\]
+Đặt $\mathcal M(e)=(\#Size(e),\mu(e))$ với thứ tự từ điển. Khi đó, với mọi bước
+viết lại chiến lược đơn $e\to_{\mathrm{norm}}e'$,
+\[
+\mathcal M(e')<_{lex}\mathcal M(e).
+\]
+\end{lemma}
+\begin{proof}
+Độ đo nhận giá trị trong $\mathbb{N}^2$. $Size\to Count$ làm giảm thành phần
+đầu và không bao giờ tái tạo $Size$. Chuẩn hóa vận hành quy định
+$Excludes(S,y)$ là macro-rule
+$Not(Exists(S,x,Compare(EQ,Var(x),y)))$. Mọi luật chuẩn hóa một bước ngoài phép
+chuẩn hóa size đều giữ nguyên thành phần đầu, loại ít nhất một constructor được
+$\mu$ đếm và không đưa constructor nào như vậy vào tại gốc. Với N-Xor, các cây
+con bị sao chép đã ở dạng chuẩn theo chiến lược dưới-lên, nên việc sao chép
+không tăng $\#Size$ hoặc $\mu$. Do đó độ đo từ điển giảm
+nghiêm ngặt và không tồn tại chuỗi chuẩn hóa vô hạn.
+\end{proof}
+
+\begin{lemma}[N4 Bao phủ dạng chuẩn]
+Cho $Redex_R(t)$ nghĩa là $t$ khớp vế trái của một luật đã nêu, và định nghĩa
+\[
+NF_R(e)\iff \forall t\preceq e:\neg Redex_R(t).
+\]
+Với mọi biểu thức VA định kiểu đúng $e$, $NF_R(T_{\mathrm{NORM}}(e))$. Phép
+viết lại tránh bắt giữ và các term được đồng nhất tới tương đương alpha. Tính
+bao phủ là tương đối đối với $R$.
+\end{lemma}
+\begin{proof}
+Dùng quy nạp quy chuẩn trên $\mathcal M(e)$ lồng với quy nạp cấu trúc. Phép
+duyệt dưới-lên trước hết trả về các nút con dạng chuẩn. Nếu nút cha được dựng
+lại là redex, luật chiến lược duy nhất của nó làm giảm nghiêm ngặt $\mathcal M$
+theo N3 và giả thiết quy nạp chuẩn hóa kết quả. Nếu không, mọi term con thỏa
+$NF_R$. Vì vậy không redex đã nêu nào còn lại.
+\end{proof}
+
+\begin{remark}
+Tương ứng thuộc tính và navigation vẫn là R4 và R6. Các bổ đề G nâng những kết
+quả biểu diễn nguyên thủy đó qua môi trường, tập hữu hạn, giá trị vô hướng và
+chính sách ở mức kiểm tra thay vì lặp lại chúng.
+\end{remark}
+
+\begin{lemma}[G1 Bảo toàn mã hóa môi trường]
+Nếu môi trường đối tượng $\rho$ và môi trường đồ thị $\eta$ thỏa
+$\rho\sim_{\Phi}\eta$, thì mở rộng cả hai môi trường bằng các giá trị tương
+ứng bảo toàn quan hệ:
+\[
+\rho[x\mapsto v]\sim_{\Phi}\eta[x\mapsto \encodeValue(v)].
+\]
+\end{lemma}
+\begin{proof}
+Tương ứng môi trường được định nghĩa theo từng điểm. Các binding hiện có giữ
+nguyên, còn binding mới tương ứng theo định nghĩa vì môi trường đồ thị lưu
+$\encodeValue(v)$. Do đó các môi trường mở rộng thỏa cùng quan hệ theo từng điểm.
+\end{proof}
+
+\begin{lemma}[G2 Tính đơn ánh của mã hóa giá trị và đồng cấu tập hữu hạn]
+Trên miền giá trị có kiểu được định lý hỗ trợ,
+\[
+\encodeValue(v_1)=\encodeValue(v_2)\iff v_1=v_2.
+\]
+Do đó, với các tập hữu hạn $A,B$, $\encodeValue$ bảo toàn và phản ánh quan hệ
+thuộc, hợp, tập con, giao, tính rỗng và lực lượng:
+\[
+\encodeValue(A\cup B)=\encodeValue(A)\cup\encodeValue(B),
+\qquad
+\encodeValue(A\cap B)=\encodeValue(A)\cap\encodeValue(B),
+\]
+\[
+A\subseteq B \iff \encodeValue(A)\subseteq\encodeValue(B),
+\qquad
+|A|=|\encodeValue(A)|.
+\]
+\end{lemma}
+\begin{proof}
+Tính đơn ánh được chứng minh bằng quy nạp trên cấu trúc giá trị. Thực thể đối
+tượng dùng R1/R2, giá trị vô hướng được hỗ trợ dùng mã hóa đồng nhất, còn bottom
+và mọi constructor là các loại gắn thẻ rời nhau. Với tập hữu hạn, đẳng thức
+ngoại diên và giả thiết quy nạp phản ánh đẳng thức từng phần tử. Ảnh theo từng
+phần tử sau đó bảo toàn quan hệ thuộc và hợp; tính đơn ánh phản ánh quan hệ
+thuộc, do đó bảo toàn tập con và giao theo cả hai chiều. Nó tạo song ánh giữa
+mỗi tập hữu hạn và ảnh của tập, bảo toàn tính rỗng và lực lượng.
+\end{proof}
+
+\begin{lemma}[G3 Bảo toàn đẳng thức có kiểu và toán tử vô hướng]
+Với mọi giá trị được định lý hỗ trợ,
+\[
+\eqval(v_1,v_2)\iff
+\eqval(\encodeValue(v_1),\encodeValue(v_2)).
+\]
+Trên các kiểu vô hướng tương thích được hỗ trợ, phép mã hóa còn bảo toàn thứ tự,
+số học tại nơi xác định và chân lý kiểm tra:
+\[
+x=y \iff \encodeValue(x)=\encodeValue(y),
+\qquad
+x<y \iff \encodeValue(x)<\encodeValue(y),
+\]
+\[
+\encodeValue(x\oplus y)=\encodeValue(x)\oplus\encodeValue(y)
+\quad\text{khi }\oplus\text{ được xác định},
+\qquad
+\boolval(x)=\boolval(\encodeValue(x)).
+\]
+Nếu $\tau\leq\upsilon$ là phép nâng do $setJoin$ chọn, thì
+\[
+\encodeValue(\iota^{obj}_{\tau\hookrightarrow\upsilon}(v))
+=\iota^{graph}_{\tau\hookrightarrow\upsilon}(\encodeValue(v)),
+\]
+và phương trình tương tự đúng theo từng phần tử cho $\operatorname{upSet}$.
+\end{lemma}
+\begin{proof}
+Đẳng thức có kiểu suy ra từ G2 và các loại giá trị rời nhau; với thực thể, đó
+là định danh đối tượng/nút. Giá trị vô hướng được hỗ trợ dùng cùng giá trị chuẩn
+trong miền đối tượng và đồ thị, nên thứ tự tương thích được phản ánh và bảo
+toàn. Với phép toán số học xác định ở cả hai phía, áp dụng nó trước hoặc sau mã
+hóa đồng nhất cho cùng giá trị vô hướng. Đồng nhất Boolean cũng bảo toàn
+$\boolval$. Với phép nâng kiểu, trường hợp đồng nhất và bottom là trực tiếp;
+Integer--Real dùng cùng phép đổi chính xác do $ScalarClosed$ bảo đảm; phép nâng
+lớp giữ cùng đối tượng/nút nhờ R1--R3. Phương trình cho tập suy ra bằng ngoại
+diên từ phương trình phần tử.
+\end{proof}
+
+\begin{lemma}[G4 Tương thích với chính sách kiểm tra]
+Với các giá trị được định lý hỗ trợ,
+\[
+\finiteSet(\encodeValue(v))
+=\encodeValue(\finiteSet(v)),
+\qquad
+\asSources(\encodeValue(v))
+=\encodeValue(\asSources(v)),
+\qquad
+\boolval(\encodeValue(v))=\boolval(v).
+\]
+Đẳng thức đầu chỉ áp dụng tại vị trí collection định kiểu đúng; đẳng thức thứ
+hai chỉ áp dụng tại vị trí nguồn navigation định kiểu đúng. Chúng gồm các chính
+sách bottom-thành-rỗng đã nêu và không khẳng định lan truyền null/invalid đầy
+đủ của OMG OCL.
+\end{lemma}
+\begin{proof}
+Nếu $v=Set(S)$, hai vế của đẳng thức đầu đều là ảnh mã hóa theo từng phần tử của
+$S$. Nếu $v=\bot$, hai vế đều rỗng theo chính sách đã nêu. Đây là các trường
+hợp vị trí collection duy nhất trong miền định lý. Đẳng thức chân lý đúng vì
+true được mã hóa thành true và mọi giá trị được hỗ trợ khác đều không đúng theo
+kiểm tra ở cả hai phía.
+\end{proof}
+
+\begin{definition}[Giao diện ngữ nghĩa Cypher giới hạn]
+$Cypher_{val}$ chỉ chứa alias được sinh, tham số, hằng dành riêng, tra cứu thuộc
+tính, biểu thức Boolean/so sánh/số học, \texttt{coalesce}, \texttt{CASE},
+\texttt{EXISTS}, \texttt{COUNT}, cùng truy vấn được ghép từ \texttt{MATCH},
+\texttt{WHERE}, \texttt{WITH}, \texttt{UNWIND}, \texttt{CALL} tương quan,
+\texttt{UNION ALL} và \texttt{RETURN DISTINCT}. Cho $Val_G^C$ là miền giá trị
+đồ thị được định lý hỗ trợ và $CyVal_C$ là các giá trị runtime do profile này
+sinh ra. Giá trị ngoài $CyVal_C$ không được gán ý nghĩa OCL. Giao diện biểu diễn
+có kiểu là
+\[
+\reprC:Val_G^C\to CyVal_C,\qquad
+\absC:CyVal_C\to Val_G^C,
+\]
+\[
+\absC(\reprC(v))=v,\qquad
+\absC(CypherNull)=\bot,\qquad
+\reprC(\bot)=BOTTOM\_TOKEN.
+\]
+Một phép trừu tượng hóa bộ phận phụ ánh xạ giá trị Cypher tùy ý thành giá trị đồ
+thị được hỗ trợ hoặc $unsupported$; mọi phán đoán hiện thực hóa chỉ lượng hóa
+trên các thực thi đóng theo profile đích trong $CyVal_C$. $BOTTOM\_TOKEN$ khác
+null được dành riêng nằm ngoài các mã hóa giá trị mô hình và được dùng khi
+bottom là phần tử của tập hữu hạn, để phép đếm không loại nó như null. Chính
+xác hơn: $\absC\circ\reprC$ là đồng nhất; $\reprC$ đơn ánh;
+$BOTTOM\_TOKEN$ không va chạm với giá trị vô hướng, thực thể, khóa lớp,
+qualifier payload hay định danh đối tượng; phép tra cứu bảo toàn giá trị đã biểu
+diễn; \texttt{DISTINCT} giữ chính xác một lần xuất hiện của token khác null; và
+\texttt{COUNT(DISTINCT x)} đếm nó một lần. Trường hợp vô hướng không xác định
+có thể dùng $CypherNull$, nhưng bottom ngữ nghĩa được chiếu vào tập phải được
+đổi thành token trước. Profile cụ thể cung cấp token dưới dạng tham số dành
+riêng \texttt{\$oclBottom} có giá trị map gắn thẻ
+\texttt{\{\_\_oclBottom:true\}}. Map không thuộc bất kỳ miền Boolean, số,
+String, thực thể, định danh hoặc metadata mô hình được chấp nhận nào. Vì vậy
+tính tách biệt theo loại là cấu trúc, không dựa trên việc chọn một chuỗi hiếm.
+Về hình thức, $BottomSeparated(MM,M,e)$ yêu cầu adapter không cho phép map gắn
+thẻ này xuất hiện như dữ liệu mô hình, khóa hay qualifier payload. Với ánh xạ biến-sang-alias
+đơn ánh $\alpha$, định nghĩa
+\[
+\RowCorr(\alpha,\eta,r)\iff
+\forall x\in\operatorname{dom}(\eta):\absC(r(\alpha(x)))=\eta(x).
+\]
+Với bag dòng $B$,
+$\projectSet(a,B)=\{\absC(r(a))\mid r\text{ xuất hiện trong }B\}$.
+Ngữ nghĩa biểu thức và dòng được ký hiệu bởi
+$EvalExpr_{G,\sigma}(c,r)$ và $EvalRows_{G,\sigma}(Q,B)$.
+\end{definition}
+
+\begin{assumption}[Hợp đồng biểu diễn đích BR1--BR7]
+Mọi thực thi thuộc profile đích thỏa các luật sau.
+\begin{enumerate}[label=(BR\arabic*)]
+  \item $\absC(\reprC(v))=v$ với mọi $v\in Val_G^C$.
+  \item $\reprC$ đơn ánh trên từng miền giá trị có kiểu.
+  \item $\absC(CypherNull)=\bot$ ở vị trí vô hướng và
+  $\reprC(\bot)=BOTTOM\_TOKEN$ khi bottom được vật chất hóa như một phần tử tập.
+  \item $BOTTOM\_TOKEN$ khác null và không va chạm với mọi giá trị mô hình,
+  định danh, khóa hoặc qualifier payload có thể đạt tới.
+  \item Tra cứu tham số, thuộc tính và alias của một giá trị đã biểu diễn bảo
+  toàn giá trị đó dưới $\absC$.
+  \item \texttt{DISTINCT} trên một cột đã qua $setOut$ giữ đúng một đại diện
+  cho mỗi giá trị ngữ nghĩa, kể cả đúng một đại diện cho bottom.
+  \item \texttt{COUNT(DISTINCT x)} trên cột đã qua $setOut$ đếm lực lượng tập
+  ngữ nghĩa; đặc biệt token bottom khác null được đếm đúng một lần.
+\end{enumerate}
+\end{assumption}
+
+\begin{definition}[Kế hoạch vô hướng và bảo toàn alias đang sống]
+Với tập hữu hạn alias đang sống $K$, viết
+\[
+Preserves(K,r,r')\iff
+\forall a\in K:\ a\in dom(r)\cap dom(r')\land
+\absC(r'(a))=\absC(r(a)).
+\]
+Đặt $ExecPrelude(L,r)=EvalRows_{G,\sigma}(Seq(L),\{r\})$. Định nghĩa
+\[
+WFScalar(K,ScalarPlan(L,c))
+\]
+khi và chỉ khi mọi dòng vào được chấp nhận sinh chính xác một dòng $r'$, bảo
+toàn $K$ và $FV(c)\subseteq dom(r')$. Tập đang sống chứa $range(\alpha)$ và mọi
+alias mới cần cho phần tiếp diễn. Vì vậy mỗi \texttt{WITH} được sinh chiếu đồng
+nhất từng alias đang sống bên cạnh binding mới của nó.
+\end{definition}
+
+\begin{definition}[Các phán đoán hiện thực hóa]
+Với mọi môi trường và dòng tương ứng, hiện thực hóa vô hướng, vị từ và tập hữu
+hạn lần lượt có nghĩa là:
+\[
+\alpha,\sigma\vdash c\ \mathsf{realizes}_{scalar}\ v:\tau
+\iff
+\absC(EvalExpr_{G,\sigma}(c,r))=\sem{v}{graph}^{\tau}(G,\eta),
+\]
+và hiện thực hóa kế hoạch vô hướng là
+\[
+\alpha,\sigma;K\vdash ScalarPlan(L,c)\ \mathsf{realizes}_{scalar}\ v:\tau
+\]
+khi và chỉ khi $WFScalar(K,ScalarPlan(L,c))$ và, với dòng duy nhất
+$r'\in ExecPrelude(L,r)$,
+\[
+\RowCorr(\alpha,\eta,r')\land
+\absC(EvalExpr_{G,\sigma}(c,r'))=\sem{v}{graph}^{\tau}(G,\eta).
+\]
+\[
+\alpha,\sigma\vdash c\ \mathsf{realizes}_{pred}\ v
+\iff
+\boolval(\absC(EvalExpr_{G,\sigma}(c,r)))
+=\boolval(\sem{v}{graph}^{Boolean}(G,\eta)),
+\]
+\[
+\alpha,\sigma\vdash Q\Rightarrow a\ \mathsf{realizes}_{set}\ v:Set(\tau)
+\iff
+\projectSet(a,EvalRows_{G,\sigma}(Q,\{r\}))
+=\finiteSet(\sem{v}{graph}^{Set(\tau)}(G,\eta)),
+\]
+trong đó lượng hóa phổ quát trên $\eta,r$ thỏa $\RowCorr(\alpha,\eta,r)$.
+Phán đoán vị từ của kế hoạch vô hướng thay đẳng thức cuối bằng đẳng thức dưới
+$\boolval$. Hiện thực hóa chỉ bằng biểu thức là trường hợp riêng $L=[]$.
+Với context $C$,
+\[
+\sigma\vdash q\ \mathsf{realizes}_{inv}(C,nva)
+\iff
+\returnedIds(q,G,\sigma)=
+\{\id(o)\mid o\in\Obj(M),\ classOf(o)\mathrel{conformsTo}C,
+\ \boolval(\sem{nva}{graph}^{Boolean}
+   (G,self\mapsto\node(o)))=false\}.
+\]
+Phán đoán tập loại bỏ bội số dòng; phán đoán invariant so sánh các định danh,
+không so sánh bảng kết quả hoặc nút được trả về.
+\end{definition}
+
+\begin{assumption}[Các tiên đề hành vi của $Cypher_{val}$]
+Ngữ nghĩa ngoại diên được chọn cho AST thô thỏa chín luật sau.
+\begin{enumerate}[label=(CY\arabic*)]
+  \item Alias, tham số, thuộc tính, Boolean, so sánh, số học,
+  \texttt{CASE} và \texttt{coalesce} được đánh giá theo profile trên các giá
+  trị được hỗ trợ; thuộc tính vắng mặt cho $CypherNull$ và $truth$ chỉ cho true
+  đối với Boolean true.
+  \item \texttt{MATCH} liệt kê đúng các phép gán pattern thỏa đồ thị, với bội
+  số bag nhưng không tạo phép gán không khớp.
+  \item \texttt{WHERE} giữ đúng các dòng có guard Cypher true; guard do
+  renderer sinh là toàn phần nhờ $truth$ hoặc $isBottom$.
+  \item \texttt{EXISTS\{Q\}} đúng khi và chỉ khi đánh giá tương quan của $Q$
+  sinh ít nhất một dòng.
+  \item \texttt{COUNT(DISTINCT x)} tuân theo BR6--BR7 và vì thế đếm lực lượng
+  tập sau $setOut$.
+  \item \texttt{WITH}/\texttt{RETURN} chiếu các biểu thức đã nêu;
+  \texttt{DISTINCT} đồng nhất chính xác các dòng có cùng tuple chiếu theo BR2
+  và BR6.
+  \item \texttt{UNWIND} sinh một dòng cho mỗi vị trí của danh sách hữu hạn;
+  phép chiếu phân biệt phía sau khôi phục ngữ nghĩa tập.
+  \item \texttt{CALL} tương quan chỉ nhìn thấy các alias được nhập tường minh,
+  đánh giá subquery cho từng dòng ngoài và nối kết quả với các binding nhập
+  không đổi.
+  \item \texttt{UNION ALL} nối hai bag dòng. Khi hai nhánh có guard toàn phần
+  bù nhau và cùng schema, chính xác một nhánh đóng góp; phép chiếu phân biệt
+  ngoài cùng khôi phục tập ngữ nghĩa.
+\end{enumerate}
+\end{assumption}
+
+\begin{lemma}[C1 Bảo toàn alias và phép chiếu đang sống]
+Nếu $\RowCorr(\alpha,\eta,r)$, alias $a$ là mới và
+$w=\encodeValue(v)$ thì
+\[
+\RowCorr(\alpha[x\mapsto a],\eta[x\mapsto w],r[a\mapsto\reprC(w)]).
+\]
+Khôi phục các ánh xạ ngoài sau một subquery bảo toàn các binding bị che khuất.
+Ngoài ra, mọi \texttt{WITH} được sinh thỏa $Preserves(K,r,r')$ với tập đầu ra
+đang sống $K$ đã tính; vì vậy nó không thể loại \texttt{self}, alias iterator
+hay alias ngoài tương quan mà phần tiếp diễn cần.
+\end{lemma}
+\begin{proof}
+Đẳng thức mới đúng tại $x$ theo phép dựng và mọi đẳng thức cũ không đổi nhờ
+tính mới. Constructor \texttt{withBind} của phép khai triển toàn phần chiếu
+đồng nhất mọi alias trong $K$ và chỉ thêm binding mới, qua đó chứng minh bảo
+toàn. Khôi phục stack cho phép che khuất từ vựng.
+\end{proof}
+
+\begin{lemma}[C2 Tính đúng đắn của tham số]
+Nếu tham số $p$ biểu diễn giá trị được hỗ trợ $s$ thì
+$\sigma(p)=\reprC(\encodeValue(s))$ và
+$\absC(EvalExpr_{G,\sigma}(\texttt{\$p},r))=\encodeValue(s)$ với mọi dòng $r$.
+\end{lemma}
+\begin{proof}
+Cấp phát tham số và chèn vào $\sigma$ xảy ra trong cùng bước renderer; tên mới
+ngăn ghi đè. Tra cứu tham số sau đó dùng tiên đề $Cypher_{val}$ đã nêu.
+\end{proof}
+
+\begin{lemma}[C3 Hiện thực hóa truy cập đồ thị nguyên thủy]
+Dưới $\RowCorr$, các alias được sinh, tra cứu thuộc tính, pattern quan hệ thuộc
+kiểu, accessor thuộc tính chuẩn, pattern all-instances và pattern navigation
+nhị phân có hướng thỏa phán đoán hiện thực hóa áp dụng cho $Self$, $Var$,
+$Literal$, $Attribute$, $AllInstances$ và $Navigation$. Navigation gồm đánh
+giá và khớp danh sách qualifier có thứ tự. Các trường hợp nguyên thủy thực thể
+ở đây giả thiết receiver khác bottom đã được biểu diễn; C3a cung cấp phép nâng
+an toàn với bottom.
+\end{lemma}
+\begin{proof}
+Alias dùng tương ứng dòng và literal dùng C2. Thuộc tính dùng R4, pattern kiểu
+dùng R3/R7, còn pattern navigation ràng buộc kiểu quan hệ,
+exact \texttt{associationKey}, role, hướng và danh sách qualifier từ
+\texttt{sourceQualifiers}/\texttt{targetQualifiers}; R5/R6
+cho đẳng thức của tập ngữ nghĩa được chiếu.
+\end{proof}
+
+\begin{lemma}[C3a Receiver thực thể an toàn với bottom]
+Cho kế hoạch vô hướng $P$ hiện thực hóa receiver thực thể tĩnh có thể là bottom,
+và cho $F$ là bộ dựng thân thực thể đơn hiện thực hóa phép nguyên thủy $f$ cho
+mọi thực thể đã biểu diễn trong khi bảo toàn tập đang sống $K$. Nếu $b$ biểu
+diễn $f(\bot)$ thì $withEntityReceiver(P,K,b,F)$ là kế hoạch vô hướng hợp
+dạng, hiện thực hóa $f$ trên toàn bộ miền receiver được chấp nhận.
+\end{lemma}
+\begin{proof}
+Với bottom, $isBottom$ toàn phần chỉ bật nhánh không có pattern. Nếu không,
+định kiểu và tính đóng profile cho một nút và chỉ bật $F$. Tiên đề lọc ngăn các
+clause sau guard false nhận dòng; ngữ nghĩa call tương quan bảo toàn các binding
+đã nhập và trả về kết quả đơn được bật. Do đó chính xác một dòng được sinh và
+C1 cho $WFScalar$. Thuộc tính, kind-of và cast lần lượt cụ thể hóa kết quả bằng
+R4, R3 và các kết quả bottom là null, false, null.
+\end{proof}
+
+\begin{lemma}[C4 Hợp thành vị từ và lượng từ tồn tại]
+Nếu các fragment con thỏa phán đoán hiện thực hóa, biểu thức Boolean và so sánh
+được sinh bảo toàn $\boolval$; \texttt{WHERE} giữ chính xác các dòng đúng theo
+kiểm tra; và \texttt{EXISTS} đúng theo kiểm tra chính xác khi truy vấn witness
+đã hiện thực hóa không rỗng. Do đó các phán đoán hợp thành cho $Not$, $And$,
+$Or$, so sánh, $If$, $Let$, $Exists$ và các dạng không-có-phản-ví-dụ đã chuẩn hóa.
+\end{lemma}
+\begin{proof}
+Áp dụng các giả thiết quy nạp cho biểu thức con và các tiên đề tường minh về
+chân lý, lọc, tồn tại, \texttt{CASE}, \texttt{coalesce} của $Cypher_{val}$.
+C1 cung cấp các mở rộng iterator và let.
+\end{proof}
+
+\begin{lemma}[C5 Hợp thành tập hữu hạn và lực lượng]
+Khi nguồn và thân đã được hiện thực hóa, các fragment lọc, ảnh, quan hệ thuộc,
+tập con, rời nhau, hợp, giao, chuyển thành tập, tính duy nhất, tính rỗng và lực lượng được sinh thỏa các phán đoán hiện thực
+hóa tương ứng. Phép chiếu ngữ nghĩa là tập, và lực lượng dùng \texttt{DISTINCT}
+khi nhiều dòng có thể biểu thị một phần tử VA. Bottom ngữ nghĩa trong tập được
+chiếu thành $BOTTOM\_TOKEN$ khác null.
+\end{lemma}
+\begin{proof}
+Phép chiếu tập ngoại diên loại bội số dòng. Phép lọc dùng C4; phép dựng ảnh dùng
+C1 trên mỗi phần tử nguồn. M3a và G3 cho phép coercion mọi phần tử tới kiểu
+$setJoin$ chung trước $setOut$; BR1--BR6 làm $setEq$ phản ánh đúng
+$\eqval$ và làm phép chiếu phân biệt đúng với tập ngữ nghĩa. Vì thế Set literal
+là ảnh hữu hạn của danh sách phần tử, union là hợp ngoại diên, intersection là
+tập các phần tử phía trái có witness bằng nó ở phía phải, còn $asSet$ là đồng
+nhất. Với $isUnique$, nguồn đã phân biệt cung cấp đúng một dòng cho mỗi phần tử;
+BR7 và CY5 làm đẳng thức giữa số dòng nguồn và số giá trị thân phân biệt tương
+đương với tính đơn ánh của ảnh thân. Cùng luật aggregation cho lực lượng, còn
+membership, tập con và rời nhau theo các định nghĩa witness/counterexample.
+\end{proof}
+
+\begin{lemma}[C6 Hiện thực hóa lớp bọc invariant]
+Nếu $\alpha(self)=a_{self}$ và
+$\alpha,\sigma\vdash c\ \mathsf{realizes}_{pred}\ nva$ thì lớp bọc gồm
+\texttt{MATCH} context, \texttt{WHERE} vi phạm và
+\texttt{RETURN DISTINCT} $a_{self}$\texttt{.use\_id} được sinh thỏa
+$\sigma\vdash q\ \mathsf{realizes}_{inv}(C,nva)$.
+\end{lemma}
+\begin{proof}
+R3 cho phép liệt kê context chính xác; C4 cho bộ lọc không-đúng-theo-kiểm-tra
+chính xác; R2 cho định danh ổn định; và phép chiếu phân biệt sinh tập trong
+phán đoán hiện thực hóa invariant.
+\end{proof}
+
+\subsection{Các luật $T_{\mathrm{TEXT}}$ định hướng cú pháp}
+
+Renderer được định nghĩa bởi các phán đoán đệ quy tương hỗ
+\[
+\alpha;\sigma\vdash v\Rightarrow_E c:\tau;\sigma',
+\qquad
+\alpha;\sigma\vdash v\Rightarrow_S(Q,a):Set(\tau);\sigma'.
+\]
+Trạng thái tham số tăng đơn điệu và mọi tên được đưa vào đều là tên mới. Đích
+được chọn là profile Neo4j Cypher 5 $CYPHER5_{val}$. Driver 5.21.0 không quyết
+định ngữ nghĩa server: thực nghiệm phải ghi lại \texttt{dbms.components()} và
+chạy ma trận riêng cho CY1--CY9: representation/lookup, pattern và duplicate
+paths, filter, existential, count/distinct, projection, scalar/control truth,
+unwind và correlated call/union. Bằng chứng không chuẩn tắc ngày 2026-08-01 ghi
+nhận 9/9 pass trên Neo4j Kernel 2026.06.0 Enterprise với thành phần Cypher 5 và
+cơ sở dữ liệu \texttt{demo}, dùng Java driver dependency 5.21.0. Manifest kiểm
+tra bằng máy ghim profile và hash renderer/encoding/probe/harness. Điều này chỉ
+xác nhận các đại diện đã chọn trên runtime đó; nó không thay chứng minh hiện
+thực hóa và không bao phủ phiên bản server khác. Các phép khai triển nguyên
+thủy là:
+\[
+isBottom(c)=(c\ IS\ NULL\lor c=BOTTOM\_TOKEN),\quad
+truth(c)=coalesce(c=true,false),
+\]
+\[
+setOut(c)=CASE\ WHEN\ c\ IS\ NULL\ THEN\ BOTTOM\_TOKEN\ ELSE\ c\ END.
+\]
+Mọi phép toán tập trước hết dùng
+\[
+setEq^{\tau}(c,d)=semEq^{\tau}(setOut(c),setOut(d)).
+\]
+Với phép nâng $\tau\leq\upsilon$ do $setJoin$ chọn, combinator
+$coerce_C^{\tau\hookrightarrow\upsilon}(c)$ hiện thực hóa
+$\iota^{graph}_{\tau\hookrightarrow\upsilon}$: đồng nhất và nâng lớp giữ nguyên
+giá trị biểu diễn, còn Integer--Real dùng phép đổi chính xác của profile. Mọi
+phần tử Set literal và mọi toán hạng của hợp/giao được coercion tới $\upsilon$
+trước khi áp dụng $setOut$, $setEq^{\upsilon}$ hoặc \texttt{DISTINCT}.
+Do binder đã cố định $\tau$ bằng các luật so sánh hoặc $setJoin$, $setEq$ là
+đẳng thức có kiểu và toàn phần. Token hóa xảy ra trước membership,
+\texttt{DISTINCT}, hợp, giao, tính duy nhất và đếm; vì vậy hai bottom được đồng
+nhất, còn bottom không thể bị Cypher loại như null hoặc bằng một giá trị mô hình.
+
+Với mọi phép toán vô hướng tiêu thụ thực thể, phép khai triển được chứng nhận
+dùng $withEntityReceiver(P,K,b,F)$. Nó vật chất hóa kế hoạch receiver $P$ đúng
+một lần thành alias mới $recv$, rồi sinh call tương quan chứa hai nhánh
+\texttt{UNION ALL}. Nhánh đầu áp dụng $WHERE\ isBottom(recv)$ và trả về giá trị
+trường hợp bottom $b$ mà không có pattern đồ thị. Nhánh thứ hai áp dụng
+$WHERE\ NOT\ isBottom(recv)$ trước khi thực thi bộ dựng clause chỉ dành cho
+thực thể $F(recv)$. Các guard là Boolean toàn phần bù nhau. Định kiểu tĩnh và
+tính đóng profile đích kéo theo receiver khác bottom đi vào nhánh hai là một
+nút đồ thị đã biểu diễn. Mỗi nhánh trả về cùng alias đầu ra mới và chính xác
+một nhánh được bật đóng góp một dòng; mọi alias trong $K$ được nhập và bảo
+toàn. Vì vậy phép dựng an toàn với bottom mà không giả thiết \texttt{CASE} dừng
+ngắn mạch một pattern đồ thị.
+
+\begingroup\scriptsize
+\begin{longtable}{p{0.15\textwidth}p{0.45\textwidth}p{0.33\textwidth}}
+\toprule Combinator & Khai triển cụ thể & Tiền đề và chính sách bottom\\ \midrule
+$semEq^\tau(c,d)$ & \texttt{CASE}: cả hai bottom $\mapsto true$; đúng một bottom $\mapsto false$; nếu không $c=d$ & đẳng thức có kiểu/kiểu số chung\\
+$setEq^\tau(c,d)$ & $semEq^\tau(setOut(c),setOut(d))$ & token hóa trước so sánh phần tử tập\\
+$coerce_C^{\tau\hookrightarrow\upsilon}(c)$ & đồng nhất/nâng lớp giữ biểu diễn; Integer--Real đổi chính xác & M3a, G3 và $ScalarClosed$\\
+$semOrd(op,c,d)$ & toán hạng bottom $\mapsto null$; nếu không dùng $c\ op\ d$ native & các kiểu vô hướng có thứ tự được chấp nhận\\
+$semArith(op,c,d)$ & toán hạng bottom $\mapsto null$; nếu không dùng $c\ op\ d$ native & miền chung biểu diễn được; mẫu khác không\\
+$attr_C(P,a)$ & $withEntityReceiver(P,K,null,F_{attr})$; chỉ nhánh thực thể chứa pattern thuộc tính optional & bottom không bao giờ ở vị trí nút; giá trị thiếu ánh xạ thành bottom\\
+$qualList_C(\bar c)$ & null nếu có thành phần bottom; nếu không là danh sách có thứ tự $[c_1,\ldots,c_k]$ & qualifier nguyên thủy, số ngôi cố định, tuần tự hóa đơn ánh\\
+$kind_C(P,C)$ & $withEntityReceiver(P,K,false,F_{kind})$ & nhánh bottom không có pattern; nhánh thực thể dùng quan hệ phù hợp đã vật chất hóa\\
+$cast_C(P,C)$ & $withEntityReceiver(P,K,null,F_{cast})$ & receiver được đánh giá một lần; bottom/cast thất bại ánh xạ thành bottom\\
+navigation thuận & \texttt{MATCH (s)-[r]->(t) WHERE type(r) STARTS WITH 'Link'} cộng các vị từ metadata chuẩn & R5/R6; chiếu đích phân biệt\\
+navigation ngược & \texttt{MATCH (t)-[r]->(s)} với vị từ role đảo và cùng kiểm tra kiểu & R5/R6; chiếu đích phân biệt\\
+$Count(S)$ & \texttt{COUNT \{Q RETURN DISTINCT setOut(s)\}} & probe count-subquery; token được đếm một lần\\
+If có giá trị tập & \texttt{CALL} tương quan có guard, \texttt{UNION ALL}, phép chiếu ngoài phân biệt & schema nhánh một cột bằng nhau; guard toàn phần bù nhau\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Ở đây \texttt{Link*} chỉ là ký hiệu meta; Cypher thô dùng biến quan hệ không
+giới hạn và vị từ \texttt{type(r) STARTS WITH 'Link'} đã hiển thị. Mỗi dòng biểu
+thức chứng minh $\absC(EvalExpr(expansion,row))$ bằng ngữ nghĩa đồ thị cần có;
+mỗi dòng tập chứng minh đẳng thức qua $\projectSet$. Các chứng minh là phân
+tích trường hợp cục bộ dùng luật biểu diễn, hợp đồng vô hướng, R3--R6 và C5.
+
+\begingroup\scriptsize
+\begin{longtable}{p{0.13\textwidth}p{0.34\textwidth}p{0.46\textwidth}}
+\toprule Luật & Tiền đề & Biểu thức được sinh\\ \midrule
+TXT-Self/Var & $\alpha(x)=a$ & $a$\\
+TXT-Lit & $p$ mới, $\sigma'(p)=\reprC(c)$ & \texttt{\$p}\\
+TXT-Attr & $e\Rightarrow_E P$ & $attr_C(P,a)$ qua $withEntityReceiver$\\
+TXT-Not & $e\Rightarrow_E c$ & $NOT\ truth(c)$\\
+TXT-And/Or & $e_i\Rightarrow_E c_i$ & $truth(c_1)\ AND/OR\ truth(c_2)$\\
+TXT-Implies & như trên & $NOT\ truth(c_1)\ OR\ truth(c_2)$\\
+TXT-Compare & $e_i\Rightarrow_E c_i$ & $semEq/semOrd(op,c_1,c_2)$; phủ định đẳng thức cho NEQ\\
+TXT-Arith & như trên & $semArith(op,c_1,c_2)$\\
+TXT-If-E & điều kiện và các nhánh dịch thành biểu thức & $CASE\ WHEN\ truth(c)\ THEN\ c_t\ ELSE\ c_f\ END$\\
+TXT-Let-E & $body[x:=init]\Rightarrow_E c$ & $c$\\
+TXT-Exists & $S\Rightarrow_S(Q,s)$; $P\Rightarrow_E c$ dưới $\alpha[x\mapsto s]$ & $EXISTS\{Q\ WITH\ s\ WHERE\ truth(c)\ RETURN\ 1\}$\\
+TXT-ForAll & như trên & $NOT\ EXISTS\{Q\ WITH\ s\ WHERE\ NOT\ truth(c)\ RETURN\ 1\}$\\
+TXT-Incl/Excl & $S\Rightarrow_S(Q,s)$; $y\Rightarrow_E c_y$ & tồn tại/không tồn tại dòng có $setEq(s,c_y)$\\
+TXT-InclAll & $S\Rightarrow_S(Q_s,s)$; $T\Rightarrow_S(Q_t,t)$ & không có $t$ mà không tồn tại $s$ với $setEq(s,t)$\\
+TXT-ExclAll & như trên & không có $t$ mà tồn tại $s$ với $setEq(s,t)$\\
+TXT-Count & $S\Rightarrow_S(Q,s)$ & $COUNT\{Q\ RETURN\ DISTINCT\ setOut(s)\}$\\
+TXT-Empty & $S\Rightarrow_S(Q,s)$ & $NOT\ EXISTS\{Q\ RETURN\ 1\}$\\
+TXT-NotEmpty & như trên & $EXISTS\{Q\ RETURN\ 1\}$\\
+TXT-IsUnique & $S\Rightarrow_S(Q,s)$; $E:\sigma\Rightarrow_E c$ dưới $x\mapsto s$ & so sánh số phần tử nguồn với $COUNT(DISTINCT\ setOut(c))$ sau coercion có kiểu\\
+TXT-Kind/Cast & $e\Rightarrow_E P$ & $kind_C/cast_C(P,C)$ qua $withEntityReceiver$\\
+\bottomrule
+\end{longtable}
+
+\begin{longtable}{p{0.13\textwidth}p{0.34\textwidth}p{0.46\textwidth}}
+\toprule Luật & Tiền đề & Truy vấn tập được sinh\\ \midrule
+TXT-AllInst & tham số khóa lớp; $n$ mới & khớp $n$ bằng $ObjectInstanceOf$ đã vật chất hóa; trả về phân biệt $setOut(n)$\\
+TXT-SetLit & $e_i:\tau_i\Rightarrow_E c_i$; $setJoin(\bar\tau)=\upsilon$ & coercion từng $c_i$ tới $\upsilon$, $setOut$, rồi loại trùng bằng $setEq^\upsilon$\\
+TXT-Nav & các dòng nguồn; danh sách qualifier đã dịch; đích $t$ mới & pattern Link có hướng với liên kết, role, $qualList_C$; trả về phân biệt $setOut(t)$\\
+TXT-Select & $S\Rightarrow_S(Q,s)$; vị từ dưới $x\mapsto s$ & $Q\ WHERE\ truth(c)\ RETURN\ DISTINCT\ setOut(s)$\\
+TXT-Reject & như trên & $Q\ WHERE\ NOT\ truth(c)\ RETURN\ DISTINCT\ setOut(s)$\\
+TXT-Collect & các dòng nguồn; biểu thức thân không phải tập $c$ & $Q\ WITH\ setOut(c)\ AS\ z\ RETURN\ DISTINCT\ z$\\
+TXT-Union/Intersection & hai kế hoạch tập; $setJoin(\tau,\sigma)=\upsilon$ & coercion hai phía tới $\upsilon$, hợp hoặc giao bằng $setEq^\upsilon$, rồi chiếu phân biệt\\
+TXT-AsSet & một kế hoạch tập & chiếu lại cùng phần tử với $DISTINCT$\\
+TXT-If-S & điều kiện; hai nhánh tập & call tương quan có guard bù nhau, $UNION\ ALL$, phép chiếu ngoài phân biệt\\
+TXT-Let-S & $body[x:=init]\Rightarrow_S(Q,a)$ & $(Q,a)$\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Với biểu thức thực thể, phép nâng dòng nguồn sinh một dòng có guard; với tập, nó
+dùng suy dẫn $\Rightarrow_S$. Vì vậy nó hiện thực hóa $\asSources$. Hai luật
+let đổi tên alpha mọi binder trong thân xuất hiện tự do trong initializer trước
+khi thế tránh bắt giữ. Định kiểu, biến tự do và che khuất từ vựng được bảo toàn,
+và
+\[
+|body[x:=init]|\leq |body|+occ_{free}(x,body)\,|init|.
+\]
+Đệ quy dừng theo độ sâu lồng let cực đại; định lý không tuyên bố cận đa thức cho
+kích thước truy vấn. Với If có giá trị tập, cả hai nhánh nhập tường minh cùng
+các alias ngoài tự do, chiếu một alias có kiểu chung và dùng các guard toàn
+phần bù nhau. Do đó chính xác một nhánh đóng góp cho mỗi dòng vào trước phép
+chiếu ngoài phân biệt.
+
+\begin{lemma}[TXT1--TXT4 Các siêu thuộc tính của phép dịch]
+Với phép sinh tên mới tất định, mọi suy dẫn dịch thỏa bốn kết luận sau.
+\begin{enumerate}[label=(TXT\arabic*)]
+  \item Kết quả được xác định duy nhất tới đổi tên alpha của alias mới.
+  \item $\Rightarrow_E$ và $\Rightarrow_S$ bảo toàn loại cùng kiểu kết quả.
+  \item Mọi constructor đầu ra thuộc đúng mảnh $Cypher_{val}$ đã chọn.
+  \item Mọi kế hoạch đầu ra thỏa phán đoán hiện thực hóa vô hướng, vị từ hoặc
+  tập tương ứng với constructor đầu vào.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+Quy nạp đồng thời trên các suy dẫn $\Rightarrow_E$, $\Rightarrow_S$ và suy dẫn
+nguồn navigation. Với TXT1, constructor và loại tĩnh của đầu vào chọn đúng một
+luật; mọi lời gọi đệ quy duy nhất theo giả thiết quy nạp, còn bộ cấp phát tên và
+tham số là tất định. Hai lần chạy chỉ có thể chọn các atom mới khác tên, nên có
+một song ánh alpha giữ nguyên toàn bộ constructor, import và tham chiếu.
+
+Với TXT2, kiểm tra từng dòng bảng dịch. Literal, alias và toán tử vô hướng giữ
+kiểu đã suy dẫn; accessor dùng kiểu kết quả đã phân giải; kế hoạch tập xuất đúng
+một cột có kiểu phần tử nguồn hoặc kiểu $setJoin$; iterator mở rộng môi trường
+bằng đúng kiểu phần tử. Vì không có luật fallback, không thể sinh kế hoạch sai
+loại từ một constructor được chấp nhận.
+
+Với TXT3, mỗi vế phải chỉ dùng constructor raw-AST đã liệt kê. Phép hợp thành
+chỉ lồng các constructor đó; helper cấp phát alias/tham số chứ không chèn text
+đích. Do đó giả thiết quy nạp kéo theo toàn bộ đầu ra vẫn thuộc
+$Cypher_{val}$.
+
+Với TXT4, các luật cơ sở dùng C2/C3. Hợp thành biểu thức dùng C4, mở rộng môi
+trường iterator dùng C1, còn phép chiếu tập và lực lượng dùng C5. $setOut$ bảo
+toàn bottom ngữ nghĩa dưới dạng token khác null. Các nhánh điều kiện có guard
+bù nhau dưới $truth$; CY8--CY9 kết hợp chính xác nhánh được chọn. Các trường hợp
+D1--D11 bên dưới cung cấp các suy dẫn hiện thực hóa không trực tiếp, nên quy nạp
+bao phủ mọi constructor.
+\end{proof}
+
+\subsection{Cypher AST thô và phép khai triển toàn phần}
+
+Các ký hiệu $Q_s,Q_t,Q_f$ trong các luật trước đặt tên cho kết quả suy dẫn đệ
+quy đã hoàn tất. Chúng không phải lỗ trống văn bản và không phải constructor
+của ngôn ngữ đích. Đích được chứng nhận là AST thô có tham số:
+\begin{verbatim}
+CExpr  ::= Alias | Param | Null | Bool | Int | Property | List
+         | Unary | Binary | Case | Function | ListComp
+         | ExistsExpr(CQuery) | CountExpr(CQuery)
+Pattern ::= Node(alias,label,properties)
+          | Rel(node,alias,direction,optionalType,node)
+Clause ::= Match(optional,patterns) | Where(expr) | Unwind(expr,alias)
+         | With(distinct,projections) | Return(distinct,projections)
+         | Call(importedAliases,query)
+CQuery ::= Seq(clauses) | UnionAll(CQuery,CQuery)
+\end{verbatim}
+Định danh, khóa thuộc tính, nhãn, kiểu quan hệ, toán tử và hàm là các atom từ
+những enumeration hữu hạn được chứng nhận. Giá trị mô hình chỉ xuất hiện trong
+nút tham số. Vì hiện thực hóa vô hướng có thể cần các clause đứng trước, bộ
+khai triển toàn phần dùng các kiểu dữ liệu kiến tạo đóng
+\[
+ ScalarPlan=([Clause],CExpr),\qquad SetPlan=(CQuery,exportedAlias).
+\]
+Prelude của kế hoạch vô hướng giữ mọi alias tự do của kết quả trong phạm vi;
+kế hoạch tập trả về chính xác schema một cột được xuất. Đây là các record kiến
+tạo của ngôn ngữ host, không phải cú pháp đích bổ sung.
+
+Cho $CQExpr$, $CQSet$, $CQSource=CQSourceExpr(CQExpr)+CQSourceSet(CQSet)$ và
+$CQInv$ là các constructor query-model có kiểu tương ứng một-một với các dòng
+TXT. Định nghĩa bằng khớp constructor:
+\[
+\begin{array}{rcl}
+Expand_E&:&CQExpr\times AliasEnv\times ParamState\times LiveSet
+          \longrightarrow ScalarPlan\times ParamState,\\
+Expand_S&:&CQSet\times AliasEnv\times ParamState
+          \longrightarrow SetPlan\times ParamState,\\
+Expand_{Src}&:&CQSource\times AliasEnv\times ParamState
+          \longrightarrow SetPlan\times ParamState,\\
+Expand_I&:&CQInv\times ParamState
+          \longrightarrow CQuery\times ParamState.
+\end{array}
+\]
+Mọi lời gọi dùng tập đang sống chứa $range(\alpha)$. Các helper toàn phần sau
+loại bỏ các phép prelude/import từng chỉ mang tính sơ đồ:
+\[
+withBind(K,e,a)=With(false,[x\mapsto x]_{x\in K}\cup[e\mapsto a]),
+\]
+\[
+bindScalar(ScalarPlan(L,e),a,K)
+=ScalarPlan(L\mathbin{+\!+}[withBind(K,e,a)],Alias(a)).
+\]
+Helper toàn phần $prefixSet$ bọc kết quả $Seq$ hoặc $UnionAll$ tùy ý trong một
+$Call$ tương quan, thực thi các clause tiền tố và trả về phân biệt cùng alias đã
+xuất. Helper $materialize$ đánh giá kế hoạch vô hướng một lần, bind kết quả vào
+alias mới bằng $withBind$, và các clause sau chỉ tham chiếu alias đó. Do đó các
+prelude qualifier chạy theo thứ tự khai báo, prelude điều kiện đứng trước guard
+nhánh và $Cast(P,C)$ đánh giá $P$ chính xác một lần. Call tương quan nhập tường
+minh các alias tự do đã tính; nhánh điều kiện vô hướng và tập trả về cùng schema
+một cột.
+
+Đối với các constructor tập, $materializeList([P_1,\ldots,P_n],K)$ là phép gấp
+trái của $materialize$, sinh các alias mới $a_i$ và bảo toàn $K$ sau mỗi bước.
+Các helper kiến tạo đóng sau chỉ dùng AST thô:
+\begin{itemize}
+  \item $setLiteralPlan(\bar a,\bar\tau,\upsilon)$ unwind danh sách
+  $[setOut(coerce_C^{\tau_i\hookrightarrow\upsilon}(a_i))]_i$ rồi trả về
+  phân biệt một alias;
+  \item $unionPlan(P,Q,\upsilon)$ đổi tên hai cột đã coercion về cùng alias,
+  ghép bằng $UnionAll$ và bọc một phép trả về phân biệt;
+  \item $intersectPlan(P,Q,\upsilon)$ giữ một dòng đã coercion của $P$ khi
+  $ExistsExpr$ trên $Q$ tìm thấy witness thỏa $setEq^\upsilon$, rồi trả về
+  phân biệt;
+  \item $asSetPlan(P)$ chiếu lại cột xuất của $P$ bằng $setOut$ và
+  \texttt{DISTINCT};
+  \item $uniquePlan(P,x,E)$ vật chất hóa $E$ một lần cho mỗi dòng của $P$ và
+  trả về phép so sánh giữa số dòng nguồn phân biệt với
+  $COUNT(DISTINCT\ setOut(E))$. Hai count là aggregate không grouping nên kế
+  hoạch sinh đúng một dòng kể cả khi nguồn rỗng.
+\end{itemize}
+Mỗi helper nhập chính xác $FV$ của các kế hoạch con, cấp phát alias mới và trả
+về schema một cột; vì vậy chúng không mở rộng ngôn ngữ đích.
+
+Với kế hoạch vô hướng $P$, các alias mới $recv,out$ và bộ dựng thân thực thể
+$F$ kết thúc bằng một phép chiếu tên $out$, định nghĩa
+\[
+\begin{split}
+bottomArm(recv,b,out)&=Seq([Where(isBottom(recv)),Return(b\ AS\ out)]),\\
+entityArm(recv,F,out)&=Seq([Where(NOT\ isBottom(recv))]+F(recv,out)),\\
+withEntityReceiver(P,K,b,F)&=
+ScalarPlan(X.prelude+[Call(K\cup\{recv\},B)],Alias(out)),
+\end{split}
+\]
+trong đó $X=materialize(P,recv,K\cup\{recv\})$ và
+$B=UnionAll(bottomArm(recv,b,out),entityArm(recv,F,out))$.
+$F_{attr}$ thực hiện một phép khớp thuộc tính optional chuẩn và trả về giá trị
+đã lưu; $F_{kind}$ trả về biểu thức tồn tại quan hệ phù hợp; còn $F_{cast}$ trả
+về $recv$ khi biểu thức đó đúng và null nếu không. Theo thứ tự clause, dòng
+bottom bị loại trước khi bất kỳ pattern thực thể nào được đánh giá. Các guard
+bù nhau, thân thực thể đơn và import tường minh thiết lập $WFScalar$ cùng bảo
+toàn alias đang sống.
+
+Các phương trình khai triển biểu thức đúng kiểu ở mức ngôn ngữ host. Cụ thể,
+\[
+\begin{array}{rcl}
+Expand_E(CQSetRelation)&=&ScalarPlan([],\,relationExpr),\\
+Expand_E(CQCount(R))&=&ScalarPlan([],\,CountExpr(closeSet(Expand_S(R)))),\\
+Expand_E(CQEmpty(R))&=&ScalarPlan([],\,emptyExpr),\\
+Expand_E(CQIsUnique(R,x,E))&=&uniquePlan(Expand_S(R),x,Expand_E(E)),\\
+Expand_E(CQAttribute(P,a))&=&withEntityReceiver(Expand_E(P),K,null,F_{attr}),\\
+Expand_E(CQKindOf(P,C))&=&withEntityReceiver(Expand_E(P),K,false,F_{kind}),\\
+Expand_E(CQCast(P,C))&=&withEntityReceiver(Expand_E(P),K,null,F_{cast}).
+\end{array}
+\]
+Với kết quả tập, các phương trình bổ sung là
+\[
+\begin{array}{rcl}
+Expand_S(CQSetLiteral(\bar P,\bar\tau,\upsilon))
+ &=&setLiteralPlan(materializeList(Expand_E(\bar P),K),\bar\tau,\upsilon),\\
+Expand_S(CQUnion(P,Q,\upsilon))
+ &=&unionPlan(Expand_S(P),Expand_S(Q),\upsilon),\\
+Expand_S(CQIntersection(P,Q,\upsilon))
+ &=&intersectPlan(Expand_S(P),Expand_S(Q),\upsilon),\\
+Expand_S(CQAsSet(P))&=&asSetPlan(Expand_S(P)).
+\end{array}
+\]
+Do đó không phương trình $CQExpr$ nào trả về $CExpr$ trần tại nơi đối miền yêu
+cầu $ScalarPlan$.
+
+Phương trình nguồn giao receiver tập cho $Expand_S$ và nâng receiver thực thể
+thành một dòng có guard, qua đó cài đặt $\asSources$. Mỗi phương trình còn lại
+chỉ dùng constructor thô, cấp phát tên mới/tham số tất định và kết quả đệ quy đã
+hoàn tất. Truy cập thuộc tính tạo phép khớp \texttt{ObjectHasAttribute}
+optional trong prelude vô hướng. Navigation tạo pattern quan hệ không giới hạn
+có hướng và các vị từ tường minh về \texttt{type}, liên kết, role, qualifier.
+Các nút tồn tại và lực lượng chứa subquery đóng đã khai triển đệ quy. Điều kiện
+vô hướng và tập tạo các nhánh \texttt{UnionAll} có guard bù nhau, cùng alias
+được xuất và import tường minh. Phương trình invariant sinh phép khớp context,
+prelude vị từ, bộ lọc vi phạm và phép trả về định danh phân biệt. Vì vậy không
+placeholder import/alias trong ngoặc góc, khóa thuộc tính nội suy hay fragment
+nhánh chưa khai triển nào thuộc đối miền của $Expand$.
+
+\paragraph{Các suy diễn trường hợp khó của TXT4.}
+Các trường hợp không trực tiếp của quy nạp hiện thực hóa đồng thời là:
+\begin{enumerate}[label=(D\arabic*)]
+  \item Với navigation có qualifier, áp dụng C1 lặp lại cho thấy việc vật chất
+  hóa qualifier từ trái sang phải bảo toàn bộ qualifier ngữ nghĩa có thứ tự.
+  Phép tuần tự hóa đơn ánh và R6 xác định chính xác các đích khớp; C5 loại các
+  dòng quan hệ trùng.
+  \item Với $IncludesAll$, subquery quan hệ thuộc bên trong đúng chính xác khi
+  phần tử phía phải tương quan thuộc tập hữu hạn phía trái. Do đó lượng từ tồn
+  tại bị phủ định bên ngoài phát biểu rằng không có phản ví dụ phía phải. Bỏ
+  phủ định bên trong cho chứng minh tính rời nhau tương tự đối với $ExcludesAll$.
+  \item Với iterator trên tập vô hướng, một dòng nguồn thỏa
+  $\absC(r(a))=\encodeValue(s)=s$. C1 mở rộng tương ứng dòng bằng
+  $x\mapsto a$ mà không gọi $\node(s)$, nên giả thiết quy nạp cho thân áp dụng
+  đồng nhất với phần tử vô hướng và đối tượng.
+  \item Với If có giá trị tập, điều kiện được vật chất hóa một lần. Chính xác
+  một trong $truth(cc)$ và phủ định của nó đúng, hai nhánh trả cùng schema, và
+  CY9 chỉ đóng góp các dòng của nhánh được chọn; phép chiếu ngoài phân biệt khôi
+  phục ngữ nghĩa tập hữu hạn.
+  \item Với Collect sinh bottom, $setOut$ đổi null thành token khác null.
+  BR1--BR7 làm phép trừu tượng hóa khôi phục bottom và bảo đảm distinct/count
+  không loại nó hoặc gộp nó với giá trị khác bottom.
+  \item Với Let, đổi tên alpha rồi thế tránh bắt giữ bảo toàn định kiểu và ngữ
+  nghĩa. Khai triển đệ quy dừng theo độ sâu lồng Let ngoài giảm nghiêm ngặt.
+  \item Với thuộc tính, kind-of và cast trên bottom, $withEntityReceiver$ chỉ
+  bật nhánh bottom không có pattern. Với thực thể, chỉ nhánh thực thể chạy và
+  R4 hoặc R3 áp dụng. C1 và lập luận nhánh đơn thiết lập $WFScalar$ cùng bảo
+  toàn mọi alias đang sống.
+  \item Với Set literal, các kế hoạch phần tử được vật chất hóa từ trái sang
+  phải. M3a/G3 và $coerce_C$ đưa chúng về kiểu $setJoin$ duy nhất; $setOut$
+  giữ bottom và BR2/BR6 làm phép chiếu phân biệt đúng bằng tập ngoại diên của
+  các giá trị phần tử.
+  \item Với union, CY9 nối hai tập dòng sau coercion và BR6 loại trùng, nên kết
+  quả là hợp ngoại diên. Với intersection, một dòng trái được giữ đúng khi
+  CY4 tìm thấy dòng phải thỏa $setEq^\upsilon$; BR1--BR4 làm điều này tương
+  đương membership có kiểu trong giao hai tập.
+  \item Với $asSet$, giả thiết quy nạp đã cho một tập ngoại diên; chiếu lại
+  bằng $setOut$ và \texttt{DISTINCT} không thêm hoặc bỏ giá trị theo BR6, nên
+  đây là phép đồng nhất.
+  \item Với $isUnique$, truy vấn nguồn có đúng một đại diện cho mỗi phần tử
+  nguồn sau phép đóng tập. Thân được đánh giá một lần trên mỗi dòng; BR7/CY5
+  làm so sánh lực lượng nguồn với lực lượng các giá trị thân phân biệt đúng khi
+  và chỉ khi không có hai phần tử nguồn khác nhau có ảnh bằng nhau.
+\end{enumerate}
+Các suy dẫn D1--D11 cùng các trường hợp cơ sở/hợp thành trực tiếp suy ra TXT4 từ
+C1--C5, R3--R6, BR1--BR7 và các tiên đề Cypher đã chọn; TXT4 không phải một giả
+thiết độc lập về tính đúng đắn compiler.
+
+\begin{lemma}[TXT5 Tính đóng và toàn phần của AST thô]
+Mọi invariant đã chuẩn hóa được chấp nhận có một kết quả query-model và một kết
+quả $Expand_I$ đóng, tới tương đương alpha theo tên mới. Ngoài ra,
+\[
+T_{\mathrm{TEXT}}(nva)=renderRaw(Expand_I(BuildCQInvariant(nva))),
+\]
+trong đó $renderRaw$ là pretty-printer toàn phần có đặt ngoặc và không có lựa
+chọn ngữ nghĩa. Đây là đặc tả được chứng nhận; prototype sinh text trực tiếp
+cần lập luận phù hợp chứng minh tương đương alpha với phép khai triển đã chỉ
+định. Với $Q$ được sinh, nghĩa vụ dialect bổ sung là
+$parse_{Cypher}(renderRaw(Q))\equiv_{\alpha}Q$.
+\end{lemma}
+\begin{proof}
+TXT1 cho constructor query-model duy nhất. Quy nạp cấu trúc đồng thời trên
+$CQExpr/CQSource/CQSet$ chứng minh tính toàn phần và invariant phạm vi kế hoạch
+vì mọi đối số đệ quy là nút con thực sự, mọi alias được nhập/sinh đều tường minh
+và mới. Let dùng độ đo lồng nhau quy chuẩn đã chứng minh. Đóng một trong hai kế
+hoạch cho truy vấn thô không có lỗ. Round-trip parser là tiền đề dialect đã chọn
+được hoàn thành bằng kiểm thử parser trên truy vấn sinh, không phải hệ quả chỉ
+từ pretty-printing.
+\end{proof}
+
+Pretty-printer là toàn phần theo các phương trình constructor: alias, tham số,
+thuộc tính, danh sách, biểu thức một/hai ngôi, case, hàm và
+$ExistsExpr/CountExpr$ được render đệ quy với dấu ngoặc; pattern render nhãn,
+hướng, kiểu hữu hạn và thuộc tính có tham số; mỗi constructor clause render từ
+khóa và các nút con. $Seq$ nối các clause bằng dòng mới, còn
+\[
+renderRaw(UnionAll(Q_1,Q_2))=
+renderRaw(Q_1)\mathbin{+}\texttt{ UNION ALL }\mathbin{+}renderRaw(Q_2).
+\]
+Với call tương quan,
+\[
+renderRaw(Call(K,Q))=
+\texttt{CALL \{}\,renderRaw(injectImports(K,Q))\,\texttt{\}},
+\]
+trong đó $injectImports$ thêm import \texttt{WITH} tường minh vào đầu $Seq$ và
+phân phối nó vào cả hai nhánh của $UnionAll$. Các phương trình này bao phủ mọi
+constructor thô. Round-trip parser vẫn là tiền đề dialect đã chọn thay vì hệ
+quả chỉ từ pretty-printing.
+
+Luật gốc invariant dịch $nva$ thành Boolean dưới
+$\alpha_0=\{self\mapsto s\}$, khớp $s$ qua \texttt{ObjectInstanceOf} tới
+\texttt{:Class \{classKey:\$pC\}}, trong đó $\sigma(p_C)=key(C)$, lọc bằng
+$NOT\ truth(c)$ và trả về \texttt{DISTINCT s.use\_id}. Đây là định nghĩa duy
+nhất của $T_{\mathrm{TEXT}}$ cho Định lý~6.
+
+\section{Các Định lý 0--6}
+
+\begin{theorem}[Định lý 0: Biểu diễn đối tượng--đồ thị]
+Với mọi cặp hợp lệ $(MM,M)$, nếu $G=\PhiEnc(MM,M)$ thỏa hợp đồng mã hóa đồ
+thị, thì $G$ bảo toàn mọi quan sát liên quan đến kiểm tra mà $\OCLval$ sử dụng:
+định danh đối tượng, tương ứng đối tượng--nút, sự phù hợp lớp, giá trị thuộc
+tính, liên kết nhị phân, kết quả navigation và kết quả $allInstances$. Hình
+thức hóa:
+\[
+\liftNode(\ObsObj(MM,M))=\ObsGraph(MM,\PhiEnc(MM,M)).
+\]
+\end{theorem}
+
+\paragraph{Các bổ đề cần dùng.}
+R1 Tính đơn ánh của đối tượng; R2 Tính chính xác đối tượng--nút; R3 Bảo toàn
+kiểu; R4 Bảo toàn thuộc tính; R5 Bảo toàn liên kết; R6 Bảo toàn navigation; R7
+Bảo toàn allInstances.
+
+\begin{proof}
+Định nghĩa $\Psi_{val}$ bằng các accessor chuẩn: nút đối tượng và
+\texttt{use\_id} cho đối tượng, cạnh \texttt{ObjectInstanceOf} cho kiểu,
+$I^{graph}_{attr}$ cho thuộc tính, quan hệ \texttt{Link*} cùng exact
+\texttt{associationKey}, role và qualifier có hướng cho liên kết, $nav_{graph}$ cho
+navigation, và quan hệ thuộc kiểu cho $allInstances$.
+
+R2 cho song ánh giữa đối tượng nguồn và nút đối tượng nhìn thấy bởi kiểm tra qua
+$\RepG$, đồng thời định nghĩa $\node(o)$; R1 cho tính đơn ánh. Vì thế
+$\Psi_{val}$ không đọc thiếu và cũng không đọc nút giả. R3 bảo toàn sự phù hợp
+lớp, R4 bảo toàn tra cứu thuộc tính. R5 bảo toàn liên kết theo hai bao hàm: mọi
+liên kết UML đều được xuất và mọi liên kết đồ thị nhìn thấy bởi kiểm tra đều
+được sinh từ một liên kết UML. Từ đó R6 bảo toàn navigation nhờ metadata hướng
+và role đã phân giải. R7 bảo toàn $allInstances$ qua kế thừa được vật chất hóa.
+Do từng thành phần của $\liftNode(\ObsObj(MM,M))$ bằng thành phần tương ứng của
+$\ObsGraph(MM,G)$, đẳng thức ngoại diên của bộ chứng minh tương đương quan sát.
+\end{proof}
+
+\paragraph{Giải thích.}
+Định lý không nói rằng đồ thị lưu mọi tạo tác UML. Nó chỉ khẳng định các quan
+sát cần cho kiểm tra invariant được bảo toàn.
+
+\begin{theorem}[Định lý 1: Tính đúng đắn của binder]
+Nếu $e\in\OCLval$, $ast=\mathrm{Parse}(e)$,
+$decode_{val}(ast)=e$, $\Adm_{MM}(ast)$ và
+$T_{\mathrm{BIND}}(ast,MM)=b\in\BoundOCLval(MM)$, thì với mọi $M$ hợp lệ và
+các môi trường gắn thẻ tương ứng $\rho_S\sim_{SB}\rho_B$,
+\[
+\sem{e}{S}(M,\rho_S)\sim_{SB}\sem{b}{B}(M,\rho_B).
+\]
+thì theo cầu nối xóa thẻ, hai ngữ nghĩa công khai của chúng bằng nhau.
+\end{theorem}
+
+\paragraph{Các bổ đề cần dùng.}
+M2 Tính đóng của biểu thức Bound con và quy nạp cấu trúc; M3 Tính duy nhất của
+kiểu chuẩn; M3a Tính hàm của $setJoin$; M4 Tính đúng đắn của admission và binding;
+B1 Tính đúng đắn của
+phân giải tên; B2 Tính đúng đắn của gán kiểu; B3 Tính tất định của phân giải
+navigation; B4 Bảo toàn phạm vi từ vựng và che khuất; SB0 Tương ứng toán tử độc lập.
+
+\begin{proof}
+M4 đặt mọi kết quả thành công vào miền định lý hữu hạn có kiểu, M2 biện minh quy
+nạp và M3 cố định kiểu trong từng phương trình cục bộ. Chứng minh bằng quy nạp
+trên suy dẫn binding thành công. Chứng nhận ngữ nghĩa Source/Bound ở trên là
+phân hoạch trường hợp đầy đủ, nên mỗi luật binder được chấp nhận có một phương
+trình mô phỏng cục bộ. Các trường hợp cơ sở \texttt{self}, biến và literal là
+trực tiếp. Với lời gọi thuộc tính, giả thiết quy nạp bảo toàn receiver; B1 phân
+biệt thuộc tính với role liên kết, B2 bảo đảm dùng đúng kiểu, và B3 cho liên
+kết, role, hướng cùng kiểu qualifier duy nhất của navigation. Các toán tử
+Boolean, so sánh, số học và kiểu bảo toàn toán hạng tương ứng theo quy nạp; SB0
+nối các kết quả toán tử được định nghĩa độc lập. Với \texttt{if} và
+\texttt{let}, SB0 bảo toàn lựa chọn nhánh và mở rộng môi trường tương ứng. Với
+iterator, B4 cho binding từ vựng tương ứng và giả thiết quy nạp áp dụng cho thân
+dưới các môi trường đã mở rộng. Với Set literal, giả thiết quy nạp liên hệ từng
+phần tử, M3a chọn duy nhất kiểu kết quả và SB0 áp dụng cùng phép nâng trước
+khi lấy tập ngoại diên. $xor$ dùng cùng hai giá trị chân lý kiểm tra ở hai phía.
+$isUnique$ được bảo toàn vì quan hệ phần tử là song ánh theo giả thiết quy nạp,
+còn đẳng thức ảnh được SB0 phản ánh. Với union/intersection, hai tập con được
+liên hệ ngoại diên sau cùng phép nâng $setJoin$; $asSet$ là đồng nhất. Đây là
+toàn bộ các luật binder mới ngoài các họ đã xét. F1 riêng biệt chứng minh mọi biểu thức định kiểu
+giới hạn có hình chiếu AST được chấp nhận; khi đã giả thiết admission, F1 không
+phải tiền đề của quy nạp này.
+\end{proof}
+
+\paragraph{Giải thích.}
+Binder không thay đổi ý nghĩa kiểm tra; nó phân giải tên và gắn kiểu cùng tham
+chiếu siêu mô hình.
+
+\begin{theorem}[Định lý 2: Trừu tượng hóa Đại số Kiểm tra]
+Nếu $MM;\Gamma\vdash b:\tau$, $T_{\mathrm{VA}}(b)=va$ và
+$\rho\models_M\Gamma$, thì
+\[
+erase_B(\sem{b}{B}(M,tag_B(\rho)))=\sem{va}{obj}(M,\rho).
+\]
+Tương đương, theo ký hiệu công khai dẫn xuất,
+$\sem{b}{Bound}(M,\rho)=\sem{va}{obj}(M,\rho)$.
+\end{theorem}
+
+\paragraph{Các bổ đề cần dùng.}
+M2 Tính đóng của biểu thức Bound con và quy nạp cấu trúc; M3 Tính duy nhất của
+kiểu chuẩn; A1 Bảo toàn kiểu từ Bound sang VA; A2 Mô phỏng cục bộ từ Bound sang
+VA; A3 Bảo toàn tra cứu môi trường; B4 Bảo toàn phạm vi từ vựng và che khuất.
+
+\begin{proof}
+M2 biện minh quy nạp cấu trúc trên biểu thức Bound hữu hạn và M3 cố định kiểu
+chuẩn ở mỗi constructor. Bound \texttt{self}, biến và literal ánh xạ trực tiếp
+sang \texttt{Self}, \texttt{Var}, \texttt{Literal} của VA; A3 cho cùng kết quả
+tra cứu môi trường. Với thuộc tính và navigation, metadata đã phân giải được
+sao chép sang nút VA tương ứng. Với Boolean, so sánh, số học, toán tử kiểu,
+\texttt{if} và \texttt{let}, A2 cho cùng ngữ nghĩa toán tử phía đối tượng mà
+không dùng mã hóa đồ thị. Với iterator và toán tử collection, tập nguồn được
+bảo toàn theo quy nạp và thân được đánh giá dưới cùng môi trường mở rộng nhờ A3
+và B4. Set literal dùng cùng phép nâng phần tử có kiểu trước khi VA dựng tập;
+union/intersection dùng hợp/giao sau nâng, còn $asSet$ là đồng nhất. Với
+$isUnique$, A3 cho cùng ảnh thân trên cùng tập nguồn và A2 phản ánh đẳng thức
+của các giá trị ảnh, nên tính đơn ánh không đổi. Trường hợp $xor$ dùng phương
+trình Boolean cục bộ của A2. A1 bảo đảm định kiểu đúng xuyên suốt.
+\end{proof}
+
+\paragraph{Giải thích.}
+VA là một tầng trừu tượng: nó loại bỏ cú pháp riêng của parser nhưng giữ nguyên
+ngữ nghĩa kiểm tra.
+
+\begin{theorem}[Định lý 3: Bảo toàn chuẩn hóa]
+Với mọi biểu thức VA định kiểu đúng $va$, nếu $nva=T_{\mathrm{NORM}}(va)$ thì:
+\begin{enumerate}[label=(\roman*)]
+  \item chuẩn hóa dừng;
+  \item $nva$ ở dạng chuẩn;
+  \item với diễn giải đối tượng và đồ thị $I$,
+  \[
+  \sem{va}{I}(\rho)=\sem{nva}{I}(\rho).
+  \]
+\end{enumerate}
+\end{theorem}
+
+\paragraph{Các bổ đề cần dùng.}
+N1 Bảo toàn ngữ nghĩa của phép viết lại; N2 Bảo toàn kiểu của phép viết lại;
+N3 Tính dừng của chuẩn hóa; N4 Bao phủ dạng chuẩn.
+
+\begin{proof}
+Bảo toàn ngữ nghĩa được chứng minh bằng phân trường hợp trên các luật viết lại.
+Chẳng hạn, $Size(S)\to Count(S)$ giữ cùng lực lượng hữu hạn.
+$ForAll(S,x,P)$ được viết lại thành $Not(Exists(S,x,Not(P)))$; hai vế tương
+đương trên tập hữu hạn vì chân lý phổ quát chính là không tồn tại phản ví dụ.
+$Reject(S,x,P)$ thành $Select(S,x,Not(P))$, giữ đúng các phần tử có vị từ không
+validation-true. $Implies(A,B)$ thành $Or(Not(A),B)$ theo chính sách Boolean ở
+mức kiểm tra. $Xor(A,B)$ thành
+$Or(And(A,Not(B)),And(Not(A),B))$, đúng khi chính xác một toán hạng
+validation-true. $Includes(S,y)$ thành kiểm tra tồn tại với đẳng thức có kiểu trên
+tập hữu hạn; G3 bao phủ định danh thực thể và đẳng thức vô hướng tương thích.
+$Excludes$ là phủ định trực tiếp của lượng từ tồn tại đó. Hai so sánh lực lượng
+$Count(Nav(\cdots))>0$ và $Count(Nav(\cdots))=0$ lần lượt thành tồn tại và
+không tồn tại trên kết quả navigation hữu hạn. N2 bảo toàn kiểu từng luật. N3
+theo từ độ đo từ điển giảm trên mẫu nguồn, còn N4 theo từ phép duyệt dưới-lên
+tất định.
+\end{proof}
+
+\paragraph{Giải thích.}
+Chuẩn hóa thay đổi hình dạng biểu thức để đơn giản hóa việc sinh Cypher; nó
+không thay đổi ý nghĩa kiểm tra.
+
+\begin{theorem}[Định lý 4: Bảo toàn kiểm tra]
+Cho $MM;\Gamma\vdash nva:\tau$. Nếu $G=\PhiEnc(MM,M)$ thỏa Định lý~0,
+$\rho\models_M\Gamma$, $\eta\models_G\Gamma$ và
+$\rho\sim_{\Phi}\eta$, thì
+\[
+\encodeValue(\sem{nva}{obj}(M,\rho))=\sem{nva}{graph}^{\tau}(G,\eta).
+\]
+Với các vị từ invariant:
+\[
+\boolval(\sem{nva}{obj}(M,self\mapsto o))
+=
+\boolval(\sem{nva}{graph}^{Boolean}(G,self\mapsto \node(o))).
+\]
+\end{theorem}
+
+\paragraph{Các bổ đề cần dùng.}
+Định lý 0; G1 Bảo toàn mã hóa môi trường; G2 Tính đơn ánh của mã hóa giá trị và
+đồng cấu tập hữu hạn; G3 Bảo toàn đẳng thức có kiểu và toán tử vô hướng; G4
+Tương thích với chính sách kiểm tra.
+
+\paragraph{Chứng nhận tính đầy đủ theo constructor.}
+Quy nạp được thực hiện trên suy dẫn định kiểu VA đã chuẩn hóa. Các dòng sau
+phân hoạch toàn bộ văn phạm; ``đã loại'' nghĩa là N4 làm trường hợp ngoài cùng
+không thể đạt tới sau chuẩn hóa.
+
+\begingroup\scriptsize
+\begin{longtable}{p{0.22\textwidth}p{0.31\textwidth}p{0.30\textwidth}p{0.10\textwidth}}
+\toprule Constructor & Giả thiết quy nạp & Bổ đề chính & Trạng thái\\ \midrule
+Literal/Self/Var & không có & quan hệ môi trường, mã hóa & đạt tới\\
+SetLiteral & các phần tử & G2, ảnh tập hữu hạn ngoại diên & đạt tới\\
+Attribute & receiver & R4 & đạt tới\\
+Navigation & receiver và qualifier & R6, G4 $\asSources$ & đạt tới\\
+AllInstances & không có & R3, R7 & đạt tới\\
+Not/And/Or & các toán hạng & G3, chân lý G4 & đạt tới\\
+Xor & các toán hạng & phương trình Boolean & đã loại\\
+Implies & các toán hạng & phương trình Boolean & đã loại\\
+đẳng thức/thứ tự/số học & các toán hạng & G3, hợp đồng vô hướng & đạt tới\\
+If (vô hướng hoặc tập) & điều kiện và nhánh được chọn & G4, giả thiết quy nạp nhánh & đạt tới\\
+Let & initializer và thân mở rộng & G1 & đạt tới\\
+Exists & nguồn và vị từ mở rộng & G1, G2, G4 & đạt tới\\
+ForAll & nguồn và vị từ mở rộng & tương đương phản ví dụ & đã loại\\
+Select & nguồn và vị từ & G1, G2 & đạt tới\\
+Reject & nguồn và vị từ & G1, G2 & đã loại\\
+Collect & nguồn và thân & G1, G2 ảnh tập hữu hạn & đạt tới\\
+IsUnique & nguồn và thân chiếu & G1, G2 phản ánh đẳng thức & đạt tới\\
+Includes/Excludes & tập và phần tử & quan hệ thuộc G2 & đã loại\\
+IncludesAll/ExcludesAll & cả hai tập & tập con/rời nhau G2 & đạt tới\\
+Union/Intersection/AsSet & nguồn và đối số tập & hợp/giao/đồng nhất G2 & đạt tới\\
+Count & nguồn & lực lượng G2 & đạt tới\\
+Size & nguồn & từ đồng nghĩa Count & đã loại\\
+IsEmpty/NotEmpty & nguồn & tính rỗng G2 & đã loại\\
+KindOf & receiver & R3 & đạt tới\\
+Cast & receiver & R3, thất bại thành bottom & đạt tới\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\begin{proof}
+Chứng minh bằng quy nạp cấu trúc trên suy dẫn định kiểu của $nva$. Literal,
+biến và \texttt{self} theo từ tương ứng môi trường. Set literal dùng giả thiết
+quy nạp cho từng phần tử và tính ngoại diên của G2. Với truy cập thuộc tính,
+receiver bottom cho bottom ở cả hai diễn giải theo phép hoàn chỉnh nguyên thủy;
+receiver thực thể dùng R4. Navigation dùng $\asSources$ và R6; danh sách
+qualifier thô có thứ tự được đánh giá trước, còn tuần tự hóa danh sách đơn ánh
+làm đẳng thức thô tương đương đẳng thức payload. $AllInstances$ dùng R7. Các
+trường hợp Boolean, so sánh và số học dùng giả thiết quy nạp cùng G3, kể cả đẳng
+thức thực thể; G4 làm chân lý kiểm tra, $\finiteSet$ và $\asSources$ giao hoán
+với mã hóa.
+
+Với $Exists(S,x,P)$, giả thiết quy nạp cho tương ứng giữa các phần tử của
+$\finiteSet(\sem{S}{obj})$ và $\finiteSet(\sem{S}{graph})$ qua
+$\encodeValue$. G1 bảo toàn quan hệ sau khi mở rộng môi trường iterator, và giả
+thiết quy nạp trên $P$ bảo toàn chân lý kiểm tra. $ForAll$, $Select$, $Reject$
+và $Collect$ dùng cùng lập luận mở rộng môi trường. Quan hệ thuộc, tập con, rời
+nhau, hợp, giao, $asSet$, tính duy nhất của ảnh, lực lượng và tính rỗng theo từ
+tính đơn ánh và đồng cấu tập hữu hạn của G2. Khi kiểu phần tử hai phía khác
+nhau nhưng $setJoin$ xác định, M3a và phương trình nâng kiểu của G3 cho cùng tập
+sau coercion; vì thế lập luận hợp, giao và Set literal vẫn áp dụng ở kiểu kết
+quả chung. Với $isUnique$, G1 ghép cặp các phần tử nguồn và G3 phản ánh đẳng
+thức ảnh thân, nên tồn tại một cặp va chạm ở phía đối tượng khi và chỉ khi tồn
+tại cặp va chạm tương ứng ở phía đồ thị.
+\texttt{If} chọn các nhánh tương ứng nhờ chân lý được bảo toàn, còn
+\texttt{Let} theo G1. Kind-of trên bottom là false và cast trên bottom là bottom
+ở cả hai diễn giải. Với receiver thực thể, kind-of và cast theo R3, kể cả thất
+bại thành bottom; \texttt{oclIsTypeOf} không có trường hợp constructor được
+chứng nhận.
+\end{proof}
+
+\paragraph{Giải thích.}
+Diễn giải đối tượng và diễn giải đồ thị của VA đã chuẩn hóa trùng khớp vì mọi
+quan sát nguyên thủy mà VA sử dụng đều được phép mã hóa đồ thị bảo toàn.
+
+\begin{theorem}[Định lý 5: Hiện thực hóa Cypher tham chiếu dưới các giả thiết Cypher]
+Trên profile $CYPHER5_{val}$ đã chọn và một phiên bản server vượt qua các probe
+dialect bắt buộc, nếu $MM;\Gamma\vdash nva:\tau$ và renderer bắt đầu từ ánh xạ
+alias đơn ánh cùng ánh xạ tham số đúng đắn, thì kết quả không phải tập có suy
+dẫn query-model loại biểu thức duy nhất, với khai triển toàn phần
+$ScalarPlan(L,c)$ cho mọi tập alias đang sống hợp lệ $K$; kết quả tập có suy dẫn
+loại tập duy nhất với khai triển $SetPlan(Q,a)$. Theo TXT5, mỗi kế hoạch được
+sinh có khai triển AST thô đóng và thỏa phán đoán hiện thực hóa tương ứng. Với
+$MM;\{self:C\}\vdash nva:Boolean$ và truy vấn invariant
+$q=T_{\mathrm{TEXT}}(nva)$,
+\[
+\id(o)\in \returnedIds(q,G)
+\iff
+classOf(o)\mathrel{conformsTo}C\ \land\
+\boolval(\sem{nva}{graph}^{Boolean}(G,self\mapsto \node(o)))=\mathrm{false}.
+\]
+\end{theorem}
+
+\paragraph{Các bổ đề cần dùng.}
+C1 Bảo toàn alias và phép chiếu đang sống; C2 Tính đúng đắn của tham số; C3
+Hiện thực hóa truy cập đồ thị nguyên thủy; C3a Receiver thực thể an toàn với
+bottom; C4 Hợp thành vị từ và lượng từ tồn tại; C5 Hợp thành tập hữu hạn và lực
+lượng; C6 Hiện thực hóa lớp bọc invariant; các siêu thuộc tính ngoại diên
+TXT1--TXT5; cùng các tiên đề ngữ nghĩa ngoại diên cho mảnh $Cypher_{val}$ được
+sinh: tra cứu tham số/thuộc tính, \texttt{MATCH}, \texttt{WHERE},
+\texttt{EXISTS}, \texttt{COUNT}, \texttt{WITH}, \texttt{UNWIND},
+\texttt{CALL} tương quan, \texttt{UNION ALL}, \texttt{RETURN}, \texttt{CASE},
+\texttt{coalesce} và \texttt{DISTINCT}.
+
+\begin{proof}
+Chứng minh bằng quy nạp trên suy dẫn query-model định hướng cú pháp và khai
+triển AST thô khớp constructor, duy trì phán đoán hiện thực hóa thích hợp. TXT5
+bảo đảm mỗi trường hợp sinh truy vấn đóng không có placeholder văn bản. Biến và
+\texttt{self} được hiện thực hóa bởi alias, C1 ngăn bắt giữ. Literal được hiện
+thực hóa bởi tham số, C2 bảo toàn giá trị. Thuộc tính dùng accessor đồ thị chuẩn
+qua $withEntityReceiver$: bottom trả null mà không tạo node pattern, còn thực
+thể đi vào nhánh optional-match duy nhất và dùng R4. Kind-of và cast dùng cùng
+lập luận phân nhánh với R3. Navigation được hiện thực hóa bằng pattern
+\texttt{MATCH} có biến quan hệ không giới hạn, điều kiện
+\texttt{type(r) STARTS WITH 'Link'} và các vị từ trên
+exact \texttt{associationKey}, role, hướng cùng
+\texttt{sourceQualifiers}/\texttt{targetQualifiers}; C3 và hợp đồng đồ
+thị cho cùng tập với $nav_{graph}$, tới các bản sao được C5 loại bỏ.
+
+\texttt{Exists} được hiện thực hóa bởi \texttt{EXISTS \{...\}}, đúng chính xác
+khi subquery có witness ngữ nghĩa theo C4. Selection và rejection dùng CY3;
+collect đánh giá thân dưới mở rộng C1 và chiếu $setOut$ phân biệt. Quan hệ thuộc,
+tập con và rời nhau dùng các truy vấn witness hoặc phản ví dụ với
+$setEq^\tau$; C4--C5 chứng minh các lượng từ này đúng ngoại diên. Lực lượng và
+tính rỗng lần lượt dùng CY4--CY5 cùng BR6--BR7.
+
+Với Set literal, giả thiết quy nạp hiện thực hóa từng phần tử; M3a/G3 và
+$coerce_C$ đưa chúng tới kiểu kết quả chung, còn BR4/BR6 giữ bottom và loại
+đúng các phần tử trùng. Union dùng CY9 rồi chiếu phân biệt; intersection dùng
+CY4 để giữ một phần tử trái khi có witness phải bằng nó theo
+$setEq^\upsilon$; $asSet$ chỉ chiếu lại tập đã hiện thực hóa. Với $isUnique$,
+CY5 và BR7 so sánh số phần tử nguồn với số giá trị thân phân biệt, đúng chính
+xác khi ảnh thân đơn ánh. Các lập luận này là các trường hợp D8--D11 của TXT4.
+
+Các toán tử Boolean, so sánh, số học và kiểu dùng CY1, C3a và C4; $xor$ cùng
+các dạng Boolean nguồn đã bị chuẩn hóa được hiện thực hóa bởi các constructor
+Boolean còn lại. Chân lý kiểm tra được cài đặt bằng
+\texttt{coalesce(predicate,false)}.
+
+Theo $Expand_I$ và C6, lớp bọc liệt kê thể hiện ngữ cảnh bằng quan hệ thuộc kiểu
+đã vật chất hóa, giữ các thể hiện có vị từ không validation-true và trả về
+\texttt{DISTINCT self.use\_id}. Do đó tập định danh trả về chính là tập vi phạm
+phía đồ thị. C3 có chủ ý chỉ áp dụng cho nguyên thủy, nên phân tích trường hợp
+cấu trúc ở đây, không phải bản thân C3, thiết lập hiện thực hóa cho biểu thức VA
+đã chuẩn hóa bất kỳ trong phạm vi. Cuối cùng, $renderRaw$ chỉ thay đổi cách
+trình bày cụ thể dưới tiền đề round-trip dialect của TXT5.
+\end{proof}
+
+\paragraph{Giải thích.}
+Định lý phụ thuộc có điều kiện vào mảnh Cypher đã chỉ định. Đây không phải chứng
+minh cho thực thi Cypher tùy ý.
+
+\begin{theorem}[Định lý 6: Tương đương kiểm tra đầu-cuối]
+Cho \texttt{context C inv R: e} là invariant với $e\in\OCLval$ và AST sau parse
+thuộc $\ASTval$. Giả sử các tiền đề phạm vi chứng minh, đặc biệt
+$ScalarClosed(e,M)$ và $BottomSeparated(MM,M,e)$, cùng chuỗi thành công:
+\[
+\mathrm{ast}=\mathrm{Parse}(e),\quad
+s=decode_{val}(ast)=e,\quad
+b=T_{\mathrm{BIND}}(\mathrm{ast},MM)\in\BoundOCLval(MM),\quad
+va=T_{\mathrm{VA}}(b),\quad
+nva=T_{\mathrm{NORM}}(va),\quad
+q=T_{\mathrm{TEXT}}(nva),
+\]
+và $G=\PhiEnc(MM,M)$. Khi đó:
+\[
+\Viol_{OCL_{val}}(e,C,M)
+=
+\{\,o\in \Obj(M)\mid \id(o)\in \returnedIds(q,G)\,\}.
+\]
+\end{theorem}
+
+\paragraph{Các kết quả cần dùng.}
+Định lý 0; Định lý 1; Định lý 2; Định lý 3; Định lý 4; Định lý 5; tính đơn ánh
+của định danh đối tượng; ngữ nghĩa tập cho các định danh được trả về.
+
+F1 thiết lập khả năng biểu diễn biểu thức định kiểu giới hạn bằng AST được chấp
+nhận, nhưng không cần dùng khi đã giả thiết chuỗi vận hành thành công này.
+
+\begin{proof}
+Ta chứng minh hai bao hàm.
+
+\emph{Từ trái sang phải.} Giả sử $o\in \Viol_{OCL_{val}}(e,C,M)$. Khi đó
+$classOf(o)$ phù hợp với $C$ và
+\[
+\boolval(\sem{e}{OCL_{val}}(M,self\mapsto o))=\mathrm{false}.
+\]
+Theo Định lý~1, giá trị này bằng giá trị Bound OCL. Theo Định lý~2, nó bằng giá
+trị VA phía đối tượng. Theo Định lý~3, nó bằng giá trị VA đã chuẩn hóa phía đối
+tượng. Theo Định lý~4, cùng chân lý kiểm tra thu được khi đánh giá $nva$ trên
+$G$ với $self\mapsto\node(o)$. Vì vậy vị từ phía đồ thị không validation-true.
+Theo Định lý~0, sự phù hợp kiểu kéo theo $\node(o)$ là một nút ngữ cảnh được
+truy vấn invariant xét. Theo Định lý~5,
+$\id(o)\in\returnedIds(q,G)$.
+
+\emph{Từ phải sang trái.} Giả sử $\id_0\in\returnedIds(q,G)$. Theo đẳng thức
+hiện thực hóa invariant trong Định lý~5, tồn tại $o\in\Obj(M)$ sao cho
+$\id(o)=\id_0$, $classOf(o)$ phù hợp với $C$, và
+\[
+\boolval(\sem{nva}{graph}^{Boolean}
+  (G,self\mapsto\node(o)))=\mathrm{false}.
+\]
+Tính đơn ánh của $\id$ làm đối tượng này duy nhất. Theo Định lý~4, vị từ đã
+chuẩn hóa phía đối tượng không validation-true. Áp dụng ngược thứ tự Định
+lý~3, Định lý~2 và Định lý~1, vị từ OCL ban đầu không validation-true. Do đó
+$o\in \Viol_{OCL_{val}}(e,C,M)$.
+
+Hai bao hàm đều đúng, nên hai tập vi phạm bằng nhau.
+\end{proof}
+
+\paragraph{Giải thích.}
+Tương đương đầu-cuối thu được bằng cách hợp thành các kết quả bảo toàn cục bộ:
+binding, trừu tượng hóa VA, chuẩn hóa, diễn giải đồ thị và hiện thực hóa Cypher
+đều bảo toàn quyết định vi phạm cho từng đối tượng ngữ cảnh.
+
+\section{Ranh giới cơ giới hóa Lean có chọn lọc}
+
+Artifact \texttt{verification/lean/Ocl2CypherProof.lean} được ghim
+vào Lean 4.32.2, proof contract \texttt{PC-2026-07-22.3} và SHA-256 hiện
+hành của registry. Lean kernel kiểm tra 26 định lý được registry đặt
+tên; checker cấm \texttt{sorry}, \texttt{admit}, khai báo \texttt{axiom}
+của project và \texttt{opaque}. Axiom audit ghi công khai \texttt{propext}
+ở 13 chứng minh; hai chứng minh dependent-scope trong số đó còn dùng core
+\texttt{Quot.sound}. Chứng chỉ semantics của 11
+rewrite và định lý T6 pointwise không phụ thuộc axiom. Mutation gate phải bắt được registry
+hash cũ, placeholder, project-axiom, thiếu định lý, lỗi kiểu thật sự và core
+axiom không được cho phép.
+
+Phạm vi đã cơ giới hóa gồm đại số tập dạng predicate-set, tính
+đơn ánh của \texttt{encodeValue} trên miền giá trị phẳng
+bottom/scalar/entity/tập hữu hạn, đủ 11 rewrite family sau phép chiếu
+validation-truth, relative normal form/idempotence/lexicographic root decrease,
+N2 được index nội tại bởi \texttt{Bool}/\texttt{Nat}/\texttt{Elem}/\texttt{Set}
+với erasure/type inference, bảo toàn biên binder bằng biểu diễn de Bruijn,
+lexical named-to-de-Bruijn semantic correspondence, soundness và bảo toàn
+scoped semantics của đúng ba disjunct trong Java capture guard trên Boolean
+binder kernel,
+lifting cấu trúc Boolean từ primitive agreement, cùng
+hai bao hàm và mệnh đề pointwise của lõi trừu tượng Định lý~6.
+
+Đây là PO-18 \emph{partial}. Artifact chưa biểu diễn nested collection,
+OCL subtype/coercion phụ thuộc metamodel, tương ứng ngữ nghĩa phổ quát giữa
+mọi production Java \texttt{OclIr} constructor và kernel đã chọn, hay Java
+$T_{OPT}$--formal $T_{NORM}$ refinement,
+quy nạp typed \texttt{OCL\_val} đầy đủ cho Định
+lý~4, refinement của Java production, ngữ nghĩa Neo4j/Cypher hay
+\texttt{AdapterAdequate}. Vì vậy kernel PASS chỉ xác nhận các mệnh đề
+Lean đã chọn suy ra từ premise hiển thị; nó không phải định lý
+correctness đầu-cuối cho prototype.
+
+PO-19 cũng không được đóng chỉ vì CI đã được cấu hình. Workflow phải chạy trên
+một commit sạch với mọi input required được track, tái capture hai manifest
+runtime schema-v2 với \texttt{gitDirtyAtCapture=false}, rồi sinh/upload report
+khớp đúng commit và registry. Điều kiện này đã được thỏa tại commit
+\texttt{7b7bdd25}: clean baseline \texttt{f0938519}, Java 311/311, Lean 32/32,
+hai mutation gate 6/6 và proof/build artifact đều PASS/upload thành công; do đó
+PO-19 được discharged cho provenance CI/artifact. Source/PDF bài báo nằm ngoài
+contract máy theo PO-20 và tiếp tục bị \texttt{md/} ignore.
+
+\section{Kết luận}
+
+Báo cáo đã thiết lập một chuỗi chứng minh khép kín tương đối với các tiền đề đã
+phát biểu. Định lý~0 nối mô hình UML với các quan sát graph; Định lý~1--3 bảo
+toàn lần lượt binding, phép trừu tượng hóa VA và chuẩn hóa; Định lý~4 nối hai
+diễn giải VA; Định lý~5 hiện thực hóa diễn giải graph bằng mảnh Cypher được
+chọn; và Định lý~6 hợp thành các kết quả đó thành đẳng thức của hai tập vi
+phạm. Các trường hợp Set literal, $xor$, $union$, $intersection$, $asSet$ và
+$isUnique$ được bao phủ bằng typing, coercion có kiểu, hiện thực hóa và các suy
+diễn D8--D11 riêng.
+
+Tính đúng đắn thu được là tính đúng đắn có điều kiện của đặc tả hình thức. Để
+áp dụng trực tiếp cho một implementation cụ thể, implementation đó còn phải
+thỏa $AdapterAdequate$, direct-text/formal/parser bridge cho phạm vi claim,
+profile vô hướng, tách biệt bottom và các probe của phiên bản Cypher đã chọn.
+Vì vậy kết quả phân biệt rõ
+phần đã được chứng minh toán học với phần phải được giải phóng bằng conformance
+test và bằng chứng thực thi.
+
+Bằng chứng implementation hiện đã được tăng cường bằng kiểm tra R1--R7 trên ba
+fixture, 47-case USE--Neo4j differential/premise run, selected parser-AST
+projection 52/52 và ma trận CY1--CY9 9/9 trên Neo4j Kernel 2026.06.0
+Enterprise. Selected conformance hiện chạy 285 test: 283 pass và đúng hai
+freshness guard từ chối manifest schema-v1/contract-.2; mutation score 20/20;
+runtime đạt 47/47 với 28 mixed/19 profile-tautology cùng ba
+bottom/scalar/receiver probe.
+Các kiểm tra hữu hạn này không chứng minh $AdapterAdequate$ phổ quát, full AST
+hay universal plan closure, hoặc toàn bộ ngữ nghĩa Neo4j. Lean artifact đã
+đóng các kernel chọn lọc nêu trên; hướng tiếp theo là mở rộng từ named/de-Bruijn
+Boolean binder kernel sang full OCL/production-IR correspondence và Java refinement,
+rồi quy nạp typed Định lý~4, trong khi giữ
+Neo4j/Cypher và adapter ở biên premise/evidence được công bố rõ.
+
+\section{Đồng bộ các tài liệu chứng minh}
+
+Nguồn chuẩn duy nhất là
+\texttt{md/research/formal-theorems-and-proofs.md}; canonical JSON block trong
+file này cố định phiên bản hợp
+đồng \texttt{PC-2026-07-22.3}, registry schema 4, A1--A9, M1--M5 (gồm M3a), statement
+kernel và dependency chính xác của PC-T0--PC-T6, SF-01--SF-29, PO-01--PO-24,
+runtime profile, 47 constructor và mười thuật ngữ implementation. File
+\texttt{verification/contract/proof-contract-registry.json} và các block có
+marker trong tài liệu này là hình chiếu xác định từ nguồn formal đó.
+Kiểm tra \texttt{md/research/check-proof-sync.ps1} từ chối mã băm lỗi thời,
+premise/dependency thiếu hoặc thừa, evidence mất, constructor/admission drift,
+vocabulary drift và claim prototype quá sớm. Bảy mutation case, gồm cả trường
+hợp chỉ sửa registry dẫn xuất, bảo đảm các lỗi này thật sự bị bắt; CI còn bắt
+buộc biên dịch LaTeX. Cơ chế này chỉ thiết lập
+đồng bộ và conformance tài liệu; nó không thay thế bất kỳ nghĩa vụ chứng minh
+toán học nào.
+
+\section{Ranh giới phát biểu trong bài báo}
+
+Nên dùng:
+\begin{quote}
+Truy vấn invariant Cypher được sinh bảo toàn có điều kiện tập vi phạm đối với
+mảnh kiểm tra OCL theo tập hữu hạn được hỗ trợ, dưới hợp đồng mã hóa đồ thị và
+các giả thiết về mảnh Cypher đã phát biểu.
+\end{quote}
+
+Không nên dùng:
+\begin{quote}
+Chúng tôi chứng minh tính đúng đắn của OCL-to-Cypher cho toàn bộ OCL.
+\end{quote}
+
+\end{document}

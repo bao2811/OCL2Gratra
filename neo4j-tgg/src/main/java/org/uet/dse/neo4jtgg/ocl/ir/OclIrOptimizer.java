@@ -10,18 +10,19 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Semantics-preserving model-to-model transformation from
- * {@link OclSemanticIr} to {@link OclOptimizedIr}.
+ * Non-normative Java optimization from {@link OclSemanticIr} to
+ * {@link OclOptimizedIr}.
  *
- * <p>The optimizer rewrites IR expressions into graph-friendly semantic forms
- * without changing their denotation. It is intentionally placed before the
- * Cypher planner so that optimizations such as navigation existence checks,
- * count comparisons, let inlining, and constant folding are expressed at the
- * IR level rather than hidden inside string rendering.</p>
+ * <p>The optimizer rewrites IR expressions into graph-friendly forms before
+ * the implementation planner. Runtime and mutation tests provide finite
+ * implementation evidence, but this class is not the reference normalizer and
+ * does not establish the normative theorem. That theorem uses {@code T_NORM}
+ * and NVA. Incorporating this optimizer requires a separate
+ * {@code OptRefines(T_OPT(va), T_NORM(va))} proof for every rewrite.</p>
  *
  * <pre>
- * T_OPT : M_SemanticIR -> M_OptimizedIR
- * [[ ir ]]_IR(M, rho) = [[ T_OPT(ir) ]]_OPT(M, rho)
+ * T_OPT : M_SemanticIR -> M_OptimizedIR                 (implementation)
+ * OptRefines(T_OPT(va), T_NORM(va))                     (optional contract)
  * </pre>
  */
 public class OclIrOptimizer {

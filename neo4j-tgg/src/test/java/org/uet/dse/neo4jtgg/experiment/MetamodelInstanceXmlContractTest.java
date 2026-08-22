@@ -11,12 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Serialization-boundary checks for the checked-in OVA and CQM instances. */
+/** Serialization-boundary checks for the checked-in OVA, NVA, and CQM instances. */
 class MetamodelInstanceXmlContractTest {
     @Test
     void certifiedInstancesAreWellFormedAndCarryRequiredRoots() throws Exception {
         Path root = workspaceRoot();
         Document ova = parse(root.resolve("verification/instances/ova-certified-v1.xmi"));
+        Document nva = parse(root.resolve("verification/instances/nva-certified-v1.xmi"));
         Document cqm = parse(root.resolve("verification/instances/cqm-certified-v1.xmi"));
         assertEquals("ValidationModule", ova.getDocumentElement().getLocalName() == null
                 ? ova.getDocumentElement().getNodeName().replace("ova:", "")
@@ -24,8 +25,14 @@ class MetamodelInstanceXmlContractTest {
         assertEquals("QueryModule", cqm.getDocumentElement().getLocalName() == null
                 ? cqm.getDocumentElement().getNodeName().replace("cqm:", "")
                 : cqm.getDocumentElement().getLocalName());
-        assertTrue(ova.getElementsByTagNameNS("https://uet-dse.org/ocl/validation-algebra/1.0", "Invariant").getLength() == 1);
-        assertTrue(cqm.getElementsByTagNameNS("https://uet-dse.org/cypher/query-model/1.0", "InvariantPlan").getLength() == 1);
+        assertEquals("NvaModule", nva.getDocumentElement().getLocalName() == null
+                ? nva.getDocumentElement().getNodeName().replace("nva:", "")
+                : nva.getDocumentElement().getLocalName());
+        // EMF containment features serialize under their feature names; the
+        // xsi:type supplies the concrete classifier when needed.
+        assertEquals(1, ova.getElementsByTagName("invariants").getLength());
+        assertEquals(1, nva.getElementsByTagName("invariants").getLength());
+        assertEquals(1, cqm.getElementsByTagName("invariants").getLength());
         assertNotNull(cqm.getElementsByTagName("astLoweringContract").item(0));
     }
 

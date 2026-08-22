@@ -71,6 +71,8 @@ $expectedRequiredTheorems = @(
     'structural_preservation',
     'java_ir_eval_refinement',
     'prod_plan_sim_sound',
+    'certified_nva_grammar_complete',
+    'spec_plan_sim_sound',
     'bound_va_abstraction',
     'pa_comp',
     'theorem6_forward',

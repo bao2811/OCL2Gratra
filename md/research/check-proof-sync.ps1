@@ -226,7 +226,7 @@ function Write-GeneratedEnglishProjection([string]$SourcePath, [string]$Destinat
         if ($pandocExitCode -ne 0 -or -not (Test-Path -LiteralPath $temporaryPath -PathType Leaf)) {
             throw "pandoc failed to generate the English LaTeX projection (exit=$pandocExitCode): $($pandocOutput -join ' | ')"
         }
-        $sourceHashAfterPandoc = (Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $sourceHashAfterPandoc = Get-Utf8LfSha256FromText (Read-Utf8Text $SourcePath)
         if ($sourceHashAfterPandoc -cne $SourceHash) {
             throw "Canonical Markdown changed while Pandoc was generating the English projection; expected $SourceHash, found $sourceHashAfterPandoc. Rerun projection generation from a stable source."
         }
@@ -444,7 +444,7 @@ if ($UpdateProjections) {
     $markdown = Read-Utf8Text $MarkdownPath
     $latex = Read-Utf8Text $LatexPath
 }
-$markdownSourceHash = (Get-FileHash -LiteralPath $MarkdownPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$markdownSourceHash = Get-Utf8LfSha256FromText $markdown
 if ($UpdateProjections) {
     Write-GeneratedEnglishProjection $MarkdownPath $GeneratedEnglishLatexPath $markdownSourceHash
     $generatedEnglishLatex = Read-Utf8Text $GeneratedEnglishLatexPath
@@ -619,6 +619,9 @@ $expectedMechanizationTheorems = @(
     'java_guarded_rename_preserves_scoped_semantics',
     'structural_preservation',
     'java_ir_eval_refinement',
+    'prod_plan_sim_sound',
+    'certified_nva_grammar_complete',
+    'spec_plan_sim_sound',
     'bound_va_abstraction',
     'pa_comp',
     'theorem6_forward',
@@ -631,6 +634,8 @@ $expectedMechanizationCoverage = @(
     'MK-ENCODE:mechanized',
     'MK-NORMALIZE:partial',
     'MK-T4:mechanized',
+    'MK-PRODPLAN:mechanized',
+    'MK-SPECPLAN:mechanized',
     'MK-BOUND-VA:mechanized',
     'MK-PA-COMP:mechanized',
     'MK-T6:mechanized'
@@ -642,6 +647,9 @@ $expectedAxiomAuditTheorems = @(
     'Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free:propext',
     'Ocl2CypherProof.Formula.structural_preservation:propext',
     'Ocl2CypherProof.JavaIrRefinement.java_ir_eval_refinement:propext',
+    'Ocl2CypherProof.JavaIrRefinement.prod_plan_sim_sound:propext',
+    'Ocl2CypherProof.SpecificationPlanRefinement.certified_nva_grammar_complete:propext',
+    'Ocl2CypherProof.SpecificationPlanRefinement.spec_plan_sim_sound:',
     'Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction:',
     'Ocl2CypherProof.AdapterComposition.pa_comp:',
     'Ocl2CypherProof.theorem6_at_object:',
@@ -815,7 +823,7 @@ if (-not $SkipArtifactBuild) {
     Test-LatexCompilation $GeneratedEnglishLatexPath
 }
 
-$markdownHashAfterChecks = (Get-FileHash -LiteralPath $MarkdownPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$markdownHashAfterChecks = Get-Utf8LfSha256FromText (Read-Utf8Text $MarkdownPath)
 if ($markdownHashAfterChecks -cne $markdownSourceHash) {
     Add-CheckError "Canonical Markdown changed during synchronization checking; expected stable SHA256 $markdownSourceHash, found $markdownHashAfterChecks"
 }

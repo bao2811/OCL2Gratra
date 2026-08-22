@@ -251,7 +251,7 @@ unit tests rời rạc.
 - Đã thêm `PGMM-canonical-v1.tsv` và `CanonicalPgmmConformance` để đối chiếu profile/key/vocabulary/property/accessor/codec với Java encoding.
 - Chưa recapture Neo4j và chưa cập nhật publication manifests; các việc đó chỉ
   thực hiện sau khi P1–P6 hoàn tất và source được commit cùng revision.
-### Execution closure update (2026-08-22)
+### Historical execution closure update (2026-08-22)
 
 The certified finite-profile implementation work is complete and the remaining
 universal theorem gap is explicit rather than hidden.
@@ -278,4 +278,274 @@ constructor-induction result and CQM/AST structural rules are certified, while
 scope choice that the normative production contract uses `T_NORM`; Java
 `T_OPT` remains runtime-only. The optional PO-18 extension (universal Java
 optimizer/planner refinement) is recorded as a recommended research follow-up,
-not silently presented as proved by this plan.
+  not silently presented as proved by this plan.
+
+## Scope-corrected completion plan: specification-level OCL -> Cypher
+
+The previous execution-closure paragraph is superseded by this section. The
+paper claim is specification-level correctness, not universal correctness of
+the Java optimizer. The sole normative pipeline is:
+
+```text
+OCL_val -> OVA -> T_NORM -> NVA -> CQM -> Cypher
+```
+
+`T_OPT` is implementation-specific evidence only. It must not be silently
+identified with `T_NORM`. Raw Cypher AST is an optional structural/test bridge,
+not a normative semantic layer unless its lowering theorem is explicitly
+discharged.
+
+### S0. Freeze the theorem scope
+
+Deliverables:
+
+- state the certified OCL fragment, graph assumptions, bottom policy,
+  collection semantics, and Cypher execution assumptions in one normative
+  section;
+- define `NVA` as the only normative intermediate representation;
+- replace `production` wording by `reference/specification` wording in the
+  theorem chain;
+- classify Java `T_OPT`, Neo4j runtime tests, and performance measurements as
+  implementation evidence.
+
+Exit criteria:
+
+- no normative theorem contains `opt=T_OPT(va)`;
+- no theorem claims Java implementation correctness;
+- all assumptions and exclusions are listed in the proof registry.
+
+### S1. Close the normative OVA -> NVA proof
+
+Deliverables:
+
+- define a dedicated NVA metamodel (or an explicit normalized subtype
+  metamodel of OVA) with `NvaModule`, `NvaInvariant`, typed `NvaExpr`, and one
+  class/constructor for every reachable normalized form;
+- define executable `WF_NVA` constraints for structural conformance, typing,
+  lexical scope, unique node IDs, source collection types, finite-set shape,
+  bottom safety, and exclusion of every redex in `R`;
+- define `Ref_OVA_NVA(va,nva)` and distinguish structural conformance from
+  semantic correctness; a structurally valid NVA is not correct unless it is
+  related to `T_NORM(va)` and preserves denotation;
+- define `T_NORM` as a deterministic total function/relation on certified OVA;
+- prove termination, typing, alpha/scoping preservation, bottom preservation,
+  finite-set preservation, and denotational preservation;
+- provide one induction rule and one semantic lemma for every reachable NVA
+  constructor;
+- remove stale references to `PlanAdequacy` transferring result equality.
+
+Exit criteria:
+
+- a serialized NVA instance can be validated independently of Java records;
+- `ValidNVA(nva)` is defined as Ecore conformance plus `WF_NVA` plus the
+  `Ref_OVA_NVA`/normal-form condition;
+- an invalid NVA is rejected for a named structural, typing, scope, redex, or
+  semantic-refinement violation;
+- Lean theorem and formal text enumerate the same NVA grammar and rules;
+- every reachable constructor has a discharged lemma or an explicit exclusion;
+- mutation tests kill wrong normalization, scope, and bottom rules.
+
+### S2. Prove the normative NVA -> CQM -> Cypher bridge
+
+Deliverables:
+
+- define `SpecPlanSim` between NVA constructors and CQM plan constructors;
+- prove `SpecPlanSim_sound` by structural induction over NVA/CQM;
+- define parameter, alias, scope, multiplicity, and collection-shape
+  correspondence;
+- define renderer semantics and prove Cypher execution equals CQM evaluation;
+- make `PlanAdequacy` structural only and derive violation-set equality as a
+  theorem conclusion, not as a premise.
+
+Exit criteria:
+
+```text
+ExecCypher(Render(Plan(nva)), G) = EvalGraph(nva, G)
+```
+
+for every admitted NVA expression. If Raw Cypher AST remains only a test
+artifact, remove it from the normative theorem statement.
+
+### S3. Make OVA/CQM refinement total
+
+Deliverables:
+
+- classify every metamodel field/reference/multiplicity as `mapped`, `derived`,
+  or `erased`;
+- make the refinement checker fail on an unmapped feature, not only on an
+  invalid CSV row;
+- align Java records, Emfatic, Ecore, formal grammar, and refinement CSV;
+- add negative tests for missing fields, wrong references, wrong cardinality,
+  and illegal erasure.
+
+Exit criteria:
+
+- coverage is total over all declared OVA/CQM structural features;
+- each certified constructor has a Java witness and a refinement witness;
+- no checker relies only on subclass names.
+
+### S4. Validate executable models and PGMM
+
+Deliverables:
+
+- load OVA/CQM XMI using EMF resources and validate type, containment,
+  multiplicity, IDs, enum values, and cross-references;
+- make the canonical PGMM instance conform to the complete PGMM metamodel;
+- check labels, relationship endpoints, keys, codecs, accessors, model scope,
+  bottom token, and well-formedness constraints against Java encoding;
+- add mutation cases for every schema component.
+
+Exit criteria:
+
+- valid instances pass EMF validation;
+- each malformed instance is rejected for the intended reason;
+- PGMM checking is structural conformance, not only vocabulary matching.
+
+### S5. Fence off Java T_OPT
+
+Deliverables:
+
+- mark `T_OPT` as non-normative in code comments, registry, and paper;
+- keep its runtime and performance evidence separate from the theorem evidence;
+- add an optional `OptRefines(T_OPT(va), T_NORM(va))` contract without using it
+  in the main theorem;
+- if the optimizer is later included in the theorem, prove every rewrite and
+  promote this checkpoint to a new certified scope.
+
+Exit criteria:
+
+- the paper never presents finite OPT tests as universal proof;
+- the implementation report states exactly which path produced each query;
+- no stale `T_NORM`/`T_OPT` equality remains.
+
+### S6. Reconcile all proof artifacts
+
+Deliverables:
+
+- regenerate derived registry, Lean/theorem counts, Markdown tables, LaTeX,
+  English paper text, and proof report from the canonical formal source;
+- update `check-proof-sync.ps1` expected theorem/coverage symbols;
+- make the registry status distinguish `proved`, `conditional`, `partial`, and
+  `empirical` evidence;
+- remove contradictory closure text from the plan.
+
+Exit criteria:
+
+```text
+check-proof-sync.ps1 -SkipArtifactBuild -> PASS
+check-verification-contract.ps1 -> PASS
+Lean build and mutation gates -> PASS
+```
+
+### S7. Reproducible implementation evidence
+
+Deliverables:
+
+- commit formal source, Java, metamodels, validators, tests, and evidence
+  inputs together;
+- recapture Neo4j from that exact clean commit;
+- record execution time, commit, dirty state, and hashes of all theorem- and
+  implementation-critical inputs;
+- verify hashes against commit blobs, not only the current worktree;
+- include skipped real-Neo4j tests explicitly in the report.
+
+Exit criteria:
+
+- every manifest names the same revision;
+- `gitDirtyAtCapture=false` is independently verified;
+- no stale renderer/runtime hash remains;
+- evidence is labeled finite empirical evidence, not universal proof.
+
+### S8. Rewrite the paper correctness section
+
+The paper should contain four claims only:
+
+1. OCL_val semantics is preserved by OVA construction.
+2. `T_NORM` preserves typing and denotation.
+3. NVA-to-CQM-to-Cypher realization preserves graph evaluation.
+4. Therefore the reference Cypher query returns exactly the OCL violation set.
+
+The paper should explicitly exclude arbitrary OCL, arbitrary Cypher,
+unproved Java optimization, and unbounded Neo4j behavior. The Java `T_OPT`
+implementation and Neo4j experiments belong in the implementation/evaluation
+section as supporting evidence.
+
+### Dependency order and definition of done
+
+```text
+S0 -> S1 -> S2 -> S3 -> S4 -> S6 -> S7 -> S8
+                  \\-> S5 (parallel, non-normative)
+```
+
+The plan is complete only when S0--S4 and S6--S8 pass. S5 is not required for
+the specification-level theorem, but is required before making any claim that
+the Java optimized pipeline itself is formally correct.
+
+## Artifact completion map
+
+The specification artifacts are stored separately under
+`md/research/specification/`:
+
+```text
+specification/
+  metamodel/
+    OCL-Source-AST.emf
+    OCL-Val.emf
+    Normalized-Validation-Algebra.emf
+    Cypher-AST-Bridge.emf
+  rules/
+    01-parse-and-admit.md
+    02-ova-to-nva.md
+    03-nva-to-cqm.md
+    04-cqm-to-cypher.md
+  proofs/
+    semantic-domains.md
+    refinement-contract.md
+    proof-obligations.md
+  validators/
+    WF-NVA.md
+    WF-OVA-CQM.md
+  diagrams.md
+```
+
+The existing `md/research/model/OCL-Validation-Algebra.emf` and
+`Cypher-Query-Model.emf` remain the OVA and CQM normative metamodel sources.
+The new NVA metamodel is the normalized specification domain; the Cypher AST
+bridge is explicitly optional and non-normative until its semantic theorem is
+discharged.
+
+### Artifact-specific completion criteria
+
+- every M2 metamodel has a corresponding M1 instance or an explicit reason why
+  no instance is required;
+- every M2M boundary has a rule file, source/target preconditions, typing and
+  scope conditions, a refinement relation, and a semantic postcondition;
+- every certified constructor has exactly one rule or an explicit `EXCLUDED`
+  status;
+- every rule is linked to a proof obligation in
+  `specification/proofs/proof-obligations.md`;
+- diagrams in the paper are generated from the metamodel/rule artifacts, while
+  correctness is established by the stated semantic equations and induction
+  theorems rather than by diagrams alone.
+
+## Execution status for S0--S8 (2026-08-22)
+
+This status record supersedes the historical closure wording above for the
+scope-corrected plan.
+
+| Step | Status | Verified result |
+|---|---|---|
+| S0 | COMPLETE | The canonical theorem chain is `OCL_val -> OVA -> T_NORM -> NVA -> CQM -> Cypher`; Java `T_OPT` and runtime measurements are explicitly non-normative. |
+| S1 | COMPLETE (under registered premises) | Dedicated 26-constructor NVA Emfatic/Ecore, independent XMI, `WF_NVA + NF_R`, external semantic witness boundary, and named scope/bottom/redex mutations are executable. |
+| S2 | COMPLETE (conditional) | `SpecPlanSim` has 26/26 rules and axiom-free Lean structural induction on independent NVA trees. Concrete LR/C/BR/CY agreements remain explicit premises, so the claim status is `conditional`. |
+| S3 | COMPLETE | The generated matrix classifies all 171 OVA/CQM structural features; missing feature, kind/cardinality drift, and illegal erasure mutations fail. |
+| S4 | COMPLETE | Real EMF resources load/validate OVA, NVA, and CQM M1 instances; the complete canonical PGMM XMI and Java encoding mutations pass. |
+| S5 | COMPLETE | `T_OPT` is fenced from the normative theorem; `OptRefines` is optional, finite, non-normative evidence only. |
+| S6 | COMPLETE | Registry, Markdown/LaTeX projections, proof-sync, Lean kernel, contract mutations, and implementation gates pass. |
+| S7 | PENDING EXTERNAL RECAPTURE | The current user worktree is dirty and no `NEO4J_*` connection is configured. No clean-commit runtime manifest was fabricated; see `verification/evidence/specification-plan-execution-2026-08-22.md`. |
+| S8 | COMPLETE | The paper-facing correctness section contains only the four specification claims and explicitly excludes arbitrary OCL/Cypher, unproved Java optimization, and unbounded Neo4j behavior. |
+
+Latest full static gate: 348 tests, 0 failures/errors/skips; compiler mutations
+20/20; machine mutations 7/7; Lean kernel PASS. The definition of done remains
+open only at S7, which requires a clean revision and reachable pinned Neo4j
+runtime.
