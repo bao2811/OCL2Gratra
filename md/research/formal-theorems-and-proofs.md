@@ -300,7 +300,10 @@ not an independent authority.
     { "id": "EV-PO18-PGMM-INSTANCE", "kind": "file", "path": "verification/pgmm/PGMM-canonical-v1.tsv" },
     { "id": "EV-PO18-RUNTIME-CONSTRUCTORS", "kind": "test", "path": "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclValRealNeo4jCoverageTest.java", "symbol": "allAdmittedConstructsAgreeWithUseOnRealNeo4j" },
     { "id": "EV-RUNTIME-RECAPTURE-BLOCKED-2026-08-21", "kind": "file", "path": "verification/evidence/runtime-recapture-blocked-2026-08-21.md" },
-    { "id": "EV-RUNTIME-RECAPTURE-2026-08-22", "kind": "file", "path": "verification/evidence/runtime-recapture-2026-08-22.tsv" },
+    { "id": "EV-RUNTIME-RECAPTURE-2026-08-23", "kind": "file", "path": "verification/evidence/runtime-recapture-2026-08-23.tsv" },
+    { "id": "EV-SPEC-CLEAN-CAPTURE-2026-08-23", "kind": "file", "path": "verification/evidence/specification-plan-clean-capture-2026-08-23.tsv" },
+    { "id": "EV-PROOF-BASELINE-2026-08-23", "kind": "file", "path": "verification/evidence/proof-baseline-2026-08-23.json" },
+    { "id": "EV-PROOF-REPORT-2026-08-23", "kind": "file", "path": "verification/evidence/proof-report-2026-08-23.json" },
     { "id": "EV-PO21-LEAN", "kind": "source", "path": "verification/lean/Ocl2CypherProof.lean", "symbol": "theorem pa_comp" },
     { "id": "EV-PO21-CERTIFICATE", "kind": "source", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacyCertificate.java", "symbol": "record AdapterAdequacyCertificate" },
     { "id": "EV-PO21-SNAPSHOT-READER", "kind": "source", "path": "neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/experiment/AdapterAdequacySnapshotReader.java", "symbol": "class AdapterAdequacySnapshotReader" },
@@ -343,15 +346,15 @@ not an independent authority.
     { "id": "PO-12", "title": "Bottom-safe alias preservation", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO12-ALIAS"] },
     { "id": "PO-13", "title": "Raw AST closure/totality", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO13-RAW-AST"] },
     { "id": "PO-14", "title": "Admitted direct-text parse/normalization bridge", "classification": "required", "status": "discharged", "scope": "all 17 sealed plan constructors and 52 checked queries agree with the reviewed canonical full-tree manifest after UmlClass normalization; both the independent parser and pinned Neo4j 2026.06.0 Cypher 5 parser accept/project all 52, with bottom-safe and wrong-label mutations checked", "evidenceIds": ["EV-PO14-DIRECT-TEXT-BRIDGE", "EV-PO14-BOTTOM-ROUNDTRIP", "EV-PO14-CONSTRUCTOR-MATRIX", "EV-PO14-CONSTRUCTOR-MATRIX-GUARD"] },
-    { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j capture at revision ebc1a4da verified CY1--CY9=9/9 on Neo4j 2026.06.0, Cypher 5, enterprise/demo, with current renderer and source hashes", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
-    { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j differential capture at revision ebc1a4da agrees with USE for all 47 admitted OCL_val cases, including 19 profile-tautology and 28 non-vacuous mixed cases", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
+    { "id": "PO-15", "title": "CY1--CY9 runtime profile", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j capture at clean revision 737c552c verified CY1--CY9=9/9 on Neo4j 2026.06.0, Cypher 5, enterprise/demo, with commit-blob-verified source hashes", "evidenceIds": ["EV-PO15-RUNTIME-MANIFEST", "EV-PO15-RUNTIME-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-23", "EV-SPEC-CLEAN-CAPTURE-2026-08-23"] },
+    { "id": "PO-16", "title": "47-case differential equivalence", "classification": "required", "status": "discharged", "scope": "fresh real-Neo4j differential capture at clean revision 737c552c agrees with USE for all 47 admitted OCL_val cases, including 19 profile-tautology and 28 non-vacuous mixed cases", "evidenceIds": ["EV-PO16-OCL47-MANIFEST", "EV-PO16-OCL47-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-23", "EV-SPEC-CLEAN-CAPTURE-2026-08-23"] },
     { "id": "PO-17", "title": "Semantic proof synchronization", "classification": "required", "status": "discharged", "evidenceIds": ["EV-PO17-CHECKER", "EV-PO17-MUTATIONS"] },
     { "id": "PO-18", "title": "Mechanized core lemmas and optional Java optimization refinement", "classification": "recommended", "status": "partial", "scope": "the normative NVA grammar is enumerated and spec_plan_sim_sound composes every recursive NVA/CQM case under explicit local AlgebraAgreement; executable NVA Ecore/XMI/WF_NVA, total OVA/CQM feature coverage, SpecPlanSim catalog, and full PGMM EMF conformance are checked. The partial remainder is only the optional non-normative Java OptRefines(T_OPT(va),T_NORM(va)) and universal Java/Neo4j instantiation; it is not a premise of Theorems 0--6", "evidenceIds": ["EV-PO18-LEAN", "EV-PO18-PRODPLAN-INDUCTION", "EV-SPEC-NVA-GRAMMAR", "EV-SPEC-PLANSIM", "EV-SPEC-NVA-METAMODEL", "EV-SPEC-NVA-ECORE", "EV-SPEC-NVA-INSTANCE", "EV-SPEC-NVA-VALIDATOR", "EV-SPEC-NVA-VALIDATOR-GUARD", "EV-SPEC-PLANSIM-CATALOG", "EV-SPEC-TOTAL-FEATURES", "EV-SPEC-TOTAL-FEATURES-GUARD", "EV-SPEC-PGMM-EMF", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD", "EV-PO18-JAVA-MATRIX", "EV-PO18-JAVA-GUARD", "EV-PO18-JAVA-REFINEMENT", "EV-PO18-JAVA-WITNESSES", "EV-PO18-METAMODEL-REFINEMENT", "EV-PO18-OVA-REFINEMENT-MATRIX", "EV-PO18-CQM-REFINEMENT-MATRIX", "EV-PO18-METAMODEL-REFINEMENT-GUARD", "EV-PO18-FIELD-REFINEMENT", "EV-PO18-FIELD-REFINEMENT-GUARD", "EV-PO18-AST-LOWERING-CATALOG", "EV-PO18-AST-LOWERING-GUARD", "EV-PO18-CQM-AST-SHAPE", "EV-PO18-METAMODEL-ECORE", "EV-PO18-OVA-ECORE", "EV-PO18-CQM-ECORE", "EV-PO18-METAMODEL-INSTANCES", "EV-PO18-CQM-INSTANCE", "EV-PO18-METAMODEL-INSTANCES-GUARD", "EV-PO18-PGMM-CONFORMANCE", "EV-PO18-PGMM-CONFORMANCE-GUARD", "EV-PO18-PGMM-INSTANCE", "EV-PO18-RUNTIME-CONSTRUCTORS"] },
     { "id": "PO-19", "title": "Clean machine-verification artifact", "classification": "required", "status": "discharged", "scope": "discharged 2026-08-09 for CI/artifact provenance: GitHub Actions completed successfully for clean commit 7b7bdd2538434d64e2e77c9321b93b12feee1a42 and uploaded proof-contract-PC-2026-07-22.3 plus the build package; the recorded clean aggregate baseline is rooted at f09385197460d3a9b91fc878354583062bacdfb1 with contract/mutations, Lean 32/32, Lean mutations 6/6, 311/311 selected conformance tests, and zero failures/errors/skips; this discharge does not expand the conditional semantic scope", "evidenceIds": ["EV-PO19-ARTIFACT-GATE", "EV-PO19-REPORT"] },
     { "id": "PO-20", "title": "Paper publication build (local only)", "classification": "out_of_scope", "status": "open", "scope": "paper sources remain local and ignored under md/ by explicit repository policy; GitHub Actions neither compiles nor uploads the paper, and publication evidence is excluded from the machine-correctness contract", "evidenceIds": [] },
-    { "id": "PO-21", "title": "AdapterAdequate composition from PA1--PA9", "classification": "required", "status": "discharged", "scope": "PA1--PA9 static composition and fresh real-Neo4j certificate agree on one shared snapshot: observations=6, plans=2, and wrong-label mutation is killed under canonical joint model scope", "evidenceIds": ["EV-PO21-LEAN", "EV-PO21-CERTIFICATE", "EV-PO21-SNAPSHOT-READER", "EV-PO21-SERVICE-GATE", "EV-PO21-RESEARCH-GATE", "EV-PO21-MATRIX", "EV-PO21-MATRIX-GUARD", "EV-PO21-MUTATIONS", "EV-PO21-LABEL", "EV-PO21-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
-    { "id": "PO-22", "title": "Multiplicity-preserving to-one navigation lift", "classification": "required", "status": "discharged", "scope": "LIFT1, sourceCollectionType propagation, admission, static regressions, and fresh real-Neo4j discriminator capture agree for the three to-one collection-view observations", "evidenceIds": ["EV-PO22-TYPE-REGRESSION", "EV-PO22-ADMISSION", "EV-PO22-LOWERING", "EV-PO22-LIFT1", "EV-PO22-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
-    { "id": "PO-23", "title": "Internal Void/null typing and semantic boundary", "classification": "required", "status": "discharged", "scope": "formal Void rules, 22-row static matrix, typed v1|V bottom representation, and fresh real-Neo4j capture agree for void contexts=13 and duplicate collect=1", "evidenceIds": ["EV-PO23-VOID", "EV-PO23-MATRIX", "EV-PO23-MATRIX-GUARD", "EV-PO23-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-22"] },
+    { "id": "PO-21", "title": "AdapterAdequate composition from PA1--PA9", "classification": "required", "status": "discharged", "scope": "PA1--PA9 static composition and fresh real-Neo4j certificate at clean revision 737c552c agree on one shared snapshot: observations=6, plans=2, and wrong-label mutation is killed under canonical joint model scope", "evidenceIds": ["EV-PO21-LEAN", "EV-PO21-CERTIFICATE", "EV-PO21-SNAPSHOT-READER", "EV-PO21-SERVICE-GATE", "EV-PO21-RESEARCH-GATE", "EV-PO21-MATRIX", "EV-PO21-MATRIX-GUARD", "EV-PO21-MUTATIONS", "EV-PO21-LABEL", "EV-PO21-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-23", "EV-SPEC-CLEAN-CAPTURE-2026-08-23"] },
+    { "id": "PO-22", "title": "Multiplicity-preserving to-one navigation lift", "classification": "required", "status": "discharged", "scope": "LIFT1, sourceCollectionType propagation, admission, static regressions, and fresh real-Neo4j discriminator capture at clean revision 737c552c agree for the three to-one collection-view observations", "evidenceIds": ["EV-PO22-TYPE-REGRESSION", "EV-PO22-ADMISSION", "EV-PO22-LOWERING", "EV-PO22-LIFT1", "EV-PO22-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-23", "EV-SPEC-CLEAN-CAPTURE-2026-08-23"] },
+    { "id": "PO-23", "title": "Internal Void/null typing and semantic boundary", "classification": "required", "status": "discharged", "scope": "formal Void rules, 22-row static matrix, typed v1|V bottom representation, and fresh real-Neo4j capture at clean revision 737c552c agree for void contexts=13 and duplicate collect=1", "evidenceIds": ["EV-PO23-VOID", "EV-PO23-MATRIX", "EV-PO23-MATRIX-GUARD", "EV-PO23-RUNTIME", "EV-CANONICAL-RUNTIME-SUPPLEMENT", "EV-CANONICAL-RUNTIME-SUPPLEMENT-GUARD", "EV-RUNTIME-RECAPTURE-2026-08-23", "EV-SPEC-CLEAN-CAPTURE-2026-08-23"] },
     { "id": "PO-24", "title": "Production Bound/VA abstraction agreement", "classification": "required", "status": "discharged", "scope": "discharged 2026-08-09 for the production abstraction boundary: an 11-row reflection matrix covers every BoundExpression record and all 12 SemanticExpression targets, including the disjoint BoundProperty attribute/navigation cases and every record component; all targets are witnessed across the 47-case corpus; the axiom-free bound_va_abstraction theorem proves recursive evaluation equality under every shared payload-parametric primitive algebra and explicitly preserves sourceCollectionType; this does not instantiate the primitives with JVM or Neo4j semantics, which remains PO-18", "evidenceIds": ["EV-PO24-REFINEMENT", "EV-PO24-PAYLOAD", "EV-PO24-MATRIX", "EV-PO24-MATRIX-GUARD", "EV-PO24-LEAN"] }
   ],
   "runtimeProfiles": [
@@ -542,7 +545,8 @@ not an independent authority.
     "kind": "machine-verification",
     "reportSchema": "proof-report.schema.v1",
     "reportGeneratorPath": "verification/scripts/write-proof-report.ps1",
-    "baselineEvidencePath": "verification/evidence/proof-baseline-2026-08-04.json",
+    "baselineEvidencePath": "verification/evidence/proof-baseline-2026-08-23.json",
+    "latestReportPath": "verification/evidence/proof-report-2026-08-23.json",
     "paperPublication": "external-local-only"
   },
   "claimPolicy": {
@@ -569,7 +573,7 @@ not an independent authority.
 <!-- END GENERATED PROOF-CONTRACT-KERNEL -->
 
 <!-- PROOF-CONTRACT: PC-2026-07-22.3; A1-A9; M1,M2,M3,M3a,M4,M5; PC-T0-PC-T6; SF-01-SF-29 -->
-<!-- PROOF-REGISTRY-SHA256: 2b07b56376633f6f441ef81da73ec87a4a97169a7f3b83af77bbf5f9396cd074 -->
+<!-- PROOF-REGISTRY-SHA256: c95ea99343b07b642b939aaaf648d24e99a0abd02c58df5f0f982237c25bba20 -->
 
 ## 1.2 Current Theory--Implementation Alignment Audit (2026-08-22)
 
@@ -584,22 +588,22 @@ read as overriding this index.
 | Item | Current value | Interpretation |
 |---|---:|---|
 | Contract assumptions / scope lemmas / paper theorem contracts | 9 / 6 / 7 | A1--A9, M1--M5 including M3a, and PC-T0--PC-T6 |
-| Registered semantic functions / evidence records | 29 / 57 | Registry inventory, not 29 fully mechanized functions |
+| Registered semantic functions / evidence records | 29 / 61 | Registry inventory, not 29 fully mechanized functions |
 | Proof obligations | 24 | 22 discharged (91.7%), 1 partial (4.2%), 1 open (4.2%) |
-| Obligation classifications | 22 required, 1 recommended, 1 out-of-scope | Runtime-dependent rows are discharged by the 2026-08-22 real-Neo4j capture; only the recommended universal Java/Neo4j refinement row remains partial |
+| Obligation classifications | 22 required, 1 recommended, 1 out-of-scope | Runtime-dependent rows are discharged by the clean 2026-08-23 real-Neo4j capture; only the recommended universal Java/Neo4j refinement row remains partial |
 | Remaining correctness blockers | PO-18 | Universal primitive commutation and concrete Java optimizer/planner refinement remain outside the mechanized proof; all required finite-profile obligations are discharged |
 | Publication-only row | PO-20, `open`, out-of-scope | Local paper compilation is intentionally outside the machine-correctness contract |
 | Frozen OCL / Cypher-plan / Java-IR coverage rows | 47 / 17 / 16 | Admitted feature rows, sealed plan constructors, and production optimized-expression constructors |
 | Bound--VA / adapter / Void-context rows | 11 / 11 / 22 | Production abstraction, PA-COMP observations, and 13 admitted plus 9 rejected Void contexts |
-| Current local Java conformance / compiler mutations | 606 `neo4j-tgg` + 29 `neo4j` discovered / 20/20 | All non-provenance Java contracts pass; opt-in real-server tests and the three checked-in runtime-manifest guards pass with clean-evidence mode |
+| Current local Java conformance / compiler mutations | 348 selected conformance tests / 20/20 | Clean offline implementation gate passes with zero failures/errors/skips; the seven opt-in real-server tests pass separately |
 | Recorded parser trees / runtime CY rows / differential cases | 52/52 / 9/9 / 47/47 | Finite evidence for the pinned Cypher 5 runtime profile, not universal Neo4j semantics |
-| Recorded Lean theorems / Lean mutations | 33/33 / 6/6 | Selected mechanized kernels under their explicit premises, including named `prod_plan_sim_sound` constructor composition |
+| Recorded Lean theorems / Lean mutations | 35/35 / 6/6 | Selected mechanized kernels under their explicit premises, including independent NVA `spec_plan_sim_sound` constructor composition |
 
 The source and finite-tree contracts pass locally, including 20/20 compiler
-mutations. The 2026-08-22 selected-runtime execution against Neo4j 2026.06.0
+mutations. The 2026-08-23 selected-runtime execution against Neo4j 2026.06.0
 passed CY1--CY9, OCL_val-47, adapter/shared-snapshot, Void/bottom/scalar/
 receiver, and the Families/Persons case study. The three publication manifests
-were regenerated against revision `ebc1a4da` and pass their clean-evidence
+were regenerated against clean revision `737c552c` and pass their clean-evidence
 guards. This discharges the finite runtime profile, but does not broaden the
 paper claim to full OMG OCL, arbitrary Cypher, or a universal Java optimizer
 proof. The strongest publication wording therefore remains **conditional
@@ -673,7 +677,7 @@ negative-admission, exact-numeric, optimizer-scope, alias, bottom-receiver,
 duplicate-navigation, codec, model-isolation, association-class, and IR-stage
 tests. The static suite and the 52 exact generated-tree cases pass, and the
 compiler mutation score is 20/20. Together with the focused collection-bottom
-regressions and the 2026-08-22 real-Neo4j run, this closes the demonstrated
+regressions and the 2026-08-23 real-Neo4j run, this closes the demonstrated
 AI-01--AI-34 families under their stated boundaries and discharges the finite
 runtime obligations PO-15, PO-16, and PO-21--PO-23. It does not close PO-18:
 MK-T4 remains payload-parametric and MK-NORMALIZE does not universally prove
@@ -685,7 +689,7 @@ the certified finite profile, not a universal Java/Neo4j implementation proof.
 1. **Completed — capture the repaired semantic boundaries cleanly:** AI-28 and
    AI-29--AI-34 are included in the common selected-runtime evidence.
 2. **Completed — publish clean runtime evidence:** the stabilized implementation
-   is committed at `ebc1a4da`; the Cypher 5/Neo4j profile was rerun for adapter
+   is committed at `737c552c`; the Cypher 5/Neo4j profile was rerun for adapter
    adequacy, OCL_val-47, Void/bottom/scalar, and Families/Persons, and all three
    manifests use the same source revision and pass clean-evidence guards.
 3. **Remaining research task — close proof universality:** instantiate the primitive-agreement

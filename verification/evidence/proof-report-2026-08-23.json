@@ -1,0 +1,119 @@
+{
+    "schema":  "proof-report.schema.v1",
+    "proofContract":  "PC-2026-07-22.3",
+    "registrySchemaVersion":  4,
+    "registrySha256":  "c95ea99343b07b642b939aaaf648d24e99a0abd02c58df5f0f982237c25bba20",
+    "sourceRevision":  "737c552c51ec342f95e650b52811ffbb0e3b0c66",
+    "verificationGate":  {
+                             "result":  "PASS",
+                             "meaning":  "generated after contract, mutation, Lean, and implementation-conformance gates passed"
+                         },
+    "claim":  {
+                  "prototypeCorrectness":  "conditional",
+                  "blockingObligations":  [
+                                              "PO-18"
+                                          ]
+              },
+    "obligations":  {
+                        "total":  24,
+                        "discharged":  22,
+                        "partial":  1,
+                        "open":  1,
+                        "outOfScope":  1
+                    },
+    "mechanization":  {
+                          "framework":  "Lean",
+                          "version":  "4.32.2",
+                          "requiredTheorems":  35,
+                          "recordedEvidenceAt":  "2026-08-23T00:48:24+07:00",
+                          "recordedKernel":  "PASS",
+                          "recordedMutationsKilled":  "6/6",
+                          "allowedCoreAxioms":  [
+                                                    "propext",
+                                                    "Quot.sound"
+                                                ],
+                          "coverage":  [
+                                           {
+                                               "id":  "MK-FINITE-SET",
+                                               "status":  "mechanized",
+                                               "scope":  "predicate-set image/subset/exists/forall and injective membership reflection"
+                                           },
+                                           {
+                                               "id":  "MK-LIFT1",
+                                               "status":  "mechanized",
+                                               "scope":  "axiom-free absent-to-empty and present-to-singleton agreement among source, Bound, and validation-algebra collection views, including the asSet, size, isEmpty, and notEmpty observations admitted for scalar to-one receivers"
+                                           },
+                                           {
+                                               "id":  "MK-ENCODE",
+                                               "status":  "mechanized",
+                                               "scope":  "flat typed bottom/scalar/entity/finite-set value encoding"
+                                           },
+                                           {
+                                               "id":  "MK-NORMALIZE",
+                                               "status":  "partial",
+                                               "scope":  "all eleven listed rewrite-family semantic equations over validation Bool/finite List, intrinsic Bool/Nat/Elem/Set N2 indexes, lexical named-to-de-Bruijn semantic correspondence, soundness and scoped-semantic preservation of the exact three-disjunct Java capture guard over the Boolean binder kernel, relative normal form, idempotence, and lexicographic root decrease; concrete semantic premises for every production optimization rule remain open"
+                                           },
+                                           {
+                                               "id":  "MK-T4",
+                                               "status":  "mechanized",
+                                               "scope":  "payload-parametric relational structural induction over all 16 production OclIr.OptimizedExpression constructors, including sourceCollectionType on collection and iterator operations, every other non-recursive record payload, recursive expression lists, and optional predicates, under one explicit primitive-agreement premise per constructor"
+                                           },
+                                           {
+                                               "id":  "MK-PRODPLAN",
+                                               "status":  "mechanized",
+                                               "scope":  "named prod_plan_sim_sound theorem composes the constructor-wise evaluation relation under the same explicit local AlgebraAgreement premise used by the formal ProdPlanSim contract"
+                                           },
+                                           {
+                                               "id":  "MK-SPECPLAN",
+                                               "status":  "mechanized",
+                                               "scope":  "axiom-free structural induction over independent finite NVA trees whose tag ranges over exactly the 26 certified constructors; composes SpecPlanSim under an explicit LR/C/BR/CY local equation for every constructor tag"
+                                           },
+                                           {
+                                               "id":  "MK-BOUND-VA",
+                                               "status":  "mechanized",
+                                               "scope":  "axiom-free recursive evaluation equality for the alpha abstraction from all eleven production BoundExpression record families, with BoundProperty split into the twelve SemanticExpression targets and every sourceCollectionType payload retained, under an arbitrary shared primitive algebra"
+                                           },
+                                           {
+                                               "id":  "MK-PA-COMP",
+                                               "status":  "mechanized",
+                                               "scope":  "six AdapterAdequate observation equalities derived from exact-M2 and PA1--PA9 over one explicit shared source/graph snapshot premise"
+                                           },
+                                           {
+                                               "id":  "MK-T6",
+                                               "status":  "mechanized",
+                                               "scope":  "forward/backward pointwise violation-ID inclusions under agreement and ID injectivity"
+                                           }
+                                       ],
+                          "openScope":  [
+                                            "nested collection encodeValue injectivity",
+                                            "metamodel-specific OCL subtyping/coercion and concrete semantic agreement for every Java T_OPT normalization rule",
+                                            "instantiation of the 16-constructor relational algebra with the actual object and graph evaluators, including Java payload semantics",
+                                            "instantiation of the 26-constructor NVA algebra with the concrete graph and reference-Cypher evaluators; CLAIM-SPEC-PLAN remains conditional on the registered LR/C/BR/CY local agreements",
+                                            "Neo4j/Cypher semantics beyond the selected runtime-profile assumptions and non-invariant/fallback entry points",
+                                            "universal Theorem 6 composition beyond the abstract agreement premises"
+                                        ]
+                      },
+    "implementation":  {
+                           "recordedEvidenceAt":  "2026-08-23T00:48:24+07:00",
+                           "admittedConstructors":  47,
+                           "recordedConformanceTests":  348,
+                           "recordedConformanceFailures":  0,
+                           "recordedCompilerMutationScore":  "20/20",
+                           "recordedNeo4jParserTrees":  "52/52"
+                       },
+    "runtime":  {
+                    "profile":  "RP-NEO4J-2026.06-CYPHER5-CANONICAL-V1",
+                    "serverVersion":  "2026.06.0",
+                    "cypherVersion":  "5",
+                    "recordedEvidenceAt":  "2026-08-23T00:48:24+07:00",
+                    "cypherAssumptionRowsPassed":  "9/9",
+                    "differentialEquivalent":  "47/47",
+                    "scope":  "recorded fixture/runtime profile only; not universal Neo4j semantics"
+                },
+    "publication":  {
+                        "paperPublication":  "external-local-only",
+                        "includedInMachineGate":  false,
+                        "sourceFormat":  "local-ignored-tex",
+                        "ciArtifactIsCorrectnessEvidence":  false
+                    }
+}

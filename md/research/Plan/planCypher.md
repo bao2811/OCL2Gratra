@@ -542,10 +542,11 @@ scope-corrected plan.
 | S4 | COMPLETE | Real EMF resources load/validate OVA, NVA, and CQM M1 instances; the complete canonical PGMM XMI and Java encoding mutations pass. |
 | S5 | COMPLETE | `T_OPT` is fenced from the normative theorem; `OptRefines` is optional, finite, non-normative evidence only. |
 | S6 | COMPLETE | Registry, Markdown/LaTeX projections, proof-sync, Lean kernel, contract mutations, and implementation gates pass. |
-| S7 | PENDING EXTERNAL RECAPTURE | The current user worktree is dirty and no `NEO4J_*` connection is configured. No clean-commit runtime manifest was fabricated; see `verification/evidence/specification-plan-execution-2026-08-22.md`. |
+| S7 | COMPLETE | Source commit `737c552c` was checked out independently with `gitDirtyAtCapture=false`; all critical worktree blobs matched commit blobs, static/Lean gates passed, and seven real-Neo4j tests recaptured CY1--CY9, OCL47, adapter, discriminator, and Families/Persons evidence with zero failure/error/skip. |
 | S8 | COMPLETE | The paper-facing correctness section contains only the four specification claims and explicitly excludes arbitrary OCL/Cypher, unproved Java optimization, and unbounded Neo4j behavior. |
 
-Latest full static gate: 348 tests, 0 failures/errors/skips; compiler mutations
-20/20; machine mutations 7/7; Lean kernel PASS. The definition of done remains
-open only at S7, which requires a clean revision and reachable pinned Neo4j
-runtime.
+Latest clean-revision gates: 348 implementation tests, 0 failures/errors/skips;
+compiler mutations 20/20; machine mutations 7/7; Lean kernel PASS and mutations
+6/6; real-Neo4j tests 7/7 with zero failure/error/skip. S0--S8 are complete for
+the conditional specification-level theorem; optional universal Java
+`OptRefines` remains a separately classified research extension.

@@ -17,23 +17,22 @@ Scope: S0--S8 in `md/research/Plan/planCypher.md`.
 - NVA/CQM/OVA/PGMM focused tests: PASS;
 - total structural-feature policy: 171/171 OVA/CQM features.
 
-## Runtime/reproducibility boundary
+## Runtime/reproducibility closure
 
-This is not a clean runtime capture. At report time the repository was based on
-`f21a5148bb6a` and contained pre-existing modified/untracked user work,
-including a dirty submodule. No `NEO4J_*` connection environment was
-available, so opt-in real-Neo4j suites were not executed by the static
-implementation-conformance gate.
+Follow-up execution on 2026-08-23 closed the pending S7 boundary. Source commit
+`737c552c51ec342f95e650b52811ffbb0e3b0c66` was checked out in an independent
+worktree with zero dirty rows. Every critical worktree blob matched its commit
+blob before execution.
 
-Accordingly:
+The clean checkout passed proof-sync, machine contract/mutations, Lean 4.32.2
+kernel/mutations, 348 implementation tests, and 20/20 compiler mutations. The
+pinned Neo4j 2026.06.0 Enterprise/Cypher 5 `demo` runtime then passed seven
+opt-in tests with zero failures, errors, or skips: CY1--CY9=9/9, OCL47=47/47,
+adapter observations=6/plans=2, semantic discriminators=17, and
+Families/Persons exact sets=20/20.
 
-- `gitDirtyAtCapture=false` is **not** asserted;
-- no publication manifest or source hash was edited to manufacture freshness;
-- no new runtime PASS is claimed;
-- the existing selected-runtime evidence remains finite empirical evidence tied
-  to its recorded older revision;
-- S7 requires a dedicated clean commit/worktree plus a reachable pinned Neo4j
-  2026.06.0 Enterprise/Cypher 5 `demo` database and a complete recapture.
-
-The specification theorem remains conditional on its registered graph/Cypher
-assumptions and does not use this missing recapture as a proof premise.
+The detailed clean blob inventory is
+`verification/evidence/specification-plan-clean-capture-2026-08-23.tsv`; the
+runtime audit is `verification/evidence/runtime-recapture-2026-08-23.tsv`.
+This finite evidence does not broaden the conditional specification theorem to
+arbitrary Java optimization or universal Neo4j semantics.
