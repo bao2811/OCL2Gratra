@@ -249,9 +249,14 @@ unit tests rời rạc.
 - Hai Ecore artifact sinh lại cho cùng input cho hash giống nhau; generator đã kiểm tra reproducibility.
 - Hai Ecore artifact đã được force-stage vì `md/` mặc định bị ignore; `RequireGitTracked` hiện PASS.
 - Đã thêm `PGMM-canonical-v1.tsv` và `CanonicalPgmmConformance` để đối chiếu profile/key/vocabulary/property/accessor/codec với Java encoding.
-- Chưa recapture Neo4j và chưa cập nhật publication manifests; các việc đó chỉ
-  thực hiện sau khi P1–P6 hoàn tất và source được commit cùng revision.
-### Historical execution closure update (2026-08-22)
+- Tại checkpoint lịch sử này, Neo4j chưa được recapture. Trạng thái đó đã được
+  đóng bởi clean capture ngày 2026-08-23 ở bảng S0--S8 cuối tài liệu.
+
+### Archived execution checkpoint (2026-08-22; superseded)
+
+Phần này chỉ lưu lịch sử quyết định. Revision, số lượng theorem/test và runtime
+manifest ở đây không phải trạng thái hiện hành; dashboard S0--S8 cuối tài liệu
+là nguồn trạng thái duy nhất.
 
 The certified finite-profile implementation work is complete and the remaining
 universal theorem gap is explicit rather than hidden.
@@ -262,13 +267,9 @@ universal theorem gap is explicit rather than hidden.
 - OVA/CQM `sourceCollectionType`, field/reference/multiplicity/erasure
   refinement, 17 CQM-to-AST structural rules, reproducible Ecore, XMI
   instances, and PGMM-to-Java conformance are implemented and tested.
-- Real Neo4j 2026.06.0 evidence passed CY1--CY9 (9/9), OCL_val differential
-  (47/47), adapter adequacy, Void/bottom/scalar discriminators, and
-  Families/Persons (10/10 each). The three publication manifests now share
-  revision `ebc1a4daaddc423528ed1884db8abc0e0281c6a5`, use current normalized
-  source hashes, and pass clean-evidence guards.
-- Contract/RequireGitTracked, Lean (33/33), Lean mutation (6/6), and
-  verification mutation (7/7) gates pass. The historical nested
+- Runtime, Lean và manifest tại checkpoint này đã được thay thế bởi clean
+  source capture `737c552c` và evidence commit `d74d71de` ngày 2026-08-23.
+  The historical nested
   `examples/ocl-dataset` submodule remains outside the proof-input scope and
   is not modified by this plan.
 
@@ -545,8 +546,27 @@ scope-corrected plan.
 | S7 | COMPLETE | Source commit `737c552c` was checked out independently with `gitDirtyAtCapture=false`; all critical worktree blobs matched commit blobs, static/Lean gates passed, and seven real-Neo4j tests recaptured CY1--CY9, OCL47, adapter, discriminator, and Families/Persons evidence with zero failure/error/skip. |
 | S8 | COMPLETE | The paper-facing correctness section contains only the four specification claims and explicitly excludes arbitrary OCL/Cypher, unproved Java optimization, and unbounded Neo4j behavior. |
 
-Latest clean-revision gates: 348 implementation tests, 0 failures/errors/skips;
+Historical clean-revision baseline before the post-S8 hardening increment:
+348 implementation tests, 0 failures/errors/skips;
 compiler mutations 20/20; machine mutations 7/7; Lean kernel PASS and mutations
 6/6; real-Neo4j tests 7/7 with zero failure/error/skip. S0--S8 are complete for
 the conditional specification-level theorem; optional universal Java
 `OptRefines` remains a separately classified research extension.
+
+## Post-S8 hardening increment (2026-08-23)
+
+This increment is deliberately layered on top of the closed S0--S8 baseline;
+it does not silently redefine the 47-constructor proof corpus.
+
+| Workstream | Current implementation | Remaining closure condition |
+|---|---|---|
+| Evidence hygiene | `invoke-clean-evidence-capture.ps1` creates a detached clean worktree, runs proof/static/Lean/mutation gates, optionally runs fixed and generated runtime suites, verifies commit blobs, and writes one UTF-8 TSV inventory | capture and check in the report from the final source commit whenever theorem-critical inputs change |
+| Production Raw AST | public invariant/expression results carry a strict typed `ProductionQuery`; text is emitted only by `RawCypherRenderer`, with exact AST/text agreement | migrate internal helpers from closed-string assembly to direct structured `Expr/Pattern/Clause` builders before claiming universal `BuildCQ/Expand` closure |
+| Generated differential matrix | deterministic grammar cases use replayable `(seed,index,invariant)` identities; the static suite runs 128 cases and the configured Neo4j 2026.06 Enterprise/Cypher 5 profile passed 64/64 USE-vs-Neo4j generated cases | add independent Neo4j versions/editions as explicit rows; keep every row opt-in and reject skip/failure/error |
+| OCL vertical slices | `SURF-ONE` rewrites `one(S,x,P)` to `select(S,x,P)->size() = 1` before the unchanged closed admission boundary; static and generated runtime paths cover it | add later constructs one slice at a time with a normalization/typing equation, matrix row, negative boundary, property cases, and selected-runtime discriminator |
+
+The machine-readable slice registry is
+`verification/coverage/ocl_surface_extension_matrix.csv`; the selected runtime
+profiles are in `verification/runtime/neo4j-runtime-matrix.tsv`. Historical
+capture paragraphs remain labeled as archived evidence and are not current
+status sources.

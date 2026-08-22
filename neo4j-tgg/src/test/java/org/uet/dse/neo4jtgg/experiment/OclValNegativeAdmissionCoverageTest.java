@@ -124,8 +124,6 @@ class OclValNegativeAdmissionCoverageTest {
                         null, OclDiagnosticCode.OCL_IS_TYPE_OF_OUTSIDE_CERTIFIED_FRAGMENT),
                 certified("any outside certified fragment",
                         "context Company inv Bad: self.employee->any(p | p.age >= 18) = self.employee->any(p | p.age >= 18)"),
-                certified("one outside certified fragment",
-                        "context Company inv Bad: self.employee->one(p | p.age >= 18)"),
                 certified("sortedBy outside certified fragment",
                         "context Company inv Bad: self.employee->sortedBy(p | p.age)->notEmpty()"),
                 certified("count element outside certified fragment",
@@ -189,15 +187,27 @@ class OclValNegativeAdmissionCoverageTest {
     }
 
     @Test
-    void experimentalGeneralCompilerSupportDoesNotImplyCertifiedAdmission() {
-        String expression = "context Company inv Experimental: self.employee->one(p | p.age >= 18)";
+    void certifiedOneSurfaceSliceNormalizesToFrozenCardinalityAlgebra() {
+        String expression = "context Company inv OneAdult: self.employee->one(p | p.age >= 18)";
 
         var generalResult = compiler.compile(expression);
         assertTrue(generalResult.isSupported(), generalResult.getReason());
-        OclCodedUnsupportedOperationException certifiedFailure = assertThrows(
-                OclCodedUnsupportedOperationException.class,
-                () -> compiler.compileInvariantInstrumented(expression));
-        assertTrue(certifiedFailure.code() == OclDiagnosticCode.OCL_VAL_EXCLUDED_CONSTRUCT);
+        var certified = compiler.compileInvariantInstrumented(expression);
+        var equality = assertTrueType(
+                org.uet.dse.neo4j.oclite.ast.ASTBinary.class, certified.ast().expression);
+        var size = assertTrueType(
+                org.uet.dse.neo4j.oclite.ast.ASTCollectionOp.class, equality.left);
+        var select = assertTrueType(
+                org.uet.dse.neo4j.oclite.ast.ASTIterator.class, size.source);
+        assertTrue("=".equals(equality.op));
+        assertTrue("size".equalsIgnoreCase(size.opName));
+        assertTrue("select".equalsIgnoreCase(select.operation));
+    }
+
+    private static <T> T assertTrueType(Class<T> type, Object value) {
+        assertTrue(type.isInstance(value), () -> "Expected " + type.getSimpleName()
+                + " but got " + (value == null ? "null" : value.getClass().getSimpleName()));
+        return type.cast(value);
     }
 
     @Test

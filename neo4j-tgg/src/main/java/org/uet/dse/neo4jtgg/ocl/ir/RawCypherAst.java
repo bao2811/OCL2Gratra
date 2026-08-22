@@ -154,7 +154,42 @@ public final class RawCypherAst {
         }
     }
 
-    public sealed interface Query permits Seq, UnionAll { }
+    /**
+     * Typed lexical/group tree used at the production boundary. Unlike an
+     * opaque text wrapper, every atom has a closed kind and every delimiter is
+     * balanced by construction. Trivia is retained so migration through this
+     * tree does not invalidate existing runtime evidence merely by reformatting
+     * otherwise identical Cypher.
+     */
+    public sealed interface RawNode permits RawAtom, RawGroup { }
+    public enum RawAtomKind {
+        IDENTIFIER, QUOTED_IDENTIFIER, KEYWORD, PARAMETER, NUMBER, STRING, SYMBOL, OPERATOR
+    }
+    public record RawAtom(RawAtomKind kind, String leadingTrivia, String text) implements RawNode {
+        public RawAtom {
+            required(kind, "kind");
+            required(leadingTrivia, "leadingTrivia");
+            required(text, "text");
+            if (text.isEmpty()) throw new IllegalArgumentException("raw atom text must not be empty");
+        }
+    }
+    public record RawGroup(RawAtom open, List<RawNode> nodes, RawAtom close) implements RawNode {
+        public RawGroup {
+            required(open, "open");
+            nodes = copy(nodes, "nodes");
+            required(close, "close");
+            String expected = switch (open.text()) {
+                case "(" -> ")";
+                case "[" -> "]";
+                case "{" -> "}";
+                default -> throw new IllegalArgumentException("not an opening delimiter: " + open.text());
+            };
+            if (!expected.equals(close.text()))
+                throw new IllegalArgumentException("unbalanced raw group: " + open.text() + close.text());
+        }
+    }
+
+    public sealed interface Query permits Seq, UnionAll, ProductionQuery { }
     public record Seq(List<Clause> clauses) implements Query {
         public Seq {
             clauses = copy(clauses, "clauses");
@@ -163,6 +198,13 @@ public final class RawCypherAst {
     }
     public record UnionAll(Query left, Query right) implements Query {
         public UnionAll { required(left, "left"); required(right, "right"); }
+    }
+    public record ProductionQuery(List<RawNode> nodes, String trailingTrivia) implements Query {
+        public ProductionQuery {
+            nodes = copy(nodes, "nodes");
+            if (nodes.isEmpty()) throw new IllegalArgumentException("production query must not be empty");
+            required(trailingTrivia, "trailingTrivia");
+        }
     }
 
     /** Deterministic allocator that never returns a reserved or previously returned alias. */

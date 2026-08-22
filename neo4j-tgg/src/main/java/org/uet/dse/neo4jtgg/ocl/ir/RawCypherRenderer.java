@@ -9,7 +9,26 @@ public final class RawCypherRenderer {
             return value.clauses().stream().map(this::renderClause).collect(Collectors.joining("\n"));
         if (query instanceof RawCypherAst.UnionAll value)
             return render(value.left()) + "\nUNION ALL\n" + render(value.right());
+        if (query instanceof RawCypherAst.ProductionQuery value) {
+            StringBuilder result = new StringBuilder();
+            appendRawNodes(value.nodes(), result);
+            return result.append(value.trailingTrivia()).toString();
+        }
         throw unknown(query);
+    }
+
+    private void appendRawNodes(java.util.List<RawCypherAst.RawNode> nodes, StringBuilder target) {
+        for (RawCypherAst.RawNode node : nodes) {
+            if (node instanceof RawCypherAst.RawAtom atom) {
+                target.append(atom.leadingTrivia()).append(atom.text());
+            } else if (node instanceof RawCypherAst.RawGroup group) {
+                target.append(group.open().leadingTrivia()).append(group.open().text());
+                appendRawNodes(group.nodes(), target);
+                target.append(group.close().leadingTrivia()).append(group.close().text());
+            } else {
+                throw unknown(node);
+            }
+        }
     }
 
     public String renderExpr(RawCypherAst.Expr expression) {

@@ -26,6 +26,8 @@ if ((Test-Path -LiteralPath $portableLean -PathType Leaf) -or $null -ne $pathLea
 $tests = @(
     'OclConformanceMatrixTest',
     'OclValFragmentCoverageTest',
+    'OclCertifiedSurfaceNormalizerTest',
+    'OclSurfaceExtensionMatrixTest',
     'OclValNegativeAdmissionCoverageTest',
     'OclVal47NonVacuityContractTest',
     'CertifiedValidationCompilationTest',
@@ -61,7 +63,8 @@ $tests = @(
     'FamiliesToPersonsCaseStudyTest',
     'OclCypherRendererTest',
     'OclRewritePreservationTest',
-    'OclDualCheckTest'
+    'OclDualCheckTest',
+    'OclGeneratedPropertyTest'
 )
 
 if ($RequireCleanRuntimeEvidence) {

@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.tzi.use.parser.use.USECompiler;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -20,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Regression contract for the validation service's certified context path. */
 class CertifiedValidationCompilationTest {
     @Test
-    void certifiedFilePathAcceptsOclValAndRejectsGeneralOnlyContextInvariant() {
+    void certifiedFilePathAcceptsFrozenOclValAndNormalizedOneSurfaceSlice() {
         DefaultOclToCypherCompiler compiler = new DefaultOclToCypherCompiler(model());
 
         var admittedAst = OclDocumentParser.parse(
@@ -30,17 +29,15 @@ class CertifiedValidationCompilationTest {
         assertTrue(admitted.getRuleResults().get(0).isSupported(),
                 admitted.getRuleResults().get(0).getReason());
 
-        String generalOnly =
-                "context Company inv Experimental: self.employee->one(p | p.age >= 18)";
-        var generalAst = OclDocumentParser.parse(generalOnly);
+        String normalizedSurface =
+                "context Company inv OneAdult: self.employee->one(p | p.age >= 18)";
+        var generalAst = OclDocumentParser.parse(normalizedSurface);
         assertTrue(compiler.compileFile(generalAst).getRuleResults().get(0).isSupported(),
                 "The explicitly general compiler remains available");
 
         var certified = compiler.compileFileWithCertifiedContextInvariants(generalAst);
-        assertFalse(certified.getRuleResults().get(0).isSupported());
-        assertTrue(certified.getRuleResults().get(0).getDiagnostics().stream()
-                .anyMatch(diagnostic -> diagnostic.code()
-                        == OclDiagnosticCode.OCL_VAL_EXCLUDED_CONSTRUCT));
+        assertTrue(certified.getRuleResults().get(0).isSupported(),
+                certified.getRuleResults().get(0).getReason());
     }
 
     @Test

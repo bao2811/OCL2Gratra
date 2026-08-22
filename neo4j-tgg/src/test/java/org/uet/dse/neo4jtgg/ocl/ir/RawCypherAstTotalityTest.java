@@ -61,7 +61,13 @@ class RawCypherAstTotalityTest {
         clauses.forEach(clause -> assertFalse(renderer.render(new RawCypherAst.Seq(List.of(clause))).isBlank()));
         assertEquals(permitted(RawCypherAst.Clause.class), classes(clauses));
 
-        List<RawCypherAst.Query> queries = List.of(returnX, new RawCypherAst.UnionAll(returnX, returnX));
+        String productionText = "MATCH (self:Object)-[:ObjectInstanceOf]->(cls:UmlClass {classKey: $p1})\n"
+                + "WHERE EXISTS { MATCH (self)-[r]->(target:Object) RETURN target AS target }\n"
+                + "RETURN DISTINCT self.use_id AS useId";
+        RawCypherAst.ProductionQuery productionQuery = new RawCypherParser().parse(productionText);
+        assertEquals(productionText, renderer.render(productionQuery));
+        List<RawCypherAst.Query> queries = List.of(returnX,
+                new RawCypherAst.UnionAll(returnX, returnX), productionQuery);
         queries.forEach(query -> assertFalse(renderer.render(query).isBlank()));
         assertEquals(permitted(RawCypherAst.Query.class), classes(queries));
     }
@@ -74,6 +80,14 @@ class RawCypherAstTotalityTest {
                 .noneMatch(type -> type.getSimpleName().equals("StringLiteral")));
         assertEquals("$modelValue", renderer.renderExpr(
                 new RawCypherAst.Param(new RawCypherAst.ParamId("modelValue"))));
+
+        RawCypherParser productionParser = new RawCypherParser();
+        assertThrows(IllegalArgumentException.class,
+                () -> productionParser.parse("MATCH (n) // injected\nRETURN n AS value"));
+        assertThrows(IllegalArgumentException.class,
+                () -> productionParser.parse("RETURN <predicate> AS value"));
+        assertThrows(IllegalArgumentException.class,
+                () -> productionParser.parse("RETURN 1 AS value UNION RETURN 2 AS value"));
     }
 
     @Test

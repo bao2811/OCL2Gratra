@@ -34,6 +34,8 @@ import java.util.function.Function;
  */
 public class OclCypherRenderer {
     private final String modelName;
+    private final RawCypherParser rawCypherParser = new RawCypherParser();
+    private final RawCypherRenderer rawCypherRenderer = new RawCypherRenderer();
 
     public OclCypherRenderer() {
         this(null);
@@ -74,7 +76,8 @@ public class OclCypherRenderer {
                 "RETURN DISTINCT " + selfAlias + "." + identityProperty + " AS useId";
         Map<String, Object> parameters = state.parameters();
         OclBottomToken.requireWellFormedGeneratedParameters(parameters);
-        return new RenderedInvariant(cypher, parameters);
+        RawCypherAst.ProductionQuery rawAst = rawCypherParser.parse(cypher);
+        return new RenderedInvariant(rawCypherRenderer.render(rawAst), parameters, rawAst);
     }
 
     public RenderedTopLevelExpression renderTopLevelExpression(OclCypherPlan.ExpressionPlan expressionPlan) {
@@ -82,7 +85,9 @@ public class OclCypherRenderer {
         RenderedExpression expression = renderExpression(expressionPlan, state);
         Map<String, Object> parameters = state.parameters();
         OclBottomToken.requireWellFormedGeneratedParameters(parameters);
-        return new RenderedTopLevelExpression("RETURN " + expression.cypher() + " AS value", parameters);
+        String cypher = "RETURN " + expression.cypher() + " AS value";
+        RawCypherAst.ProductionQuery rawAst = rawCypherParser.parse(cypher);
+        return new RenderedTopLevelExpression(rawCypherRenderer.render(rawAst), parameters, rawAst);
     }
 
     private RenderedExpression renderExpression(OclCypherPlan.ExpressionPlan expression, RenderState state) {
@@ -1479,10 +1484,32 @@ public class OclCypherRenderer {
         });
     }
 
-    public record RenderedInvariant(String cypher, Map<String, Object> parameters) {
+    public record RenderedInvariant(String cypher, Map<String, Object> parameters,
+                                    RawCypherAst.ProductionQuery rawAst) {
+        public RenderedInvariant {
+            parameters = Map.copyOf(parameters);
+            if (!cypher.equals(new RawCypherRenderer().render(rawAst))) {
+                throw new IllegalArgumentException("Cypher text does not match its typed Raw AST");
+            }
+        }
+
+        public RenderedInvariant(String cypher, Map<String, Object> parameters) {
+            this(cypher, parameters, new RawCypherParser().parse(cypher));
+        }
     }
 
-    public record RenderedTopLevelExpression(String cypher, Map<String, Object> parameters) {
+    public record RenderedTopLevelExpression(String cypher, Map<String, Object> parameters,
+                                             RawCypherAst.ProductionQuery rawAst) {
+        public RenderedTopLevelExpression {
+            parameters = Map.copyOf(parameters);
+            if (!cypher.equals(new RawCypherRenderer().render(rawAst))) {
+                throw new IllegalArgumentException("Cypher text does not match its typed Raw AST");
+            }
+        }
+
+        public RenderedTopLevelExpression(String cypher, Map<String, Object> parameters) {
+            this(cypher, parameters, new RawCypherParser().parse(cypher));
+        }
     }
 
     private record RenderedExpression(String cypher, OclTypeBinding type) {

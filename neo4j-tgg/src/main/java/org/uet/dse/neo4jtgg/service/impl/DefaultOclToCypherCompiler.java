@@ -26,6 +26,7 @@ import org.uet.dse.neo4jtgg.model.OclRuleKind;
 import org.uet.dse.neo4jtgg.model.OclRuleOwnerKind;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelSnapshot;
+import org.uet.dse.neo4jtgg.ocl.OclCertifiedSurfaceNormalizer;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
 import org.uet.dse.neo4jtgg.ocl.OclValAdmissionPolicy;
 import org.uet.dse.neo4jtgg.ocl.OclValBoundAdmissionPolicy;
@@ -245,11 +246,11 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
     }
 
     private InstrumentedCompilationResult compileInvariantInstrumented(ASTContext ast, long parseNs) {
-
-        OclValAdmissionPolicy.verify(ast);
+        ASTContext normalizedAst = OclCertifiedSurfaceNormalizer.normalize(ast);
+        OclValAdmissionPolicy.verify(normalizedAst);
 
         long bindStart = System.nanoTime();
-        OclSemanticBinder.BoundContextInvariant bound = certifiedBinder.bindContext(ast);
+        OclSemanticBinder.BoundContextInvariant bound = certifiedBinder.bindContext(normalizedAst);
         OclValBoundAdmissionPolicy.verify(bound);
         long bindNs = System.nanoTime() - bindStart;
 
@@ -278,7 +279,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         OclCypherRenderer.RenderedInvariant rendered = cypherRenderer.renderInvariant(plan);
         long renderNs = System.nanoTime() - renderStart;
 
-        return new InstrumentedCompilationResult(ast, bound, va, normalized, plan,
+        return new InstrumentedCompilationResult(normalizedAst, bound, va, normalized, plan,
                 rendered.cypher(), rendered.parameters(),
                 new PipelineStageTimings(parseNs, bindNs, vaNs, normalizeNs, planNs, renderNs));
     }

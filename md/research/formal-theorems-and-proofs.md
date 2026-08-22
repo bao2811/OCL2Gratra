@@ -808,6 +808,37 @@ e ::= self
     | e.oclAsType(C)
 ```
 
+The frozen constructor grammar above remains the induction domain. The first
+certified surface-extension layer, `OCL_surface^1`, additionally accepts
+
+```text
+S->one(x [: sigmaD] | P)
+```
+
+only through the capture-preserving normalization
+
+```text
+N_one(S->one(x | P)) = (S->select(x | P)->size() = 1).       (ONE-NORM)
+```
+
+`N_one` recursively normalizes `S` and `P`, reuses the original iterator
+declaration, and introduces no binder. The normalized result must pass the
+unchanged closed `OCL_val` admission and typing rules. For finite-set
+semantics, `one(S,x,P)` is true exactly when the selected subset has cardinality
+one, so
+
+```text
+eval(one(S,x,P),rho) = true
+iff |{v in eval(S,rho) | eval(P,rho[x |-> v]) = true}| = 1
+iff eval(size(select(S,x,P)) = 1,rho) = true.
+```
+
+Thus this surface slice adds no VA, NVA, CQM, or raw-Cypher constructor and the
+existing structural theorems apply to its normalized image. The executable
+rewrite is `OclCertifiedSurfaceNormalizer`; its static, generated-property,
+and real-Neo4j differential obligations are registered separately in
+`verification/coverage/ocl_surface_extension_matrix.csv`.
+
 Navigation is limited to ordinary binary associations represented by direct
 `Link*` relationships. Association classes are excluded because the repository
 encodes their instances as link-object nodes and spokes, not as this direct
@@ -855,8 +886,9 @@ ordering, implicit flattening, or nested collection results of full OMG OCL
 `collect`.
 
 This restriction is executable, not merely documentary. The certified compiler
-first applies the closed syntactic admission policy, then binds with the
-finite-set profile, and finally applies a bound/type admission policy. The
+first applies the finite certified surface normalizer, then the unchanged
+closed syntactic admission policy, binds with the finite-set profile, and
+finally applies a bound/type admission policy. The
 certified binder preserves a native-scalar to-one navigation's `Entity` type and
 stores `sourceCollectionType=Set(Entity)` only on a directly consuming
 collection operation/iterator; every native collection-valued navigation and
@@ -995,7 +1027,6 @@ The following constructs are not included in Theorem 6:
 ```text
 any          unless a deterministic choice policy is fixed and proved
 oclIsTypeOf unless a direct runtime-class accessor is added and proved
-one          unless rewritten to finite-set cardinality and proved separately
 count(e)     unless represented by a separate CountElem(S,E) operator
 sortedBy     unless ordered collection semantics is added
 iterate      outside current fragment
@@ -1015,18 +1046,21 @@ Implementations may support some of these constructs experimentally. Such
 support is outside the theorem unless the construct is added to `OCL_val` with
 typing, denotation, realization, and proof cases.
 
-The prototype enforces this distinction with a closed-world
-`OclValAdmissionPolicy` on the instrumented proof/conformance path. The policy
-admits exactly the source constructor families listed in Section 2.1 and
-rejects any other iterator, collection operation, method call, or unknown AST
-node with stable diagnostic `OCL_VAL_EXCLUDED_CONSTRUCT` before binding.
+The prototype enforces this distinction with `OclCertifiedSurfaceNormalizer`
+followed by a closed-world `OclValAdmissionPolicy` on the instrumented
+proof/conformance path. The policy admits exactly the normalized constructor
+families listed in Section 2.1 and rejects any other iterator, collection
+operation, method call, or unknown AST node with stable diagnostic
+`OCL_VAL_EXCLUDED_CONSTRUCT` before binding.
 The general `compile()` API may continue to expose explicitly experimental
 translations; success there is not an `OCL_val` admission certificate and is
 not consumed by Theorem 6 evidence. All instrumented and real-Neo4j
 differential theorem suites pass through the closed-world policy.
 
-In particular, `one` is outside Theorem 6 unless it is rewritten to
-`Compare(EQ, Count(Select(S,x,P)), 1)` and the rewrite is proved.
+The `SURF-ONE` slice now performs precisely the proved `ONE-NORM` rewrite to
+`Compare(EQ, Count(Select(S,x,P)), 1)` before admission. A raw `one` node is
+still rejected by `OclValAdmissionPolicy` itself; only the certified compiler's
+normalizer-to-admission composition admits it.
 `count(element)` is outside Theorem 6 unless it is translated to a separate
 `CountElem(S,E)` operator under the chosen finite-set membership semantics.
 
@@ -3108,15 +3142,16 @@ The key guard is an implementation refinement of the formal receiver-alias
 guard, not a change to its semantics. Replacing canonical `objectKey` by display
 name or unscoped `use_id` would invalidate the PA2 step.
 
-### PA13 — prototype raw-AST datatype and printer totality
+### PA13 — production raw-AST boundary and printer totality
 
-Let `RawJava` be the sealed Java datatype `RawCypherAst`, whose four sealed
+Let `RawJava` be the sealed Java datatype `RawCypherAst`, whose structured
 families are `Expr`, `Pattern`, `Clause`, and `Query`. Its records correspond to
 the raw grammar of Section 6.6, with Java names `ListExpr`, `CaseExpr`,
 `NodePattern`, `RelPattern`, and `Seq` where needed to avoid host-language name
 collisions.
 
-**Lemma PA13a (RawDatatypeClosure).** Every constructible `RawJava` value is a
+**Lemma PA13a (RawDatatypeClosure).** Every constructible structured `RawJava`
+value is a
 finite tree over typed identifier atoms, finite syntax enums, parameter atoms,
 and child `RawJava` values; it contains no constructor for arbitrary model text.
 
@@ -3134,6 +3169,9 @@ returns concrete text for every constructible `RawJava.Query`.
 **Proof.** Each renderer branch consumes one sealed constructor and recursively
 renders only proper children. Enum switches are exhaustive. `Seq` maps over a
 finite non-empty clause list; `UnionAll` recurses into its two proper children.
+`ProductionQuery` folds a finite non-empty list of `RawAtom`/`RawGroup` nodes;
+each group recursively consumes a proper finite child list and its paired
+delimiters.
 Expression, pattern, and clause helpers cover exactly their sealed permitted
 subclasses. `Call` deterministically injects its unique typed imports as the
 leading `WITH` of every `UnionAll` arm (or of the sole `Seq`), matching Cypher's
@@ -3141,14 +3179,21 @@ branch-local scope. Therefore the recursion terminates and has no missing
 constructor case. The executable totality test compares instantiated coverage
 against Java's `getPermittedSubclasses()` for all four roots. QED.
 
-PA13a/b do **not** prove prototype `BuildCQ/Expand` closure. The selected
-production architecture deliberately keeps `OclCypherRenderer` as a direct
-`OclCypherPlan`-to-text transformation; `RawJava` is a reference datatype/test
-oracle, not an execution stage. The implementation bridge therefore becomes
-PO-14: independently parse and normalize generated text, relate its normalized
-tree to the expected formal constructor tree, and check it on the selected
-Neo4j parser. The reviewed finite bridge is exact for the admitted profile after
-the `UmlClass` alignment; TXT5 remains conditional outside that finite profile.
+The production boundary now additionally uses the sealed lexical/group nodes
+`RawAtom`, `RawGroup`, and `ProductionQuery`. `RawCypherParser` rejects comments,
+placeholders, unknown characters, unbalanced groups, malformed clauses, bare
+`UNION`, and empty arms; `RawCypherRenderer` is the public-output printer. Both
+public renderer results carry their `ProductionQuery` and enforce exact
+`cypher = renderRaw(rawAst)` agreement. Therefore production output no longer
+bypasses a typed Raw AST.
+
+This is an incremental boundary migration, not yet a proof that every internal
+`OclCypherPlan` helper constructs the fully structured `Expr/Pattern/Clause`
+algebra directly. Internal lowering still assembles the closed concrete form
+before strict parsing. PA13a/b therefore do **not** by themselves prove
+prototype `BuildCQ/Expand` closure. PO-14 continues to relate the production
+boundary tree to the expected formal constructor tree and selected Neo4j
+parser; TXT5 remains conditional outside that checked bridge.
 
 ### PA14 — checked direct-Cypher syntax closure
 
@@ -3329,7 +3374,7 @@ layout. The following names must not be conflated without such a bridge:
 | `linkAssociation_G(r)=associationKey_MM(A)` | exact relationship `associationKey` plus unique length-prefixed `linkKey` | PA6 discharged for the checked binary-link synchronization profile; physical `name` is display/migration input only |
 | ordered `linkQualifiers_G(r,d)` | directional `sourceQualifiers`/`targetQualifiers` | PA7 discharged for the checked admitted primitive-qualifier profile |
 | materialized conformance edges | exact `ObjectInstanceOf` lookup by `classKey`; `COLLECT { ... RETURN DISTINCT o }` | PA4/PA8 discharged for the checked inherited synchronization and renderer profile |
-| raw Cypher AST plus `renderRaw` | sealed `RawCypherAst` and total `RawCypherRenderer` are reference artifacts; production `OclCypherRenderer` constructs text directly | PA13a/b discharge standalone datatype/printer closure; PA14b/c relate direct text to typed witnesses and exact canonical trees; PA14d discharges selected Neo4j 2026.06.0 parser acceptance/AST-kind projection for 52 checked queries; universal/full-AST equality remains open |
+| raw Cypher AST plus `renderRaw` | every public production result contains a strict `ProductionQuery` lexical/group AST and is printed by `RawCypherRenderer`; the older structured constructors remain the formal reference algebra | PA13a/b discharge datatype/printer closure at the stated layers; PA14b/c relate the production boundary to typed witnesses and exact canonical trees; PA14d discharges selected Neo4j 2026.06.0 parser acceptance/AST-kind projection for 52 checked queries; direct structured CQM-to-Raw-AST construction and universal/full-AST equality remain open |
 
 For the canonical profile, PO-21 retains the historical clean shared-snapshot
 checkpoint but is currently partial until recapture. Even after recapture,
@@ -3340,24 +3385,25 @@ their own adapter proof.
 ## 4.10 Prototype Adapter Status
 
 The current prototype was inspected against the preceding definition. The
-matrix below records the current static alignment and the premises that a
-fresh PO-21 runtime certificate must re-establish for the canonical profile.
+matrix below records the current static alignment. The clean 2026-08-23 PO-21
+runtime certificate re-established the selected canonical profile; every
+future renderer, vocabulary, codec, or snapshot change must trigger recapture.
 
 | Observation | Current prototype evidence | Status against canonical profile |
 |---|---|---|
-| context/class lookup | `OclCypherRenderer.renderInvariant` matches `cls:UmlClass {modelKey:$pm,classKey:$p}` and obtains canonical parameters from the bound metamodel context; the writer and stored schema use the same scope and label | PO-01 vocabulary/syntax is aligned; the changed accessor requires fresh PA runtime recapture |
-| object identity and model isolation | writer merges by the globally injective model-prefixed `objectKey`, writes `modelKey`, refreshes `use_id`, and every validation lookup constrains both fields; the snapshot additionally reports current-key objects declared in a foreign model | PA2/PA3 and AI-21 are closed statically for the scoped profile; external mutation and fresh shared-snapshot evidence remain explicit premises |
+| context/class lookup | `OclCypherRenderer.renderInvariant` matches `cls:UmlClass {modelKey:$pm,classKey:$p}` and obtains canonical parameters from the bound metamodel context; the writer and stored schema use the same scope and label | PO-01 vocabulary/syntax is aligned and the clean PA runtime certificate passes |
+| object identity and model isolation | writer merges by the globally injective model-prefixed `objectKey`, writes `modelKey`, refreshes `use_id`, and every validation lookup constrains both fields; the snapshot additionally reports current-key objects declared in a foreign model | PA2/PA3 and AI-21 are closed for the selected scoped profile; wrong-label/model mutations are retained |
 | scalar attribute access | writer merges canonical `slotKey`, stores `modelKey`, and encodes the payload through `CanonicalScalarValueCodec`; renderer follows `ObjectHasAttribute`, requires exact `(modelKey,attributeKey)`, and decodes according to the bound static type | PA5/AI-19 are aligned for admitted scalar attributes; malformed, wrong-tag, collection, and reference payloads are outside successful certification |
 | association lookup | writer merges by canonical `linkKey` and stores relationship `modelKey`; renderer constrains scoped endpoints/relationship, `type(r) STARTS WITH 'Link'`, roles, and exact `r.associationKey=$p` | PA6 is aligned for binary ordinary associations; ternary links are outside the profile and association-class navigation is now rejected at admission |
-| qualifiers | writer encodes ordered end-indexed values with the same typed wire contract used by scalar storage; renderer selects and encodes by bound direction/type; graph pull decodes each payload using the corresponding association-end declaration; bottom cannot match a link | PA7/AI-20 are aligned statically; fresh selected-runtime evidence is pending |
+| qualifiers | writer encodes ordered end-indexed values with the same typed wire contract used by scalar storage; renderer selects and encodes by bound direction/type; graph pull decodes each payload using the corresponding association-end declaration; bottom cannot match a link | PA7/AI-20 are aligned and selected-runtime evidence was recaptured on 2026-08-23 |
 | inheritance/allInstances | writer materializes runtime class plus transitive parents under one `modelKey`; renderer requires scoped object/class nodes and uses `RETURN DISTINCT` inside a COLLECT subquery | PA4/PA8 and AI-18/AI-21 are aligned statically; duplicate paths preserve finite-set cardinality |
 | renderer accessor matrix | typed plan constructors are checked against exact context/id, scalar attribute, type, navigation, qualifier, and allInstances templates and canonical parameter values | PA9 discharged for the checked admitted-constructor profile; raw-AST parse/render alpha-equivalence remains open |
-| bottom representation/admission | semantic set-bottom remains the sole immutable non-null tagged-map token; stored scalar bottom is the distinct typed payload `v1\|V`; external-parameter guards and graph scans reject collisions/malformed payloads | PA10/AI-10 are separated from ordinary strings statically; selected-runtime `DISTINCT`/cardinality recapture is pending |
+| bottom representation/admission | semantic set-bottom remains the sole immutable non-null tagged-map token; stored scalar bottom is the distinct typed payload `v1\|V`; external-parameter guards and graph scans reject collisions/malformed payloads | PA10/AI-10 are separated from ordinary strings; selected-runtime `DISTINCT`/cardinality recapture passes |
 | scalar domain/arithmetic | exact `BigInteger`/`BigDecimal` compile-time evaluation, Int64 bounds, finite canonical Real conversion, strict static-type decoding, runtime-parameter guards, and finite observed-domain checks | PA11 and AI-14 are aligned for checked runs; incomplete dynamic observations remain `OUT_OF_SCOPE` |
-| bottom-safe entity receivers | bind `E.objectKey`, filter bottom/null before node `MATCH`, then restore the unique `(modelKey,objectKey)` node; the renderer's alpha environment keeps `self`, iterator, and generated aliases distinct | PA12 plus AI-16/AI-17 are closed statically; fresh runtime recapture remains pending |
+| bottom-safe entity receivers | bind `E.objectKey`, filter bottom/null before node `MATCH`, then restore the unique `(modelKey,objectKey)` node; the renderer's alpha environment keeps `self`, iterator, and generated aliases distinct | PA12 plus AI-16/AI-17 are closed for the checked profile and the nested runtime fixture passes |
 | exact type | `oclIsTypeOf` is rejected by certified admission because no proved direct runtime-class accessor is available | correctly outside `OCL_val`; retain a stable negative-admission diagnostic until a separate accessor and proof are added |
 | IR stage boundary | semantic invariants carry `SEMANTIC`; only the optimizer creates an opaque current-version `Artifact`; planner entry points require `OPTIMIZED` and reject forged/stale producer versions | AI-23 is closed at the Java API boundary; PO-18 remains the universal optimizer-preservation obligation |
-| target syntax | production renders text directly from `OclCypherPlan`; an independent typed-token/clause parser normalization-round-trips all 47 admitted queries; constructor witnesses cover 17/17 sealed plan constructors; 52 checked complete canonical token/group trees agree exactly with the reviewed manifest, including a nested-shadowed OCL fixture and canonical `UmlClass`; the pinned Neo4j Cypher 5 parser accepts 52/52 and supplies the selected AST-kind projection | PA13a/b discharge reference datatype/printer closure; PA14a/b/c/d discharge the stated finite syntax/parser properties and PO-14; universal plan closure and full internal-AST equality remain outside the finite result |
+| target syntax | production public outputs are strict typed `ProductionQuery` trees rendered by `RawCypherRenderer`; internal plan helpers still assemble the closed concrete form before parsing. The typed-token/clause boundary round-trips all admitted queries; constructor witnesses cover 17/17 sealed plan constructors; 52 checked complete canonical token/group trees agree exactly with the reviewed manifest, including a nested-shadowed OCL fixture and canonical `UmlClass`; the pinned Neo4j Cypher 5 parser accepts 52/52 and supplies the selected AST-kind projection | PA13a/b and PA14a/b/c/d discharge the stated finite boundary syntax/parser properties; direct structured lowering for every helper, universal plan closure, and full internal-AST equality remain open |
 
 `OclGraphEncodingAdequacyTest` supplies useful regression evidence for
 generated query shapes, including `use_id`, attribute paths, navigation
@@ -3367,7 +3413,8 @@ PA1--PA9 matrix, production shared-snapshot certificate, mutation checks, and
 the clean real-Neo4j witness. These ingredients must stay separate in the
 argument so that a later failure identifies the exact broken boundary.
 
-The current implementation checkpoint after the AI-05--AI-27 alignment has
+The following paragraph is an archived 2026-08-14 checkpoint, superseded by
+the clean 2026-08-23 capture summarized in Section 1.2.1. It had
 592 discovered `neo4j-tgg` tests and 27 `neo4j` storage/synchronization tests.
 All ordinary static/unit contracts pass, the mutation contract kills 20/20
 mutants, and the regenerated 52-query formal-tree
@@ -8281,15 +8328,15 @@ correctness work is PO-18, while PO-20 is publication-only and out of scope.
     before calling the theorem chain fully mechanized. PO-18 remains classified
     as recommended, but the active claim configuration deliberately treats that
     classification as blocking.
-21. Because production renders text directly, retain PA14a--d checks from
-    generated text to the independent canonical tree and selected Neo4j parser
-    projection. Any optional `parse_Cypher(renderRaw(Q)) =alpha Q` result applies
-    only to the reference raw AST unless production is explicitly migrated to it.
+21. Production output now crosses a typed `ProductionQuery` boundary and is
+    printed by `RawCypherRenderer`; retain PA14a--d checks from that boundary to
+    the independent canonical tree and selected Neo4j parser projection.
+    Complete direct construction of structured `Expr/Pattern/Clause` nodes from
+    every CQM helper before claiming universal `BuildCQ/Expand` closure.
 22. Retain and rerun the PO-21 `AdapterAdequate` certificate whenever graph
     vocabulary, synchronization, snapshot observation, codec, or renderer
-    accessors change. The current static contracts include `modelKey`, but the
-    prior runtime discharge is stale until the shared-snapshot mutations are
-    recaptured on the canonical profile.
+    accessors change. The clean 2026-08-23 shared-snapshot capture currently
+    discharges the selected canonical profile; any such change makes it stale.
 23. PA10 enforces `BottomSeparated` with two non-colliding representations:
     the non-null tagged-map set token and typed stored payload `v1|V`.
     Retain malformed/wrong-tag/string-`Undefined` collision tests and selected-
@@ -8305,8 +8352,9 @@ correctness work is PO-18, while PO-20 is publication-only and out of scope.
     observations. Retain Int64/Real64, zero-divisor, exact-coercion, Unicode,
     graph-boundary, and OUT_OF_SCOPE regression tests whenever scalar lowering
     or the admitted scalar profile changes.
-27. PA13a/b provide a sealed reference raw-AST datatype and total structural
-    printer. Production intentionally retains direct-string rendering.
+27. PA13a/b provide sealed structured and production-boundary raw-AST datatypes
+    plus a total printer. Production returns the typed boundary AST, while
+    internal helpers still require a later structured-builder migration.
     PA14a/b/c/d establish normalization stability, 17/17 constructor witnesses,
     exact equality with the production-derived canonical token/group-tree, and
     selected Neo4j 2026.06.0 parser acceptance/AST-kind projection for 52
@@ -8333,8 +8381,10 @@ correctness work is PO-18, while PO-20 is publication-only and out of scope.
 This revision tightens the proof without widening the claim.
 
 ```text
-1. Removed one from the main OCL_val grammar and placed it outside Theorem 6
-   unless rewritten to Count(Select(...)) = 1 and proved separately.
+1. The earlier revision removed `one` from the frozen OCL_val constructor
+   grammar. The current `SURF-ONE` vertical slice admits it only through the
+   proved `ONE-NORM` rewrite `Count(Select(...)) = 1`, leaving that grammar
+   unchanged.
 2. Removed count(element) from the main OCL_val grammar; Count(S) is the
    internal VA finite-set cardinality lowering of source size().
 3. Defined encodeValue uniformly for objects, scalars, bottom, and finite sets.
@@ -8612,12 +8662,11 @@ vocabulary drift, and an active prototype-correctness claim while a configured
 blocking PO is open or partial. The current synchronization/contract mutation
 gates demonstrate seven rejected drifts, including an attempted edit of only
 the derived registry.
-failures. The historical clean record is commit `7b7bdd25`: 311/311 selected
-Java tests, Lean 32/32, both six-mutant gates, and uploaded proof/build
-artifacts. PO-19 is discharged only for that checkpoint. It does not certify
-the present working copy: the current 335/335 conformance gate passes, but
-renderer/runtime-source hashes changed and the three common runtime manifests
-deliberately remain stale pending a new clean capture.
+The historical clean record at commit `7b7bdd25` remains an archived PO-19
+checkpoint. The current clean source capture is `737c552c`: 348 selected Java
+tests, Lean 35/35, both mutation gates, seven real-Neo4j tests, and three fresh
+runtime manifests. Evidence commit `d74d71de` records that capture without
+reinterpreting the older checkpoint as current evidence.
 PO-20 is explicitly local-only and outside the machine-correctness contract: GitHub
 contains no paper mirror, build job, PDF, or publication hash. The remaining
 drift/conformance checks are not a proof assistant: mathematical validity of
