@@ -14,8 +14,15 @@ $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $git = (Get-Command git -ErrorAction Stop).Source
 
 function Invoke-Git([string]$WorkingDirectory, [string[]]$Arguments) {
-    $output = @(& $git -C $WorkingDirectory @Arguments 2>&1)
-    if ($LASTEXITCODE -ne 0) {
+    $savedPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = @(& $git -C $WorkingDirectory @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedPreference
+    }
+    if ($exitCode -ne 0) {
         throw "git $($Arguments -join ' ') failed:`n$($output -join [Environment]::NewLine)"
     }
     return ($output | Out-String).Trim()
@@ -26,8 +33,14 @@ function Invoke-CaptureCommand([string]$Label, [string]$WorkingDirectory,
     Write-Host "[$Label] $Command $($Arguments -join ' ')"
     Push-Location $WorkingDirectory
     try {
-        $lines = @(& $Command @Arguments 2>&1)
-        $exitCode = $LASTEXITCODE
+        $savedPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $lines = @(& $Command @Arguments 2>&1)
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $savedPreference
+        }
         $lines | ForEach-Object { Write-Host $_ }
         if ($exitCode -ne 0) {
             throw "$Label failed with exit code $exitCode"
