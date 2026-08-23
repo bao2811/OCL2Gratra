@@ -31,23 +31,25 @@ public class Neo4jModelQuery {
     }
 
     public static final String UPSERT_ASSOCIATION_CLASS_STRUCTURE =
-            "MATCH (a {name: $srcName})-[:InstanceOf]->(metaA:MetaNode) " +
-                    "MATCH (b {name: $tgtName})-[:InstanceOf]->(metaB:MetaNode) " +
-                    "MATCH (ac {name: $acName})-[:InstanceOf]->(metaAC:MetaNode) " +
+            "MATCH (a:UmlClass {modelKey:$modelName,classKey:$srcClassKey})-[:InstanceOf]->(metaA:MetaNode) " +
+                    "MATCH (b:UmlClass {modelKey:$modelName,classKey:$tgtClassKey})-[:InstanceOf]->(metaB:MetaNode) " +
+                    "MATCH (ac:UmlClass {modelKey:$modelName,classKey:$associationClassKey})-[:InstanceOf]->(metaAC:MetaNode) " +
                     "WHERE metaA.name  IN ['NodeConcreteClass','NodeAbstractClass','NodeAssociationClass'] " +
                     "  AND metaB.name  IN ['NodeConcreteClass','NodeAbstractClass','NodeAssociationClass'] " +
                     "  AND metaAC.name =  'NodeAssociationClass' " +
-                    "MERGE (a)-[s:sourceAssoClass]->(ac) " +
-                    "  SET s.role = $sRole, s.multiplicity = $sMult, s.index = 0 " +
-                    "MERGE (ac)-[t:targetAssoClass]->(b) " +
-                    "  SET t.role = $tRole, t.multiplicity = $tMult, t.index = 1 " +
+                    "MERGE (a)-[s:sourceAssoClass {modelKey:$modelName,associationKey:$associationKey}]->(ac) " +
+                    "  SET s.associationName=$acName, s.role=$sRole, s.multiplicity=$sMult, s.index=0 " +
+                    "MERGE (ac)-[t:targetAssoClass {modelKey:$modelName,associationKey:$associationKey}]->(b) " +
+                    "  SET t.associationName=$acName, t.role=$tRole, t.multiplicity=$tMult, t.index=1 " +
                     "MERGE (a)-[:HasAssociationClass]->(ac) " +
                     "MERGE (b)-[:HasAssociationClass]->(ac)";
 
     public static String createTernaryHub(String assocName) {
         return String.format(
-                "MATCH (meta:MetaNode {name: 'NodeTernaryAssociation'}) " +
-                        "MERGE (h:`%s` {name: $name}) " +
+                "MATCH (m:ManageModel {name:$modelName})-[:DefineMetamodels]->" +
+                        "(meta:MetaNode {name: 'NodeTernaryAssociation'}) " +
+                        "MERGE (h:`%s` {modelKey:$modelName,associationKey:$associationKey}) " +
+                        "SET h.name=$name, h.canonicalKey=$associationKey " +
                         "MERGE (h)-[:InstanceOf]->(meta)",
                 assocName
         );
@@ -55,8 +57,9 @@ public class Neo4jModelQuery {
 
     public static String upsertTernarySpoke(String assocName, String edgeLabel) {
         return String.format(
-                "MATCH (c {name: $clsName}), (hub:`%s` {name: $name}) " +
-                        "MERGE (c)-[r:%s {index: $idx}]->(hub) " +
+                "MATCH (c:UmlClass {modelKey:$modelName,classKey:$classKey}), " +
+                        "(hub:`%s` {modelKey:$modelName,associationKey:$associationKey}) " +
+                        "MERGE (c)-[r:%s {modelKey:$modelName,associationKey:$associationKey,index:$idx}]->(hub) " +
                         "SET r.associationName    = $name, " +
                         "    r.isTernary          = true,  " +
                         "    r.sourceClassrole    = $role, " +

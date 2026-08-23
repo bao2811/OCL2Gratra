@@ -932,6 +932,30 @@ public class OclCypherRenderer {
         String relationshipPrefix = binding == null ? "Link" : binding.relationshipTypePrefix();
         org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex.NavigationDirection direction = binding == null
                 ? navigationInfo.direction() : binding.direction();
+        if (navigationInfo.supportsCanonicalNAryNavigation()) {
+            if (!qualifiers.isEmpty()) {
+                throw new OclCodedUnsupportedOperationException(
+                        OclDiagnosticCode.QUALIFIED_ASSOCIATION_UNSUPPORTED,
+                        "Qualified n-ary association navigation is outside the production profile.");
+            }
+            String hubAlias = state.newVariableAlias("linkHub");
+            String sourceSpoke = state.newRelationshipAlias();
+            String targetSpoke = state.newRelationshipAlias();
+            String hubPattern = modelScopedNodePattern(hubAlias, "LinkHub", state);
+            return sourcePattern + "-[" + sourceSpoke + "]->" + hubPattern
+                    + "<-[" + targetSpoke + "]-" + targetPattern
+                    + " WHERE type(" + sourceSpoke + ") STARTS WITH '" + relationshipPrefix + "'"
+                    + " AND type(" + targetSpoke + ") STARTS WITH '" + relationshipPrefix + "' "
+                    + modelPropertyPredicate(sourceSpoke, state)
+                    + modelPropertyPredicate(targetSpoke, state)
+                    + "AND " + hubAlias + ".associationKey = $" + associationParam
+                    + " AND " + sourceSpoke + ".associationKey = $" + associationParam
+                    + " AND " + targetSpoke + ".associationKey = $" + associationParam
+                    + " AND " + sourceSpoke + ".linkKey = " + hubAlias + ".linkKey"
+                    + " AND " + targetSpoke + ".linkKey = " + hubAlias + ".linkKey"
+                    + " AND " + sourceSpoke + ".role = $" + sourceRoleParam
+                    + " AND " + targetSpoke + ".role = $" + targetRoleParam;
+        }
         return switch (direction) {
             case OUTGOING -> sourcePattern + "-[" + relationshipAlias + "]->" + targetPattern
                     + " WHERE type(" + relationshipAlias + ") STARTS WITH '" + relationshipPrefix + "' " +
@@ -1118,7 +1142,7 @@ public class OclCypherRenderer {
         String nestedAlias = state.newVariableAlias("nestedAttr");
         String ownerRelationship = binding == null ? "ObjectHasAttribute" : binding.ownerRelationship();
         String slotLabel = binding == null ? "AttributeValue" : binding.slotLabel();
-        String outerPattern = "(" + sourceAlias + ")-[:" + ownerRelationship + "]->(val:" + slotLabel + ") " +
+        String outerPattern = "MATCH (" + sourceAlias + ")-[:" + ownerRelationship + "]->(val:" + slotLabel + ") " +
                 "WHERE val.attributeKey = $" + attributeParam
                 + modelPropertyConjunction("val", state) + " " +
                 "MATCH (val)-[outer:HasNestedCollectionValue]->(" + nestedAlias + ":NestedCollectionValue)";
@@ -1128,13 +1152,19 @@ public class OclCypherRenderer {
     }
 
     private String renderNestedCollectionNode(String nodeAlias, Type type, RenderState state) {
-        if (type instanceof CollectionType collectionType) {
+        if (!(type instanceof CollectionType collectionType)) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED,
+                    "Each NestedCollectionValue node must be decoded against its collection type.");
+        }
+        Type elementType = collectionType.elemType();
+        if (elementType.isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
             String childAlias = state.newVariableAlias("nestedAttr");
             return "COLLECT { MATCH (" + nodeAlias + ")-[edge:HasNestedCollectionValue]->(" + childAlias + ":NestedCollectionValue) " +
-                    "RETURN " + renderNestedCollectionNode(childAlias, collectionType.elemType(), state) +
+                    "RETURN " + renderNestedCollectionNode(childAlias, elementType, state) +
                     " ORDER BY edge.index }";
         }
-        if (type.isKindOfClass(Type.VoidHandling.EXCLUDE_VOID)) {
+        if (elementType.isKindOfClass(Type.VoidHandling.EXCLUDE_VOID)) {
             return "COLLECT { MATCH (" + nodeAlias + ")-[r:objectReference|HasReferenceValue]->(target) " +
                     "RETURN target ORDER BY r.index }";
         }
@@ -1142,7 +1172,7 @@ public class OclCypherRenderer {
         String emptyCheck = nodeAlias + ".value IS NULL OR " + nodeAlias + ".value = 'Undefined' OR " +
                 nodeAlias + ".value = 'COLLECTION_EMPTY'";
         String splitExpr = "split(" + nodeAlias + ".value, ' | ')";
-        String itemValue = normalizeAttributeValue(itemAlias, type, state);
+        String itemValue = normalizeAttributeValue(itemAlias, elementType, state);
         return "CASE WHEN " + emptyCheck + " THEN [] ELSE [" + itemAlias + " IN " + splitExpr +
                 " | " + itemValue + "] END";
     }

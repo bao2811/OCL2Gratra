@@ -60,6 +60,22 @@ public final class CanonicalGraphEncoding {
                 + "::targetQualifiers=" + frameList(targetQualifiers, "targetQualifiers");
     }
 
+    /** Canonical identity of one ordered n-ary association-link tuple. */
+    public static String naryLinkKey(String modelName, String associationName,
+                                     List<String> participantRoles,
+                                     List<String> participantIds) {
+        Objects.requireNonNull(participantRoles, "participantRoles");
+        Objects.requireNonNull(participantIds, "participantIds");
+        if (participantRoles.size() < 3 || participantRoles.size() != participantIds.size()) {
+            throw new IllegalArgumentException(
+                    "An n-ary link requires equal role/object lists with at least three participants.");
+        }
+        return modelKey(modelName) + "::link::association="
+                + frame(required(associationName, "associationName"))
+                + "::participantRoles=" + frameList(participantRoles, "participantRoles")
+                + "::participantIds=" + frameList(participantIds, "participantIds");
+    }
+
     /** Canonical identity of one object's slot for one declared attribute. */
     public static String attributeSlotKey(String modelName, String objectId,
                                           String ownerClassName, String attributeName) {

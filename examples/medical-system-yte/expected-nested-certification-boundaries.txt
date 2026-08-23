@@ -1,0 +1,14 @@
+Doctor::NestedScalarOuterNonEmpty
+Doctor::NestedScalarSingleton
+Doctor::NestedScalarOuterMultiplicity
+Doctor::NestedScalarOuterOrder
+Patient::NestedStringEmpty
+Patient::NestedStringSingleton
+Patient::NestedStringMultiplicity
+Patient::NestedStringOrder
+Patient::NestedScalarBottom
+Patient::NestedEntityEmpty
+Patient::NestedEntitySingleton
+Patient::NestedEntityMultiplicity
+Patient::NestedEntityOrder
+Patient::NestedEntityNoGhost

@@ -237,10 +237,17 @@ public final class AdapterAdequacySnapshotReader {
     private static String expectedStoredPayload(Object value, Type type) {
         if (type.isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
             if (!(value instanceof Map<?, ?> collection)) return "Undefined";
+            Type elementType = ((org.tzi.use.uml.ocl.type.CollectionType) type).elemType();
+            if (elementType.isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID)) {
+                return "NESTED_COLLECTION";
+            }
             Object rawItems = collection.get("items");
             List<?> items = rawItems instanceof List<?> list ? list : List.of();
             if (items.isEmpty()) return "COLLECTION_EMPTY";
-            return items.stream().map(item -> item == null ? "null" : item.toString())
+            if (elementType.isKindOfClass(Type.VoidHandling.EXCLUDE_VOID)) {
+                return "COLLECTION_DATA";
+            }
+            return items.stream().map(item -> expectedStoredPayload(item, elementType))
                     .collect(Collectors.joining(" | "));
         }
         if (value == null) return "v1|V";

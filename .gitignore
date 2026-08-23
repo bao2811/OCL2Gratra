@@ -121,6 +121,18 @@ target/
 *.md
 DAKH/
 md/
+!md/
+!md/research/
+!md/research/specification/
+!md/research/specification/**/*.md
+!md/research/specification/**/*.emf
+!md/research/evidence/
+!md/research/evidence/medical-carrental-experiment-2026-08-23.md
+!md/research/evidence/medical-carrental-results-2026-08-23.csv
+!md/research/model/
+!md/research/model/structure/
+!md/research/model/structure/yte-model-comparison.md
+!md/research/model/structure/yte.png
 *.html
 
 # Paper sources and generated publication artifacts must remain local.

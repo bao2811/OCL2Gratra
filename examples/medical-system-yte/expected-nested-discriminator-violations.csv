@@ -1,0 +1,15 @@
+invariant,ids
+Doctor::NestedScalarOuterNonEmpty,
+Doctor::NestedScalarSingleton,dr2
+Doctor::NestedScalarOuterMultiplicity,dr1
+Doctor::NestedScalarOuterOrder,dr2
+Patient::NestedStringEmpty,p2
+Patient::NestedStringSingleton,p1;p2
+Patient::NestedStringMultiplicity,p1
+Patient::NestedStringOrder,p2
+Patient::NestedScalarBottom,p1
+Patient::NestedEntityEmpty,p2
+Patient::NestedEntitySingleton,p2
+Patient::NestedEntityMultiplicity,p1
+Patient::NestedEntityOrder,p2
+Patient::NestedEntityNoGhost,

@@ -1875,7 +1875,7 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
-    void rejectsNavigationOverNAryAssociation() {
+    void admitsCanonicalNAryNavigationOnlyInGeneralProductionProfile() {
         String spec = """
                 model Demo
                 class Person
@@ -1899,9 +1899,16 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile(
                 "context Person inv HasPets: self.pet->notEmpty()");
 
-        assertFalse(result.isSupported());
-        assertEquals(OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED,
-                result.getDiagnostics().get(0).code());
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains(":LinkHub"), result.getCypher());
+        assertTrue(result.getCypher().contains(".linkKey"), result.getCypher());
+        assertTrue(result.getCypher().contains(".role"), result.getCypher());
+
+        RuntimeException certifiedFailure = assertThrows(RuntimeException.class,
+                () -> compiler.compileInvariantInstrumented(
+                        "context Person inv HasPets: self.pet->notEmpty()"));
+        assertTrue(certifiedFailure.getMessage().contains("binary UML associations"),
+                certifiedFailure.getMessage());
     }
 
     @Test

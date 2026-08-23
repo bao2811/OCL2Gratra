@@ -1,6 +1,6 @@
 % GENERATED FILE -- DO NOT EDIT THE SEMANTIC BODY DIRECTLY.
 % CANONICAL-MARKDOWN-PATH: ../research/formal-theorems-and-proofs.md
-% CANONICAL-MARKDOWN-SHA256: 91b659786229fcc98a0bbda1d91fbfd8312e5a807710f17d13128ecaedc5d15f
+% CANONICAL-MARKDOWN-SHA256: 2ff53b4152dec4ed6cea3183c46ac618bb889daaf72e6cf3313ba4680f9dfc29
 % Regenerate with md/research/check-proof-sync.ps1 -UpdateProjections.
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode}{hyperref}
@@ -577,7 +577,49 @@ proof check PASS" \}, \{ "id": "EV-PO18-MUTATIONS", "kind": "source",
 \}, \{ "id": "EV-PO18-CAPTURE-GUARD", "kind": "test", "path":
 "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/ir/OclRewritePreservationTest.java",
 "symbol": "fusionFallsBackWhenIteratorRenameWouldCaptureNestedBinder"
-\}, \{ "id": "EV-PO18-JAVA-MATRIX", "kind": "file", "path":
+\}, \{ "id": "EV-PO18-TYPE-METAMODEL", "kind": "source", "path":
+"md/research/specification/metamodel/OCL-Type-System.emf", "symbol":
+"package ocltypes;" \}, \{ "id": "EV-PO18-TYPE-ECORE", "kind": "file",
+"path": "md/research/specification/metamodel/OCL-Type-System.ecore" \},
+\{ "id": "EV-PO18-LEAN-SEMANTIC-TYPES", "kind": "source", "path":
+"verification/lean/Ocl2Cypher/SemanticTypes.lean", "symbol": "namespace
+Ocl2CypherProof.SemanticTypes" \}, \{ "id":
+"EV-PO18-LEAN-EXTENSIONAL-SET", "kind": "source", "path":
+"verification/lean/Ocl2Cypher/ExtensionalNestedSet.lean", "symbol":
+"theorem encode\_injective" \}, \{ "id": "EV-PO18-LEAN-SCALAR-CODEC",
+"kind": "source", "path":
+"verification/lean/Ocl2Cypher/CanonicalScalarCodec.lean", "symbol":
+"theorem encode\_injective" \}, \{ "id":
+"EV-PO18-LEAN-CASE-STUDY-SLICES", "kind": "source", "path":
+"verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean", "symbol":
+"theorem nary\_projection\_agreement" \}, \{ "id":
+"EV-PO18-COLLECTION-CODEC", "kind": "source", "path":
+"neo4j/src/main/java/org/uet/dse/neo4j/sync/helper/CanonicalCollectionValueCodec.java",
+"symbol": "class CanonicalCollectionValueCodec" \}, \{ "id":
+"EV-PO18-COLLECTION-CODEC-MATRIX", "kind": "file", "path":
+"verification/coverage/canonical\_collection\_codec\_refinement.csv" \},
+\{ "id": "EV-PO18-COLLECTION-CODEC-GUARD", "kind": "test", "path":
+"neo4j/src/test/java/org/uet/dse/neo4j/sync/helper/CanonicalCollectionValueCodecTest.java",
+"symbol": "class CanonicalCollectionValueCodecTest" \}, \{ "id":
+"EV-PO18-TYPE-RULES", "kind": "source", "path":
+"md/research/specification/rules/00-type-conformance.md", "symbol":
+"T0-COLL-SAME" \}, \{ "id": "EV-PO18-TYPE-PRODUCTION", "kind": "source",
+"path":
+"neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclTypeConformance.java",
+"symbol": "class OclTypeConformance" \}, \{ "id":
+"EV-PO18-TYPE-HIERARCHY", "kind": "source", "path":
+"neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/UmlClassHierarchyIndex.java",
+"symbol": "class UmlClassHierarchyIndex" \}, \{ "id":
+"EV-PO18-TYPE-MATRIX", "kind": "file", "path":
+"verification/coverage/ocl\_type\_conformance\_refinement.csv" \}, \{
+"id": "EV-PO18-HIERARCHY-MATRIX", "kind": "file", "path":
+"verification/coverage/uml\_class\_hierarchy\_refinement.csv" \}, \{
+"id": "EV-PO18-TYPE-GUARD", "kind": "test", "path":
+"neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/ocl/OclTypeConformanceTest.java",
+"symbol": "class OclTypeConformanceTest" \}, \{ "id":
+"EV-PO18-T6-OBLIGATIONS", "kind": "file", "path":
+"verification/coverage/universal\_theorem6\_obligations.csv" \}, \{
+"id": "EV-PO18-JAVA-MATRIX", "kind": "file", "path":
 "verification/coverage/java\_ir\_refinement\_matrix.csv" \}, \{ "id":
 "EV-PO18-JAVA-GUARD", "kind": "test", "path":
 "neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclIrJavaRefinementCoverageTest.java",
@@ -791,34 +833,52 @@ cases, including 19 profile-tautology and 28 non-vacuous mixed cases",
 {[}"EV-PO17-CHECKER", "EV-PO17-MUTATIONS"{]} \}, \{ "id": "PO-18",
 "title": "Mechanized core lemmas and optional Java optimization
 refinement", "classification": "recommended", "status": "partial",
-"scope": "the normative NVA grammar is enumerated and
-spec\_plan\_sim\_sound composes every recursive NVA/CQM case under
-explicit local AlgebraAgreement; executable NVA Ecore/XMI/WF\_NVA, total
-OVA/CQM feature coverage, SpecPlanSim catalog, and full PGMM EMF
-conformance are checked. The partial remainder is only the optional
-non-normative Java OptRefines(T\_OPT(va),T\_NORM(va)) and universal
-Java/Neo4j instantiation; it is not a premise of Theorems 0-\/-6",
-"evidenceIds": {[}"EV-PO18-LEAN", "EV-PO18-PRODPLAN-INDUCTION",
-"EV-SPEC-NVA-GRAMMAR", "EV-SPEC-PLANSIM", "EV-SPEC-NVA-METAMODEL",
-"EV-SPEC-NVA-ECORE", "EV-SPEC-NVA-INSTANCE", "EV-SPEC-NVA-VALIDATOR",
-"EV-SPEC-NVA-VALIDATOR-GUARD", "EV-SPEC-PLANSIM-CATALOG",
-"EV-SPEC-TOTAL-FEATURES", "EV-SPEC-TOTAL-FEATURES-GUARD",
-"EV-SPEC-PGMM-EMF", "EV-PO18-CHECKER", "EV-PO18-MUTATIONS",
-"EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD", "EV-PO18-JAVA-MATRIX",
-"EV-PO18-JAVA-GUARD", "EV-PO18-JAVA-REFINEMENT",
-"EV-PO18-JAVA-WITNESSES", "EV-PO18-METAMODEL-REFINEMENT",
-"EV-PO18-OVA-REFINEMENT-MATRIX", "EV-PO18-CQM-REFINEMENT-MATRIX",
-"EV-PO18-METAMODEL-REFINEMENT-GUARD", "EV-PO18-FIELD-REFINEMENT",
-"EV-PO18-FIELD-REFINEMENT-GUARD", "EV-PO18-AST-LOWERING-CATALOG",
-"EV-PO18-AST-LOWERING-GUARD", "EV-PO18-CQM-AST-SHAPE",
-"EV-PO18-METAMODEL-ECORE", "EV-PO18-OVA-ECORE", "EV-PO18-CQM-ECORE",
-"EV-PO18-METAMODEL-INSTANCES", "EV-PO18-CQM-INSTANCE",
-"EV-PO18-METAMODEL-INSTANCES-GUARD", "EV-PO18-PGMM-CONFORMANCE",
-"EV-PO18-PGMM-CONFORMANCE-GUARD", "EV-PO18-PGMM-INSTANCE",
-"EV-PO18-RUNTIME-CONSTRUCTORS"{]} \}, \{ "id": "PO-19", "title": "Clean
-machine-verification artifact", "classification": "required", "status":
-"discharged", "scope": "discharged 2026-08-09 for CI/artifact
-provenance: GitHub Actions completed successfully for clean commit
+"scope": "the concrete UML/OCL conformance kernel is modularized; an
+extracted hierarchy theorem packages direct-parent/all-parent closure
+correctness and production independently computes parents() closure,
+audits it against allParents(), and delegates conformance to that
+checked index. Recursive encoding is injective for canonical
+enumerations and extensional predicate Sets and preserves recursive
+finite support. Concrete tagged String framing is injective on certified
+canonical scalar bodies, and arbitrary-depth nested payload injectivity
+is specialized without an abstract scalar-codec premise. Production
+tagged scalar leaf encoding and strict readback are integrated for flat
+and deepest nested scalar collection cells. The normative NVA grammar is
+enumerated and spec\_plan\_sim\_sound composes every recursive NVA/CQM
+case under explicit local AlgebraAgreement. Remaining work includes Java
+Int64/finite-Real64 canonical-body refinement, nested
+graph-shape/entity-leaf correspondence, proof-producing Java-to-Lean
+hierarchy serialization, optional Java
+OptRefines(T\_OPT(va),T\_NORM(va)), and universal Java/Neo4j
+instantiation", "evidenceIds": {[}"EV-PO18-LEAN",
+"EV-PO18-PRODPLAN-INDUCTION", "EV-SPEC-NVA-GRAMMAR", "EV-SPEC-PLANSIM",
+"EV-SPEC-NVA-METAMODEL", "EV-SPEC-NVA-ECORE", "EV-SPEC-NVA-INSTANCE",
+"EV-SPEC-NVA-VALIDATOR", "EV-SPEC-NVA-VALIDATOR-GUARD",
+"EV-SPEC-PLANSIM-CATALOG", "EV-SPEC-TOTAL-FEATURES",
+"EV-SPEC-TOTAL-FEATURES-GUARD", "EV-SPEC-PGMM-EMF", "EV-PO18-CHECKER",
+"EV-PO18-MUTATIONS", "EV-PO18-NORM-BOUNDARY", "EV-PO18-CAPTURE-GUARD",
+"EV-PO18-TYPE-METAMODEL", "EV-PO18-TYPE-ECORE",
+"EV-PO18-LEAN-SEMANTIC-TYPES", "EV-PO18-LEAN-EXTENSIONAL-SET",
+"EV-PO18-LEAN-SCALAR-CODEC", "EV-PO18-COLLECTION-CODEC",
+"EV-PO18-COLLECTION-CODEC-MATRIX", "EV-PO18-COLLECTION-CODEC-GUARD",
+"EV-PO18-TYPE-RULES", "EV-PO18-TYPE-PRODUCTION",
+"EV-PO18-TYPE-HIERARCHY", "EV-PO18-TYPE-MATRIX",
+"EV-PO18-HIERARCHY-MATRIX", "EV-PO18-TYPE-GUARD",
+"EV-PO18-T6-OBLIGATIONS", "EV-PO18-JAVA-MATRIX", "EV-PO18-JAVA-GUARD",
+"EV-PO18-JAVA-REFINEMENT", "EV-PO18-JAVA-WITNESSES",
+"EV-PO18-METAMODEL-REFINEMENT", "EV-PO18-OVA-REFINEMENT-MATRIX",
+"EV-PO18-CQM-REFINEMENT-MATRIX", "EV-PO18-METAMODEL-REFINEMENT-GUARD",
+"EV-PO18-FIELD-REFINEMENT", "EV-PO18-FIELD-REFINEMENT-GUARD",
+"EV-PO18-AST-LOWERING-CATALOG", "EV-PO18-AST-LOWERING-GUARD",
+"EV-PO18-CQM-AST-SHAPE", "EV-PO18-METAMODEL-ECORE", "EV-PO18-OVA-ECORE",
+"EV-PO18-CQM-ECORE", "EV-PO18-METAMODEL-INSTANCES",
+"EV-PO18-CQM-INSTANCE", "EV-PO18-METAMODEL-INSTANCES-GUARD",
+"EV-PO18-PGMM-CONFORMANCE", "EV-PO18-PGMM-CONFORMANCE-GUARD",
+"EV-PO18-PGMM-INSTANCE", "EV-PO18-RUNTIME-CONSTRUCTORS"{]} \}, \{ "id":
+"PO-19", "title": "Clean machine-verification artifact",
+"classification": "required", "status": "discharged", "scope":
+"discharged 2026-08-09 for CI/artifact provenance: GitHub Actions
+completed successfully for clean commit
 7b7bdd2538434d64e2e77c9321b93b12feee1a42 and uploaded
 proof-contract-PC-2026-07-22.3 plus the build package; the recorded
 clean aggregate baseline is rooted at
@@ -986,8 +1046,12 @@ from ordinary strings and numeric domains", "path":
 "lean-4.32.2-windows.zip", "releaseAssetBytes": 832110051,
 "releaseAssetSha256":
 "369c2b480a2a6f8bfb727af42c333c894c4872a73b3503099abad7bef67549fa",
-"sourcePath": "verification/lean/Ocl2CypherProof.lean", "checkerPath":
-"verification/scripts/check-mechanized-proof.ps1",
+"sourcePath": "verification/lean/Ocl2CypherProof.lean", "modulePaths":
+{[} "verification/lean/Ocl2Cypher/SemanticTypes.lean",
+"verification/lean/Ocl2Cypher/ExtensionalNestedSet.lean",
+"verification/lean/Ocl2Cypher/CanonicalScalarCodec.lean",
+"verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean" {]},
+"checkerPath": "verification/scripts/check-mechanized-proof.ps1",
 "mutationCheckerPath":
 "verification/scripts/check-mechanized-proof-mutations.ps1",
 "projectPaths": {[} "verification/lean/lakefile.lean",
@@ -1006,6 +1070,18 @@ from ordinary strings and numeric domains", "path":
 "lift1\_bound\_validation", "lift1\_present", "lift1\_absent",
 "lift1\_consumer\_agreement", "encodeValue\_injective",
 "implies\_rewrite", "forall\_rewrite", "notEmpty\_rewrite",
+"classConforms\_trans", "every\_certified\_type\_conforms\_to\_oclAny",
+"unlimitedNatural\_conforms\_to\_integer",
+"set\_conformance\_is\_covariant", "decideConforms\_iff",
+"extractedHierarchy\_decideConforms\_iff",
+"nested\_decode\_encode\_value", "nested\_encodeValue\_injective",
+"extensional\_nested\_encodeValue\_injective",
+"extensional\_nested\_encode\_preserves\_finiteness",
+"extensional\_nested\_payload\_encode\_injective",
+"extensional\_nested\_payload\_encode\_preserves\_finiteness",
+"canonical\_scalar\_codec\_injective",
+"canonical\_scalar\_escape\_injective",
+"extensional\_nested\_canonical\_payload\_encode\_injective",
 "normalize\_preserves\_eval", "normalize\_reaches\_redex\_free",
 "implies\_root\_strictly\_decreases", "all\_rewrite\_semantics",
 "normalize\_reaches\_normal\_form", "normalize\_idempotent",
@@ -1017,10 +1093,42 @@ from ordinary strings and numeric domains", "path":
 "structural\_preservation", "java\_ir\_eval\_refinement",
 "prod\_plan\_sim\_sound", "certified\_nva\_grammar\_complete",
 "spec\_plan\_sim\_sound", "bound\_va\_abstraction", "pa\_comp",
-"theorem6\_forward", "theorem6\_backward", "theorem6\_at\_object" {]},
+"theorem6\_forward", "theorem6\_backward", "theorem6\_at\_object",
+"case\_study\_entity\_id\_injective",
+"nested\_sequence\_payload\_injective",
+"nested\_sequence\_preserves\_width",
+"nested\_sequence\_preserves\_inner\_widths",
+"nested\_scalar\_bottom\_separated", "nary\_projection\_agreement",
+"nary\_projection\_noGhost", "nested\_entity\_noGhost" {]},
 "axiomAudit": \{ "allowedCoreAxioms": {[}"propext", "Quot.sound"{]},
 "theorems": {[} \{ "name": "Ocl2CypherProof.encodeValue\_injective",
 "expected": {[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.ConcreteOclTyping.classConforms\_trans", "expected":
+{[}{]} \}, \{ "name":
+"Ocl2CypherProof.ConcreteOclTyping.set\_conformance\_is\_covariant",
+"expected": {[}{]} \}, \{ "name":
+"Ocl2CypherProof.ConcreteOclTyping.decideConforms\_iff", "expected":
+{[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.ConcreteOclTyping.extractedHierarchy\_decideConforms\_iff",
+"expected": {[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.NestedEncoding.nested\_decode\_encode\_value",
+"expected": {[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.NestedEncoding.nested\_encodeValue\_injective",
+"expected": {[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.extensional\_nested\_encodeValue\_injective",
+"expected": {[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.extensional\_nested\_encode\_preserves\_finiteness",
+"expected": {[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.extensional\_nested\_payload\_encode\_injective",
+"expected": {[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.extensional\_nested\_payload\_encode\_preserves\_finiteness",
+"expected": {[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.canonical\_scalar\_codec\_injective", "expected":
+{[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.canonical\_scalar\_escape\_injective", "expected":
+{[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.extensional\_nested\_canonical\_payload\_encode\_injective",
+"expected": {[}"propext", "Quot.sound"{]} \}, \{ "name":
 "Ocl2CypherProof.ToOneLift.lift1\_consumer\_agreement", "expected":
 {[}{]} \}, \{ "name":
 "Ocl2CypherProof.BoolExpr.normalize\_preserves\_eval", "expected":
@@ -1041,7 +1149,21 @@ from ordinary strings and numeric domains", "path":
 {[}{]} \}, \{ "name": "Ocl2CypherProof.AdapterComposition.pa\_comp",
 "expected": {[}{]} \}, \{ "name":
 "Ocl2CypherProof.theorem6\_at\_object", "expected": {[}{]} \}, \{
-"name": "Ocl2CypherProof.Normalization.all\_rewrite\_semantics",
+"name": "Ocl2CypherProof.case\_study\_entity\_id\_injective",
+"expected": {[}{]} \}, \{ "name":
+"Ocl2CypherProof.nested\_sequence\_payload\_injective", "expected":
+{[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.nested\_sequence\_preserves\_width", "expected":
+{[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.nested\_sequence\_preserves\_inner\_widths",
+"expected": {[}"propext", "Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.nested\_scalar\_bottom\_separated", "expected":
+{[}"propext"{]} \}, \{ "name":
+"Ocl2CypherProof.nary\_projection\_agreement", "expected": {[}"propext",
+"Quot.sound"{]} \}, \{ "name":
+"Ocl2CypherProof.nary\_projection\_noGhost", "expected": {[}{]} \}, \{
+"name": "Ocl2CypherProof.nested\_entity\_noGhost", "expected": {[}{]}
+\}, \{ "name": "Ocl2CypherProof.Normalization.all\_rewrite\_semantics",
 "expected": {[}{]} \}, \{ "name":
 "Ocl2CypherProof.Normalization.typed\_rewrite\_preserves\_type",
 "expected": {[}"propext"{]} \}, \{ "name":
@@ -1067,49 +1189,70 @@ and validation-algebra collection views, including the asSet, size,
 isEmpty, and notEmpty observations admitted for scalar to-one receivers"
 \}, \{ "id": "MK-ENCODE", "status": "mechanized", "scope": "flat typed
 bottom/scalar/entity/finite-set value encoding" \}, \{ "id":
-"MK-NORMALIZE", "status": "partial", "scope": "all eleven listed
-rewrite-family semantic equations over validation Bool/finite List,
-intrinsic Bool/Nat/Elem/Set N2 indexes, lexical named-to-de-Bruijn
-semantic correspondence, soundness and scoped-semantic preservation of
-the exact three-disjunct Java capture guard over the Boolean binder
-kernel, relative normal form, idempotence, and lexicographic root
-decrease; concrete semantic premises for every production optimization
-rule remain open" \}, \{ "id": "MK-T4", "status": "mechanized", "scope":
-"payload-parametric relational structural induction over all 16
-production OclIr.OptimizedExpression constructors, including
-sourceCollectionType on collection and iterator operations, every other
-non-recursive record payload, recursive expression lists, and optional
-predicates, under one explicit primitive-agreement premise per
-constructor" \}, \{ "id": "MK-PRODPLAN", "status": "mechanized",
-"scope": "named prod\_plan\_sim\_sound theorem composes the
-constructor-wise evaluation relation under the same explicit local
-AlgebraAgreement premise used by the formal ProdPlanSim contract" \}, \{
-"id": "MK-SPECPLAN", "status": "mechanized", "scope": "axiom-free
-structural induction over independent finite NVA trees whose tag ranges
-over exactly the 26 certified constructors; composes SpecPlanSim under
-an explicit LR/C/BR/CY local equation for every constructor tag" \}, \{
-"id": "MK-BOUND-VA", "status": "mechanized", "scope": "axiom-free
-recursive evaluation equality for the alpha abstraction from all eleven
-production BoundExpression record families, with BoundProperty split
-into the twelve SemanticExpression targets and every
-sourceCollectionType payload retained, under an arbitrary shared
+"MK-CONCRETE-TYPING", "status": "partial", "scope": "concrete UML/OCL
+conformance relation with reflexive-transitive UML generalization, Void
+bottom, OclAny top, exact numeric edges, five collection kinds and
+covariance; decideConforms is sound and complete at every nested type,
+and extractedHierarchy\_decideConforms\_iff instantiates the oracle from
+directParents/allParents plus a closure certificate. Production computes
+closure independently from MClass.parents(), audits exact agreement with
+MClass.allParents(), and uses that index; proof-producing serialization
+of the checked Java hierarchy into the Lean certificate remains open"
+\}, \{ "id": "MK-NESTED-ENCODE", "status": "mechanized", "scope":
+"recursive decode-after-encode for canonical finite enumerations;
+arbitrary-depth extensional injectivity and recursive finite-support
+preservation. The concrete tagged String framing is injective on
+certified canonical scalar bodies, so the nested theorem no longer needs
+an abstract scalar-codec injectivity premise. Production uses
+CanonicalCollectionValueCodec for flat scalar collections and every
+deepest scalar cell, with strict tagged readback; Java Int64/Real64
+canonical-body refinement and nested graph-shape/entity-leaf
+correspondence remain open" \}, \{ "id": "MK-NORMALIZE", "status":
+"partial", "scope": "all eleven listed rewrite-family semantic equations
+over validation Bool/finite List, intrinsic Bool/Nat/Elem/Set N2
+indexes, lexical named-to-de-Bruijn semantic correspondence, soundness
+and scoped-semantic preservation of the exact three-disjunct Java
+capture guard over the Boolean binder kernel, relative normal form,
+idempotence, and lexicographic root decrease; concrete semantic premises
+for every production optimization rule remain open" \}, \{ "id":
+"MK-T4", "status": "mechanized", "scope": "payload-parametric relational
+structural induction over all 16 production OclIr.OptimizedExpression
+constructors, including sourceCollectionType on collection and iterator
+operations, every other non-recursive record payload, recursive
+expression lists, and optional predicates, under one explicit
+primitive-agreement premise per constructor" \}, \{ "id": "MK-PRODPLAN",
+"status": "mechanized", "scope": "named prod\_plan\_sim\_sound theorem
+composes the constructor-wise evaluation relation under the same
+explicit local AlgebraAgreement premise used by the formal ProdPlanSim
+contract" \}, \{ "id": "MK-SPECPLAN", "status": "mechanized", "scope":
+"axiom-free structural induction over independent finite NVA trees whose
+tag ranges over exactly the 26 certified constructors; composes
+SpecPlanSim under an explicit LR/C/BR/CY local equation for every
+constructor tag" \}, \{ "id": "MK-BOUND-VA", "status": "mechanized",
+"scope": "axiom-free recursive evaluation equality for the alpha
+abstraction from all eleven production BoundExpression record families,
+with BoundProperty split into the twelve SemanticExpression targets and
+every sourceCollectionType payload retained, under an arbitrary shared
 primitive algebra" \}, \{ "id": "MK-PA-COMP", "status": "mechanized",
 "scope": "six AdapterAdequate observation equalities derived from
 exact-M2 and PA1-\/-PA9 over one explicit shared source/graph snapshot
 premise" \}, \{ "id": "MK-T6", "status": "mechanized", "scope":
 "forward/backward pointwise violation-ID inclusions under agreement and
-ID injectivity" \} {]}, "openScope": {[} "nested collection encodeValue
-injectivity", "metamodel-specific OCL subtyping/coercion and concrete
-semantic agreement for every Java T\_OPT normalization rule",
-"instantiation of the 16-constructor relational algebra with the actual
-object and graph evaluators, including Java payload semantics",
-"instantiation of the 26-constructor NVA algebra with the concrete graph
-and reference-Cypher evaluators; CLAIM-SPEC-PLAN remains conditional on
-the registered LR/C/BR/CY local agreements", "Neo4j/Cypher semantics
-beyond the selected runtime-profile assumptions and
-non-invariant/fallback entry points", "universal Theorem 6 composition
-beyond the abstract agreement premises" {]} \}, "artifactPolicy": \{
-"kind": "machine-verification", "reportSchema":
+ID injectivity" \} {]}, "openScope": {[} "formal refinement from Java
+Int64/finite-Real64 canonical-body generation plus
+graph-shape/entity-leaf correspondence between extensional nested Sets
+and HasNestedCollectionValue storage", "proof-producing
+serialization/certificate checking that imports the production UML
+hierarchy index into Lean, plus concrete semantic agreement for every
+Java T\_OPT normalization rule", "instantiation of the 16-constructor
+relational algebra with the actual object and graph evaluators,
+including Java payload semantics", "instantiation of the 26-constructor
+NVA algebra with the concrete graph and reference-Cypher evaluators;
+CLAIM-SPEC-PLAN remains conditional on the registered LR/C/BR/CY local
+agreements", "Neo4j/Cypher semantics beyond the selected runtime-profile
+assumptions and non-invariant/fallback entry points", "universal Theorem
+6 composition beyond the abstract agreement premises" {]} \},
+"artifactPolicy": \{ "kind": "machine-verification", "reportSchema":
 "proof-report.schema.v1", "reportGeneratorPath":
 "verification/scripts/write-proof-report.ps1", "baselineEvidencePath":
 "verification/evidence/proof-baseline-2026-08-23.json",
@@ -11884,14 +12027,14 @@ The checked proof-assistant artifact is:
 \end{Highlighting}
 \end{Shaded}
 
-The registry fixes the toolchain, source/checker paths, 32 required
-theorem names, coverage status, and open scope.
+The registry fixes the toolchain, ordered module/source/checker paths,
+50 required theorem names, coverage status, and open scope.
 \texttt{check-mechanized-proof.ps1} compiles the source with the Lean
 kernel and rejects unapproved theorem-list drift plus \texttt{sorry},
 \texttt{admit}, project-declared \texttt{axiom}, or \texttt{opaque}. The
 axiom audit permits Lean core dependencies explicitly: \texttt{propext}
-occurs in twelve registered proofs and two dependent-scope proofs also
-use \texttt{Quot.sound}. The all-rule semantic certificate and
+occurs in twenty-six registered proofs and nine dependent-scope proofs
+also use \texttt{Quot.sound}. The all-rule semantic certificate and
 registered pointwise T6 theorem must report no axiom dependency. Its
 mutation companion must kill stale registry-hash, placeholder,
 project-axiom, missing-theorem, real kernel type-error, and
@@ -11904,32 +12047,85 @@ The mechanized statements establish the following mathematical kernels:
 \NormalTok{MK{-}FINITE{-}SET  predicate{-}set image/subset/exists/forall transport}
 \NormalTok{MK{-}LIFT1       to{-}one absent/empty and present/singleton collection views}
 \NormalTok{MK{-}ENCODE      injectivity for flat bottom/scalar/entity/finite{-}set values}
+\NormalTok{MK{-}CONCRETE{-}TYPING  UML ancestry/index certificate, Void/OclAny, numeric, collection rules}
+\NormalTok{MK{-}NESTED{-}ENCODE    nested entity/scalar payload injectivity and finite{-}support preservation}
 \NormalTok{MK{-}NORMALIZE   11 semantics; types; named/de{-}Bruijn guard bridge; NF/idempotence/decrease}
 \NormalTok{MK{-}T4          payload{-}parametric 16{-}constructor relational lifting}
+\NormalTok{MK{-}PRODPLAN    named composition theorem for the same 16 constructor premises}
+\NormalTok{MK{-}SPECPLAN    26{-}constructor NVA{-}tree composition under local agreements}
 \NormalTok{MK{-}BOUND{-}VA    11 Bound records to 12 semantic{-}IR targets under shared primitives}
 \NormalTok{MK{-}PA{-}COMP     AdapterAdequate composition from exact M2 and PA1{-}{-}PA9}
 \NormalTok{MK{-}T6          forward/backward/pointwise ID inclusions under stated agreement}
 \end{Highlighting}
 \end{Shaded}
 
-PO-18 as a whole remains deliberately \texttt{partial}. The
-normalization artifact covers all listed rule families after
+PO-18 as a whole remains deliberately \texttt{partial}. The concrete
+type kernel now models reflexive/transitive UML generalization,
+\texttt{Void} bottom, \texttt{OclAny} top, the production-exact
+\texttt{Integer\ -\textgreater{}\ Real} and
+\texttt{UnlimitedNatural\ -\textgreater{}\ Integer} edges, all five
+collection kinds, and recursive covariance. The production binder
+delegates to \texttt{OclTypeConformance}, whose UML branch uses
+\texttt{UmlClassHierarchyIndex}. That index computes transitive closure
+independently from \texttt{MClass.parents()}, rejects cycles/unknown
+parents, and audits exact agreement with \texttt{MClass.allParents()}.
+Lean packages the same boundary as \texttt{ExtractedClassHierarchy} and
+proves the resulting decision biconditional. What remains is
+proof-producing serialization (or a verified importer) that turns each
+concrete Java index into the corresponding Lean closure certificate;
+finite branch tests are not that universal cross-language proof.
+
+The recursive value theorem proves \texttt{decode(encode(v))=v} and
+therefore injectivity for arbitrary nesting depth of canonical finite
+enumerations. The modular extensional theorem additionally proves
+injectivity at every homogeneous nesting depth for predicate Sets, where
+equality is membership extensional and enumeration order/duplicates are
+unobservable. The strengthened theorem encodes entity and scalar leaves
+simultaneously and preserves recursive finite support.
+\texttt{CanonicalScalarCodec} proves the exact
+\texttt{\%}/\texttt{\textbar{}} escape framing has a left inverse, the
+five scalar tags are disjoint, and the resulting \texttt{String} printer
+is injective on certified canonical bodies. Consequently the nested
+specialization no longer accepts scalar injectivity as a premise.
+Production now uses \texttt{CanonicalCollectionValueCodec} for flat
+scalar collections and the deepest scalar cells of
+\texttt{HasNestedCollectionValue}, including bottom and escaped
+delimiters, and both readback paths reject legacy untagged cells. Formal
+Java Int64/finite-Real64 canonical-body generation and nested
+graph-shape/entity-leaf correspondence remain separate obligations
+rather than hidden assumptions.
+
+The normalization artifact covers all listed rule families after
 \texttt{bool\_val}, four abstract typed N2 result indices, lexical
 named-to-de-Bruijn semantic correspondence, and guarded-renaming
-preservation over its Boolean binder kernel. It does not cover the
-metamodel-specific OCL subtype/coercion lattice or universal Java
-\texttt{T\_OPT}-\/-formal \texttt{T\_NORM} refinement. MK-T4 now
-quantifies over every non-recursive payload of all 16 production
+preservation over its Boolean binder kernel. It does not yet prove
+universal Java \texttt{T\_OPT}-\/-formal \texttt{T\_NORM} refinement.
+MK-T4 quantifies over every non-recursive payload of all 16 production
 \texttt{OptimizedExpression} constructors; the Java matrix checks every
 record field and possible target plan constructor, and executable
-witnesses cover the 16/16 source universe. It still does not instantiate
-the primitive operations with complete object/graph semantics or prove
-every Java optimizer rewrite. The artifact also does not represent
-nested collection values, the full typed \texttt{OCL\_val} induction,
-Neo4j/Cypher semantics, or \texttt{AdapterAdequate} for arbitrary
-deployments. Therefore kernel acceptance establishes that these selected
-Lean propositions follow from their explicit premises; it does not
-establish the end-to-end correctness of the prototype.
+witnesses cover the 16/16 source universe. MK-SPECPLAN likewise
+enumerates all 26 NVA constructors, but its \texttt{constructorCase} is
+still a local agreement premise rather than a concrete graph/Cypher
+evaluator proof. These two theorems prove the induction architecture,
+not the remaining primitive cases.
+
+Most importantly, \texttt{theorem6\_at\_object} assumes pointwise
+source/graph violation agreement and object-ID injectivity. It proves
+the set consequence of those assumptions; it does not derive agreement
+from LR/C/BR/CY, \texttt{ParamCorr}, \texttt{AliasFresh}, and
+\texttt{NoGhost}. Hence the main OCL-to-Cypher theorem is currently
+conditional, not universal. The machine-readable discharge backlog is
+\texttt{verification/coverage/universal\_theorem6\_obligations.csv}.
+
+New OCL surface constructs belong in the research as staged vertical
+slices. Each slice must add source admission/typing, denotation and
+normalization proof, NVA/CQM lowering (or a proof that normalization
+eliminates it), typed Raw-AST rendering, and differential runtime
+evidence. \texttt{SURF-ONE} is therefore recorded as a surface
+normalization to the existing select/size core; it must not inflate the
+frozen 47-source or 26-NVA constructor counts. Constructs such as
+\texttt{count(element)} remain experimental until all boundaries in the
+slice are present.
 
 The historical machine-verification run at commit \texttt{7b7bdd25}
 covers its contract-.3 checkpoint: clean baseline \texttt{f0938519},

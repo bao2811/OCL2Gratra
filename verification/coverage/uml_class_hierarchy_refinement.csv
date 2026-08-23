@@ -1,0 +1,6 @@
+branch_id,production_operation,formal_component,positive_witness,negative_guard,status
+UCH-DIRECT,MClass.parents(),ExtractedClassHierarchy.directParents,Hybrid -> Employee+Auditor,unknown parent rejects,EXECUTABLE_WITNESS
+UCH-CLOSURE,computeClosure,ExtractedClassHierarchy.allParents,Hybrid -> Employee+Auditor+Person,cycle rejects,EXECUTABLE_WITNESS
+UCH-USE-AUDIT,MClass.allParents(),ExtractedClassHierarchy.closureCorrect,computed closure equals USE closure,mismatch fails construction,EXECUTABLE_WITNESS
+UCH-REFLEXIVE,conformsTo,ClassConforms.refl,Hybrid conforms to Hybrid,unknown class rejects,EXECUTABLE_WITNESS
+UCH-TRANSITIVE,conformsTo,ClassConforms.step,Hybrid conforms to Person,reverse direction rejects,EXECUTABLE_WITNESS

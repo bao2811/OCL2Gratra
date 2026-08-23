@@ -130,24 +130,28 @@ public class Neo4jObjectQuery {
 
     public static String createTernaryHub(String assocName) {
         return String.format(
-                "MERGE (h:LinkHub:`%s` {use_id: $id, name: $name})",
+                "MERGE (h:LinkHub:`%s` {modelKey:$modelName,linkKey:$linkKey}) " +
+                        "SET h.use_id=$linkKey, h.name=$name, h.associationKey=$associationKey, " +
+                        "h.canonicalKey=$linkKey",
                 assocName
         );
     }
 
     public static String upsertTernarySpoke(String label) {
         return String.format(
-                "MATCH (obj {use_id: $objId}), (h:LinkHub {use_id: $hubId}) " +
-                        "MERGE (obj)-[r:%s]->(h) " +
-                        "SET r.role = $role, r.isTernary = true, r.index = $idx",
+                "MATCH (obj:Object {modelKey:$modelName,objectKey:$objectKey}), " +
+                        "(h:LinkHub {modelKey:$modelName,linkKey:$linkKey}) " +
+                        "MERGE (obj)-[r:%s {modelKey:$modelName,linkKey:$linkKey,index:$idx}]->(h) " +
+                        "SET r.role=$role, r.associationKey=$associationKey, r.isTernary=true",
                 label
         );
     }
 
     public static String upsertLinkObjectSpoke(String label) {
         return String.format(
-                "MATCH (lo {use_id: $loId}), (p {use_id: $pId}) " +
-                        "MERGE (lo)-[r:%s]->(p) " +
+                "MATCH (lo:Object {modelKey:$modelName,objectKey:$linkObjectKey}), " +
+                        "(p:Object {modelKey:$modelName,objectKey:$participantKey}) " +
+                        "MERGE (lo)-[r:%s {modelKey:$modelName,index:$idx}]->(p) " +
                         "SET r.role = $role, r.isLinkObjectPart = true",
                 label
         );

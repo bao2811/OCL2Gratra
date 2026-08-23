@@ -12,6 +12,7 @@ import org.uet.dse.neo4j.manager.WorkLogManager;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
 import org.uet.dse.neo4j.repo.Neo4jObjectRepository;
+import org.uet.dse.neo4j.sync.helper.CanonicalCollectionValueCodec;
 import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4j.sync.helper.QualifierValueCodec;
 import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
@@ -175,9 +176,8 @@ public class ObjectPushService {
         } else if (value instanceof Map<?, ?> map) {
                 Object rawItems = map.get("items");
                 List<?> items = rawItems instanceof List<?> list ? list : List.of();
-                storedValue = items.isEmpty() ? "COLLECTION_EMPTY" : items.stream()
-                        .map(item -> item == null ? "null" : item.toString())
-                        .collect(Collectors.joining(" | "));
+                storedValue = CanonicalCollectionValueCodec.encodeScalarLeaves(
+                        items, UmlTypeTranslator.getUltimateBaseType(attribute.type()));
         } else {
             storedValue = "Undefined";
         }
@@ -304,7 +304,8 @@ public class ObjectPushService {
             p.put("label", "LinkAssociateWith");
             participants.add(p);
         }
-        objectRepository.upsertTernaryLink(tx, link.association().name(), participants);
+        objectRepository.upsertTernaryLink(
+                tx, system.model().name(), link.association().name(), participants);
     }
 
     private void processPushLinkObject(TransactionContext tx, MLinkObject lo) {
@@ -313,11 +314,16 @@ public class ObjectPushService {
             Map<String, Object> p = new HashMap<>();
             p.put("objName", lo.linkedObjects().get(i).name());
             p.put("role", lo.association().associationEnds().get(i).name());
-            p.put("label", "LinkAssociateWith");
+            p.put("label", "AssociationClassParticipant");
+            p.put("index", i);
             participants.add(p);
         }
 
-        objectRepository.upsertLinkObject(tx, lo.name(), lo.cls().name(), participants);
+        objectRepository.upsertLinkObject(
+                tx, system.model().name(), lo.name(), lo.cls().name(), participants);
+        // The link object stores association attributes; the canonical direct
+        // participant edge is the graph accessor used by OCL navigation.
+        processPushBinaryLink(tx, lo);
     }
 
     public void pushObject(TransactionContext tx, MObject obj, MSystemState state) {

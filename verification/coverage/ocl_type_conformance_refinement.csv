@@ -1,0 +1,13 @@
+branch_id,production_branch,lean_constructor,positive_witness,negative_boundary,status
+TC-NULL,null actual or declared,no derivation,Integer <= null,null inputs reject,EXECUTABLE_WITNESS
+TC-VOID,non-collection Void actual,ConcreteOclTyping.Conforms.voidTo,Void <= Company,collection Void is not scalar bottom,EXECUTABLE_WITNESS
+TC-OCLANY,scalar OclAny declared,ConcreteOclTyping.Conforms.toOclAny,Set(String) <= OclAny,collection target is handled structurally,EXECUTABLE_WITNESS
+TC-COLLECTION-SHAPE,both operands are collections,ConcreteOclTyping.Conforms.collectionCovariant,Set(Manager) <= Set(Person),collection/scalar mismatch rejects,EXECUTABLE_WITNESS
+TC-COLLECTION-KIND,equal kind or declared generic Collection,ConcreteOclTyping.Conforms.collectionCovariant,Set(Manager) <= Collection(Person),Set(Person) !<= Sequence(Person),EXECUTABLE_WITNESS
+TC-COLLECTION-RECURSION,recursive element conformance,ConcreteOclTyping.Conforms.collectionCovariant,Set(Set(Manager)) <= Set(Set(Person)),reverse covariance rejects,EXECUTABLE_WITNESS
+TC-UML-REFLEXIVE,equal UML class,ConcreteOclTyping.ClassConforms.refl,Manager <= Manager,node/scalar mismatch rejects,EXECUTABLE_WITNESS
+TC-UML-TRANSITIVE,allParents UML closure,ConcreteOclTyping.ClassConforms.step,Manager <= Person,Person !<= Manager,EXECUTABLE_WITNESS
+TC-KIND,non-node non-collection BindingKind equality,ConcreteOclTyping.Conforms.refl,scalar Integer <= Integer,class-reference/scalar mismatch rejects,EXECUTABLE_WITNESS
+TC-INTEGER-REAL,Integer to Real,ConcreteOclTyping.Conforms.integerToReal,Integer <= Real,Real !<= Integer,EXECUTABLE_WITNESS
+TC-UNLIMITED-INTEGER,UnlimitedNatural to Integer,ConcreteOclTyping.Conforms.unlimitedNaturalToInteger,UnlimitedNatural <= Integer,UnlimitedNatural !<= Real in production,EXECUTABLE_WITNESS
+TC-SCALAR-EXACT,equal scalar or enum type name,ConcreteOclTyping.Conforms.refl,String <= String,String !<= Integer,EXECUTABLE_WITNESS

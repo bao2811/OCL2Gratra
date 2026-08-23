@@ -140,7 +140,7 @@ class OclValNegativeAdmissionCoverageTest {
     }
 
     @Test
-    void rejectsNavigationOverNonBinaryAssociation() {
+    void keepsNonBinaryNavigationOutsideCertifiedAdmissionOnly() {
         MModel nary = compileModel("""
                 model NonBinary
                 class Person end
@@ -153,12 +153,17 @@ class OclValNegativeAdmissionCoverageTest {
                 end
                 """, "non-binary.use");
         assertNotNull(nary);
-        var result = new DefaultOclToCypherCompiler(nary)
-                .compile("context Person inv Bad: self.pet->notEmpty()");
-        assertFalse(result.isSupported());
-        assertTrue(result.getDiagnostics().stream().anyMatch(diagnostic ->
-                diagnostic.phase() == OclDiagnosticPhase.SEMANTIC
-                        && diagnostic.code() == OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED));
+        DefaultOclToCypherCompiler naryCompiler = new DefaultOclToCypherCompiler(nary);
+        String invariant = "context Person inv Bad: self.pet->notEmpty()";
+        var result = naryCompiler.compile(invariant);
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains(":LinkHub"), result.getCypher());
+
+        RuntimeException rejected = assertThrows(RuntimeException.class,
+                () -> naryCompiler.compileInvariantInstrumented(invariant));
+        assertTrue(rejected instanceof OclCodedUnsupportedOperationException);
+        assertTrue(((OclCodedUnsupportedOperationException) rejected).code()
+                == OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED);
     }
 
     @Test

@@ -117,6 +117,7 @@ $criticalPaths = @(
     'md/research/Plan/planCypher.md',
     'verification/contract/proof-contract-registry.json',
     'verification/lean/Ocl2CypherProof.lean',
+    'verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean',
     'md/research/check-proof-sync.ps1',
     'verification/scripts/check-verification-contract.ps1',
     'verification/scripts/check-mechanized-proof.ps1',
@@ -126,6 +127,13 @@ $criticalPaths = @(
     'verification/scripts/invoke-runtime-matrix.ps1',
     'verification/runtime/neo4j-runtime-matrix.tsv',
     'verification/coverage/ocl_surface_extension_matrix.csv',
+    'verification/coverage/medical_nested_discriminator_matrix.csv',
+    'md/research/specification/rules/05-case-study-vertical-slices.md',
+    'examples/medical-system-yte/nested-discriminators.ocl',
+    'examples/medical-system-yte/expected-nested-discriminator-violations.csv',
+    'neo4j/src/main/java/org/uet/dse/neo4j/repo/Neo4jObjectRepository.java',
+    'neo4j/src/test/java/org/uet/dse/neo4j/repo/Neo4jObjectRepositoryNestedCodecTest.java',
+    'neo4j/src/test/java/org/uet/dse/neo4j/sync/helper/CanonicalNestedCollectionPropertyTest.java',
     'neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclCertifiedSurfaceNormalizer.java',
     'neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclSemanticBinder.java',
     'neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/OclValAdmissionPolicy.java',
@@ -138,7 +146,9 @@ $criticalPaths = @(
     'neo4j-tgg/src/main/java/org/uet/dse/neo4jtgg/ocl/ir/RawCypherRenderer.java',
     'neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclGeneratedPropertyTest.java',
     'neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclPropertyCaseGenerator.java',
-    'neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclPropertyBasedRealNeo4jTest.java'
+    'neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/OclPropertyBasedRealNeo4jTest.java',
+    'neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/MedicalAndCarRentalCaseStudyTest.java',
+    'neo4j-tgg/src/test/java/org/uet/dse/neo4jtgg/experiment/MedicalAndCarRentalRealNeo4jTest.java'
 )
 
 try {
@@ -196,7 +206,8 @@ try {
             'OclValRealNeo4jCoverageTest',
             'AdapterAdequacyCertificateRealNeo4jTest',
             'OclValSemanticDiscriminatorRealNeo4jTest',
-            'FamiliesToPersonsCaseStudyRealNeo4jTest'
+            'FamiliesToPersonsCaseStudyRealNeo4jTest',
+            'MedicalAndCarRentalRealNeo4jTest'
         )
         $mavenArgs = @()
         if (-not [string]::IsNullOrWhiteSpace($MavenRepository)) {
@@ -206,7 +217,7 @@ try {
             "-Dtest=$($runtimeSuites -join ',')",
             '-Dneo4j.dialect.it=true', '-Dneo4j.oclval47.it=true',
             '-Dneo4j.adapter.certificate.it=true', '-Dneo4j.oclval.discriminator.it=true',
-            '-Dneo4j.families.persons.it=true', 'test')
+            '-Dneo4j.families.persons.it=true', '-Dneo4j.medical.carrental.it=true', 'test')
         Invoke-CaptureCommand 'real-neo4j-runtime' $worktree 'mvn' $mavenArgs | Out-Null
         $runtimeTotals = Get-SurefireTotals (Join-Path $worktree 'neo4j-tgg\target\surefire-reports') $runtimeSuites
         if ($runtimeTotals.failures -ne 0 -or $runtimeTotals.errors -ne 0 -or

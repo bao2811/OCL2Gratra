@@ -1,0 +1,7 @@
+Branch::ManagerIsEmployee
+Branch::ManagerSalaryDominates
+CarGroup::QualityNotReflexive
+Car::NotRentedDuringMaintenance
+Car::AtMostOneServiceDepot
+Rental::OfferedGroup
+Rental::AssignedRequestedGroup

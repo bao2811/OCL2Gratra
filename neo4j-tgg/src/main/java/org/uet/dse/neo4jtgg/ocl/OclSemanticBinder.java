@@ -337,7 +337,9 @@ public class OclSemanticBinder {
                 validateQualifiedNavigation(property, navigation, source.type().typeName());
                 qualifierExpressions = bindQualifiedNavigationArguments(property, source.type().typeName(), navigation, scope);
             }
-            if (!navigation.supportsDirectCypherNavigation()) {
+            boolean admittedGeneralNavigation = !certifiedFiniteSetSemantics
+                    && navigation.supportsCanonicalNAryNavigation();
+            if (!navigation.supportsDirectCypherNavigation() && !admittedGeneralNavigation) {
                 throw new OclCodedUnsupportedOperationException(navigation.unsupportedCode(), navigation.unsupportedReason());
             }
             // The certified finite-set view may forget ordering on a native
@@ -1044,37 +1046,7 @@ public class OclSemanticBinder {
     }
 
     private boolean conformsTo(OclTypeBinding actual, OclTypeBinding declared) {
-        if (actual == null || declared == null) {
-            return false;
-        }
-        if (!actual.isCollection() && "Void".equals(actual.typeName())) {
-            return true;
-        }
-        if (!declared.isCollection() && !declared.isNode() && "OclAny".equals(declared.typeName())) {
-            return true;
-        }
-        if (actual.isCollection() || declared.isCollection()) {
-            if (!actual.isCollection() || !declared.isCollection()) {
-                return false;
-            }
-            boolean compatibleKind = declared.collectionKind() == OclTypeBinding.CollectionKind.COLLECTION
-                    || actual.collectionKind() == declared.collectionKind();
-            return compatibleKind && conformsTo(actual.elementType(), declared.elementType());
-        }
-        if (actual.isNode() || declared.isNode()) {
-            if (!actual.isNode() || !declared.isNode()) {
-                return false;
-            }
-            MClass actualClass = metamodelIndex.requireClass(actual.typeName());
-            MClass declaredClass = metamodelIndex.requireClass(declared.typeName());
-            return actualClass.equals(declaredClass) || actualClass.allParents().contains(declaredClass);
-        }
-        if (actual.kind() != declared.kind()) {
-            return false;
-        }
-        return actual.typeName().equals(declared.typeName())
-                || ("Integer".equals(actual.typeName()) && "Real".equals(declared.typeName()))
-                || ("UnlimitedNatural".equals(actual.typeName()) && "Integer".equals(declared.typeName()));
+        return OclTypeConformance.conformsTo(metamodelIndex, actual, declared);
     }
 
     private Map<String, OclTypeBinding> resolveOperationParameters(ASTOperationConstraint constraint) {

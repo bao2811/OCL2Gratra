@@ -1,4 +1,8 @@
 import Init.Data.List.Lemmas
+import Ocl2Cypher.SemanticTypes
+import Ocl2Cypher.ExtensionalNestedSet
+import Ocl2Cypher.CanonicalScalarCodec
+import Ocl2Cypher.CaseStudyVerticalSlices
 
 /-!
 Machine-checked kernel for selected obligations of PC-2026-07-22.3.
@@ -12,7 +16,7 @@ namespace Ocl2CypherProof
 
 def proofContractVersion : String := "PC-2026-07-22.3"
 def proofRegistrySha256 : String :=
-  "c95ea99343b07b642b939aaaf648d24e99a0abd02c58df5f0f982237c25bba20"
+  "a2720e81fd26bd7c7dfbd5003f5df663458d3a97d9b4cf86d2008f800cd962df"
 def pinnedLeanVersion : String := "4.32.2"
 
 /-! ## Predicate finite sets and image/reflection -/
@@ -204,6 +208,248 @@ theorem encodeValue_injective (encodeEntity : Entity → Node)
             (List.map_inj_right (encodeAtom_injective encodeEntity hEntity)).mp h
           cases hv
           rfl
+
+/-! ## Concrete UML/OCL conformance kernel
+
+This is the certified production type lattice rather than a payload-parametric
+algebra.  UML class conformance is the reflexive/transitive closure of the
+metamodel's direct-generalization relation.  Void, exact Integer-to-Real,
+class upcasts, and covariant collection conformance are explicit constructors.
+-/
+
+namespace ConcreteOclTyping
+
+abbrev ScalarType := SemanticTypes.ScalarType
+abbrev CollectionKind := SemanticTypes.CollectionKind
+abbrev OclType (Class : Type u) := SemanticTypes.OclType Class
+abbrev ClassConforms {Class : Type u} (directSuper : Class → Class → Prop) :=
+  SemanticTypes.ClassConforms directSuper
+abbrev Conforms {Class : Type u} (directSuper : Class → Class → Prop) :=
+  SemanticTypes.Conforms directSuper
+
+theorem classConforms_trans
+    (directSuper : Class → Class → Prop)
+    {left middle right : Class}
+    (leftMiddle : ClassConforms directSuper left middle)
+    (middleRight : ClassConforms directSuper middle right) :
+    ClassConforms directSuper left right := by
+  exact SemanticTypes.classConforms_trans directSuper leftMiddle middleRight
+
+theorem void_conforms_to_every_certified_type
+    (directSuper : Class → Class → Prop) (target : OclType Class) :
+    Conforms directSuper (.scalar .void) target := by
+  exact SemanticTypes.void_conforms_to_every_certified_type directSuper target
+
+theorem integer_conforms_to_real (directSuper : Class → Class → Prop) :
+    Conforms directSuper (.scalar .integer) (.scalar .real) := by
+  exact SemanticTypes.integer_conforms_to_real directSuper
+
+theorem every_certified_type_conforms_to_oclAny
+    (directSuper : Class → Class → Prop) (actual : OclType Class) :
+    Conforms directSuper actual (.scalar .oclAny) := by
+  exact SemanticTypes.every_certified_type_conforms_to_oclAny directSuper actual
+
+theorem unlimitedNatural_conforms_to_integer
+    (directSuper : Class → Class → Prop) :
+    Conforms directSuper (.scalar .unlimitedNatural) (.scalar .integer) := by
+  exact SemanticTypes.unlimitedNatural_conforms_to_integer directSuper
+
+theorem uml_upcast_conforms
+    (directSuper : Class → Class → Prop) {actual declared : Class}
+    (proof : ClassConforms directSuper actual declared) :
+    Conforms directSuper (.entity actual) (.entity declared) := by
+  exact SemanticTypes.uml_upcast_conforms directSuper proof
+
+theorem set_conformance_is_covariant
+    (directSuper : Class → Class → Prop)
+    {actual declared : OclType Class}
+    (proof : Conforms directSuper actual declared) :
+    Conforms directSuper (.collection .set actual) (.collection .set declared) := by
+  exact SemanticTypes.set_conformance_is_covariant directSuper proof
+
+theorem set_conforms_to_generic_collection
+    (directSuper : Class → Class → Prop)
+    {actual declared : OclType Class}
+    (proof : Conforms directSuper actual declared) :
+    Conforms directSuper (.collection .set actual)
+      (.collection .collection declared) := by
+  exact SemanticTypes.set_conforms_to_generic_collection directSuper proof
+
+theorem decideConforms_iff
+    (classConforms : Class → Class → Bool)
+    (classOracleCorrect : ∀ actual declared,
+      classConforms actual declared = true ↔ ClassConforms directSuper actual declared)
+    (actual declared : OclType Class) :
+    SemanticTypes.decideConforms classConforms actual declared = true ↔
+      Conforms directSuper actual declared := by
+  exact SemanticTypes.decideConforms_iff classConforms classOracleCorrect actual declared
+
+theorem extractedHierarchy_decideConforms_iff [DecidableEq Class]
+    (hierarchy : SemanticTypes.ExtractedClassHierarchy Class)
+    (actual declared : OclType Class) :
+    SemanticTypes.decideConforms
+        (SemanticTypes.ExtractedClassHierarchy.classOracle hierarchy)
+        actual declared = true ↔
+      Conforms
+        (SemanticTypes.ExtractedClassHierarchy.directSuper hierarchy)
+        actual declared := by
+  exact SemanticTypes.ExtractedClassHierarchy.decideConforms_iff
+    hierarchy actual declared
+
+end ConcreteOclTyping
+
+/-! ## Recursive encodeValue for arbitrarily nested finite collections
+
+The old `FlatValue` theorem covers one collection layer.  The mutually
+recursive value/list syntax below represents canonical finite enumerations at
+any nesting depth.  A concrete entity codec carries the decoder used by the
+graph reader and a checked left-inverse law.  Recursive decode-after-encode is
+proved first; injectivity then follows without an abstract primitive-agreement
+premise.
+-/
+
+namespace NestedEncoding
+
+structure EntityCodec (Entity : Type u) (Node : Type v) where
+  encode : Entity → Node
+  decode : Node → Option Entity
+  decode_encode : ∀ entity, decode (encode entity) = some entity
+
+mutual
+  inductive Value (Entity : Type u) (Scalar : Type v) where
+    | bottom
+    | scalar (value : Scalar)
+    | entity (value : Entity)
+    | collection (values : Values Entity Scalar)
+
+  inductive Values (Entity : Type u) (Scalar : Type v) where
+    | nil
+    | cons (head : Value Entity Scalar) (tail : Values Entity Scalar)
+end
+
+mutual
+  def encodeValue (codec : EntityCodec Entity Node) :
+      Value Entity Scalar → Value Node Scalar
+    | .bottom => .bottom
+    | .scalar value => .scalar value
+    | .entity value => .entity (codec.encode value)
+    | .collection values => .collection (encodeValues codec values)
+
+  def encodeValues (codec : EntityCodec Entity Node) :
+      Values Entity Scalar → Values Node Scalar
+    | .nil => .nil
+    | .cons head tail => .cons (encodeValue codec head) (encodeValues codec tail)
+end
+
+mutual
+  def decodeValue (codec : EntityCodec Entity Node) :
+      Value Node Scalar → Option (Value Entity Scalar)
+    | .bottom => some .bottom
+    | .scalar value => some (.scalar value)
+    | .entity node => (codec.decode node).map Value.entity
+    | .collection values => (decodeValues codec values).map Value.collection
+
+  def decodeValues (codec : EntityCodec Entity Node) :
+      Values Node Scalar → Option (Values Entity Scalar)
+    | .nil => some .nil
+    | .cons head tail =>
+        match decodeValue codec head, decodeValues codec tail with
+        | some decodedHead, some decodedTail => some (.cons decodedHead decodedTail)
+        | _, _ => none
+end
+
+mutual
+  theorem nested_decode_encode_value (codec : EntityCodec Entity Node)
+      (value : Value Entity Scalar) :
+      decodeValue codec (encodeValue codec value) = some value := by
+    cases value with
+    | bottom => rfl
+    | scalar value => rfl
+    | entity value => simp [encodeValue, decodeValue, codec.decode_encode]
+    | collection values =>
+        simp [encodeValue, decodeValue, nested_decode_encode_values codec values]
+
+  theorem nested_decode_encode_values (codec : EntityCodec Entity Node)
+      (values : Values Entity Scalar) :
+      decodeValues codec (encodeValues codec values) = some values := by
+    cases values with
+    | nil => rfl
+    | cons head tail =>
+        simp [encodeValues, decodeValues, nested_decode_encode_value codec head,
+          nested_decode_encode_values codec tail]
+end
+
+theorem nested_encodeValue_injective (codec : EntityCodec Entity Node) :
+    Function.Injective (encodeValue (Scalar := Scalar) codec) := by
+  intro left right equality
+  have decoded := congrArg (decodeValue codec) equality
+  simpa [nested_decode_encode_value] using decoded
+
+theorem nested_encodeValues_injective (codec : EntityCodec Entity Node) :
+    Function.Injective (encodeValues (Scalar := Scalar) codec) := by
+  intro left right equality
+  have decoded := congrArg (decodeValues codec) equality
+  simpa [nested_decode_encode_values] using decoded
+
+end NestedEncoding
+
+/-! Extensional nested-Set bridge exported by the proof-registry façade. -/
+
+theorem extensional_nested_encodeValue_injective
+    (encodeEntity : Entity → Node)
+    (entityInjective : Function.Injective encodeEntity)
+    (depth : Nat) :
+    Function.Injective
+      (ExtensionalNestedSet.encode (Scalar := Scalar) encodeEntity depth) := by
+  exact ExtensionalNestedSet.encode_injective encodeEntity entityInjective depth
+
+theorem extensional_nested_encode_preserves_finiteness
+    (encodeEntity : Entity → Node)
+    (depth : Nat)
+    (value : ExtensionalNestedSet.Layer Entity Scalar depth)
+    (finite : ExtensionalNestedSet.FiniteLayer depth value) :
+    ExtensionalNestedSet.FiniteLayer depth
+      (ExtensionalNestedSet.encode encodeEntity depth value) := by
+  exact ExtensionalNestedSet.encode_preserves_finiteLayer encodeEntity depth value finite
+
+theorem extensional_nested_payload_encode_injective
+    (encodeEntity : Entity → Node) (encodeScalar : Scalar → Wire)
+    (entityInjective : Function.Injective encodeEntity)
+    (scalarInjective : Function.Injective encodeScalar)
+    (depth : Nat) :
+    Function.Injective
+      (ExtensionalNestedSet.encodePayload encodeEntity encodeScalar depth) := by
+  exact ExtensionalNestedSet.encodePayload_injective
+    encodeEntity encodeScalar entityInjective scalarInjective depth
+
+theorem extensional_nested_payload_encode_preserves_finiteness
+    (encodeEntity : Entity → Node) (encodeScalar : Scalar → Wire)
+    (depth : Nat)
+    (value : ExtensionalNestedSet.Layer Entity Scalar depth)
+    (finite : ExtensionalNestedSet.FiniteLayer depth value) :
+    ExtensionalNestedSet.FiniteLayer depth
+      (ExtensionalNestedSet.encodePayload encodeEntity encodeScalar depth value) := by
+  exact ExtensionalNestedSet.encodePayload_preserves_finiteLayer
+    encodeEntity encodeScalar depth value finite
+
+theorem canonical_scalar_codec_injective :
+    Function.Injective CanonicalScalarCodec.encode := by
+  exact CanonicalScalarCodec.encode_injective
+
+theorem canonical_scalar_escape_injective :
+    Function.Injective CanonicalScalarCodec.escapeChars := by
+  exact CanonicalScalarCodec.escapeChars_injective
+
+theorem extensional_nested_canonical_payload_encode_injective
+    (encodeEntity : Entity → Node)
+    (entityInjective : Function.Injective encodeEntity)
+    (depth : Nat) :
+    Function.Injective
+      (ExtensionalNestedSet.encodePayload encodeEntity
+        CanonicalScalarCodec.encode depth) := by
+  exact ExtensionalNestedSet.encodePayload_injective
+    encodeEntity CanonicalScalarCodec.encode entityInjective
+      CanonicalScalarCodec.encode_injective depth
 
 /-! ## Selected normalization laws and a terminating Boolean normalizer -/
 
@@ -1918,9 +2164,83 @@ theorem theorem6_at_object (id : Obj → Identifier) (idInjective : Function.Inj
   · exact theorem6_forward id objectViolates graphViolates agreement
   · exact theorem6_backward id idInjective objectViolates graphViolates agreement
 
+/-! ## Local Medical YTE / n-ary production vertical-slice wrappers -/
+
+theorem case_study_entity_id_injective :
+    Function.Injective CaseStudyVerticalSlices.encodeEntity :=
+  CaseStudyVerticalSlices.entity_id_injective
+
+theorem nested_sequence_payload_injective
+    (encodeScalar : Scalar → Wire) (scalarInjective : Function.Injective encodeScalar) :
+    Function.Injective (CaseStudyVerticalSlices.encodeSequence encodeScalar) :=
+  CaseStudyVerticalSlices.nested_sequence_payload_injective encodeScalar scalarInjective
+
+theorem nested_sequence_preserves_width (encodeScalar : Scalar → Wire)
+    (value : CaseStudyVerticalSlices.NestedSequence Scalar) :
+    CaseStudyVerticalSlices.encodedWidth
+        (CaseStudyVerticalSlices.encodeSequence encodeScalar value) =
+      CaseStudyVerticalSlices.sequenceWidth value :=
+  CaseStudyVerticalSlices.nested_sequence_preserves_width encodeScalar value
+
+theorem nested_sequence_preserves_inner_widths (encodeScalar : Scalar → Wire)
+    (value : CaseStudyVerticalSlices.NestedSequence Scalar) :
+    (CaseStudyVerticalSlices.encodeSequence encodeScalar value).map List.length =
+      value.map List.length :=
+  CaseStudyVerticalSlices.nested_sequence_preserves_inner_widths encodeScalar value
+
+theorem nested_scalar_bottom_separated :
+    ExtensionalNestedSet.encodeLeafPayload CaseStudyVerticalSlices.encodeEntity
+        CanonicalScalarCodec.encode
+        (.bottom : ExtensionalNestedSet.Leaf CaseStudyVerticalSlices.Entity
+          CanonicalScalarCodec.CanonicalScalar) = .bottom :=
+  CaseStudyVerticalSlices.nested_scalar_bottom_separated
+
+theorem nary_projection_agreement
+    (tuple : CaseStudyVerticalSlices.NaryTuple Role)
+    (sourceRole targetRole : Role)
+    (source target : CaseStudyVerticalSlices.Entity) :
+    CaseStudyVerticalSlices.projectNary tuple sourceRole targetRole source target ↔
+      CaseStudyVerticalSlices.projectEncodedNary
+        (CaseStudyVerticalSlices.encodeNaryTuple tuple) sourceRole targetRole
+        (CaseStudyVerticalSlices.encodeEntity source)
+        (CaseStudyVerticalSlices.encodeEntity target) :=
+  CaseStudyVerticalSlices.nary_projection_agreement tuple sourceRole targetRole source target
+
+theorem nary_projection_noGhost (sourceObjects : CaseStudyVerticalSlices.Entity → Prop)
+    (tuple : CaseStudyVerticalSlices.NaryTuple Role) (sourceRole targetRole : Role)
+    (source target : CaseStudyVerticalSlices.Entity)
+    (sourceMember : sourceObjects source) (targetMember : sourceObjects target)
+    (projection : CaseStudyVerticalSlices.projectEncodedNary
+      (CaseStudyVerticalSlices.encodeNaryTuple tuple) sourceRole targetRole
+      (CaseStudyVerticalSlices.encodeEntity source)
+      (CaseStudyVerticalSlices.encodeEntity target)) :
+    CaseStudyVerticalSlices.EncodedObjectSet sourceObjects
+      (CaseStudyVerticalSlices.encodeEntity target) :=
+  CaseStudyVerticalSlices.nary_projection_noGhost sourceObjects tuple sourceRole targetRole
+    source target sourceMember targetMember projection
+
+theorem nested_entity_noGhost (sourceObjects : CaseStudyVerticalSlices.Entity → Prop)
+    (entity : CaseStudyVerticalSlices.Entity) (membership : sourceObjects entity) :
+    CaseStudyVerticalSlices.EncodedObjectSet sourceObjects
+      (CaseStudyVerticalSlices.encodeEntity entity) :=
+  CaseStudyVerticalSlices.nested_entity_noGhost sourceObjects entity membership
+
 end Ocl2CypherProof
 
 #print axioms Ocl2CypherProof.encodeValue_injective
+#print axioms Ocl2CypherProof.ConcreteOclTyping.classConforms_trans
+#print axioms Ocl2CypherProof.ConcreteOclTyping.set_conformance_is_covariant
+#print axioms Ocl2CypherProof.ConcreteOclTyping.decideConforms_iff
+#print axioms Ocl2CypherProof.ConcreteOclTyping.extractedHierarchy_decideConforms_iff
+#print axioms Ocl2CypherProof.NestedEncoding.nested_decode_encode_value
+#print axioms Ocl2CypherProof.NestedEncoding.nested_encodeValue_injective
+#print axioms Ocl2CypherProof.extensional_nested_encodeValue_injective
+#print axioms Ocl2CypherProof.extensional_nested_encode_preserves_finiteness
+#print axioms Ocl2CypherProof.extensional_nested_payload_encode_injective
+#print axioms Ocl2CypherProof.extensional_nested_payload_encode_preserves_finiteness
+#print axioms Ocl2CypherProof.canonical_scalar_codec_injective
+#print axioms Ocl2CypherProof.canonical_scalar_escape_injective
+#print axioms Ocl2CypherProof.extensional_nested_canonical_payload_encode_injective
 #print axioms Ocl2CypherProof.ToOneLift.lift1_consumer_agreement
 #print axioms Ocl2CypherProof.BoolExpr.normalize_preserves_eval
 #print axioms Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free
@@ -1932,6 +2252,14 @@ end Ocl2CypherProof
 #print axioms Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction
 #print axioms Ocl2CypherProof.AdapterComposition.pa_comp
 #print axioms Ocl2CypherProof.theorem6_at_object
+#print axioms Ocl2CypherProof.case_study_entity_id_injective
+#print axioms Ocl2CypherProof.nested_sequence_payload_injective
+#print axioms Ocl2CypherProof.nested_sequence_preserves_width
+#print axioms Ocl2CypherProof.nested_sequence_preserves_inner_widths
+#print axioms Ocl2CypherProof.nested_scalar_bottom_separated
+#print axioms Ocl2CypherProof.nary_projection_agreement
+#print axioms Ocl2CypherProof.nary_projection_noGhost
+#print axioms Ocl2CypherProof.nested_entity_noGhost
 #print axioms Ocl2CypherProof.Normalization.all_rewrite_semantics
 #print axioms Ocl2CypherProof.Normalization.typed_rewrite_preserves_type
 #print axioms Ocl2CypherProof.Normalization.Scoped.scoped_rename_preserves_binder_boundary

@@ -2,6 +2,8 @@ package org.uet.dse.neo4j.sync.object;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,5 +23,14 @@ class Neo4jObjectSnapshotMapperCodecTest {
                 () -> Neo4jObjectSnapshotMapper.decodeScalarValue("v1|I|9", "String"));
         assertThrows(IllegalArgumentException.class,
                 () -> Neo4jObjectSnapshotMapper.decodeScalarValue("v1|I|9", null));
+    }
+
+    @Test
+    void collectionSnapshotUsesTheCanonicalLeafCodec() {
+        assertEquals(Arrays.asList("A|B", null),
+                Neo4jObjectSnapshotMapper.decodePrimitiveCollection(
+                        "v1|S|A%7CB | v1|V", "String"));
+        assertThrows(IllegalArgumentException.class,
+                () -> Neo4jObjectSnapshotMapper.decodePrimitiveCollection("1 | 2", "Integer"));
     }
 }

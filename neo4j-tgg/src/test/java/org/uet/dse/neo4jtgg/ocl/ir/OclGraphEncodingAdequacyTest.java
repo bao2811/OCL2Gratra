@@ -89,6 +89,36 @@ class OclGraphEncodingAdequacyTest {
     }
 
     @Test
+    void naryNavigationUsesCanonicalHubAndRoleSpokes() {
+        String spec = """
+                model Demo
+                class ServiceDepot
+                end
+                class Check
+                end
+                class Car
+                end
+                association Maintenance between
+                    ServiceDepot[0..1] role serviceDepot
+                    Check[*] role check
+                    Car[*] role car
+                end
+                """;
+        CypherCompilationResult result = compiler(compile(spec)).compile(
+                "context Car inv OneDepot: self.serviceDepot->size() <= 1");
+
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains(":LinkHub"), result.getCypher());
+        assertTrue(result.getCypher().contains(".linkKey = "), result.getCypher());
+        assertTrue(result.getCypher().contains(".role = $"), result.getCypher());
+        assertTrue(result.getParameters().containsValue(
+                CanonicalGraphEncoding.associationKey("Demo", "Maintenance")),
+                result.getParameters().toString());
+        assertTrue(result.getParameters().containsValue("car"), result.getParameters().toString());
+        assertTrue(result.getParameters().containsValue("serviceDepot"), result.getParameters().toString());
+    }
+
+    @Test
     void topLevelAllInstancesUsesObjectTypeEncodingPattern() {
         CypherCompilationResult result = compiler(familyModel()).compile("Family.allInstances()->size()");
 

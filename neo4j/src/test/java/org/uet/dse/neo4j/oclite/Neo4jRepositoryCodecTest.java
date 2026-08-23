@@ -2,6 +2,7 @@ package org.uet.dse.neo4j.oclite;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,7 +28,10 @@ class Neo4jRepositoryCodecTest {
     }
 
     @Test
-    void collectionAndLegacyValuesRemainOutsideTheScalarCodec() {
+    void collectionPayloadUsesTheCanonicalLeafCodec() {
+        assertEquals(Arrays.asList(1L, null, 2L),
+                Neo4jRepository.decodeStoredValue(
+                        "v1|I|1 | v1|V | v1|I|2", "Integer", true));
         List<String> collection = List.of("v1|I|1", "v1|I|2");
         assertEquals(collection, Neo4jRepository.decodeStoredValue(collection, "Set(Integer)", true));
         assertEquals(7.0d, Neo4jRepository.decodeStoredValue(7L, "Integer", false));

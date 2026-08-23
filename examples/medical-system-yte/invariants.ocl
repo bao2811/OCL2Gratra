@@ -1,0 +1,38 @@
+context Person inv AgeNonNegative:
+    self.age >= 0
+
+context Person inv NameDefined:
+    self.name <> ''
+
+context Hospital inv PositiveBudget:
+    self.totalBudget > 0
+
+context Doctor inv ScheduleMaxThreeRooms:
+    self.shiftSchedule->forAll(shift | shift->size() <= 3)
+
+context Doctor inv HasAssignedNurse:
+    self.assignedNurses->notEmpty()
+
+context Patient inv EmergencyHasSymptoms:
+    self.isEmergency implies self.symptoms->notEmpty()
+
+context Patient inv HasAttendingPhysician:
+    self.attendingPhysicians->notEmpty()
+
+context Patient inv TreatmentBatchesNonEmpty:
+    self.treatmentHistory->forAll(batch | batch->notEmpty())
+
+context Patient inv PrescriptionBatchesNonEmpty:
+    self.prescriptionHistory->forAll(batch | batch->notEmpty())
+
+context MedicalRecord inv HasRecordEntry:
+    self.entries->notEmpty()
+
+context Department inv HasParentHospital:
+    self.parentHospital->notEmpty()
+
+context Medication inv PositivePrice:
+    self.price > 0
+
+context Disease inv NameDefined:
+    self.diseaseName <> ''

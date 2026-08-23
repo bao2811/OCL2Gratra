@@ -605,6 +605,21 @@ $expectedMechanizationTheorems = @(
     'implies_rewrite',
     'forall_rewrite',
     'notEmpty_rewrite',
+    'classConforms_trans',
+    'every_certified_type_conforms_to_oclAny',
+    'unlimitedNatural_conforms_to_integer',
+    'set_conformance_is_covariant',
+    'decideConforms_iff',
+    'extractedHierarchy_decideConforms_iff',
+    'nested_decode_encode_value',
+    'nested_encodeValue_injective',
+    'extensional_nested_encodeValue_injective',
+    'extensional_nested_encode_preserves_finiteness',
+    'extensional_nested_payload_encode_injective',
+    'extensional_nested_payload_encode_preserves_finiteness',
+    'canonical_scalar_codec_injective',
+    'canonical_scalar_escape_injective',
+    'extensional_nested_canonical_payload_encode_injective',
     'normalize_preserves_eval',
     'normalize_reaches_redex_free',
     'implies_root_strictly_decreases',
@@ -626,12 +641,28 @@ $expectedMechanizationTheorems = @(
     'pa_comp',
     'theorem6_forward',
     'theorem6_backward',
-    'theorem6_at_object'
+    'theorem6_at_object',
+    'case_study_entity_id_injective',
+    'nested_sequence_payload_injective',
+    'nested_sequence_preserves_width',
+    'nested_sequence_preserves_inner_widths',
+    'nested_scalar_bottom_separated',
+    'nary_projection_agreement',
+    'nary_projection_noGhost',
+    'nested_entity_noGhost'
+)
+$expectedMechanizationModules = @(
+    'verification/lean/Ocl2Cypher/SemanticTypes.lean',
+    'verification/lean/Ocl2Cypher/ExtensionalNestedSet.lean',
+    'verification/lean/Ocl2Cypher/CanonicalScalarCodec.lean',
+    'verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean'
 )
 $expectedMechanizationCoverage = @(
     'MK-FINITE-SET:mechanized',
     'MK-LIFT1:mechanized',
     'MK-ENCODE:mechanized',
+    'MK-CONCRETE-TYPING:partial',
+    'MK-NESTED-ENCODE:mechanized',
     'MK-NORMALIZE:partial',
     'MK-T4:mechanized',
     'MK-PRODPLAN:mechanized',
@@ -642,6 +673,19 @@ $expectedMechanizationCoverage = @(
 )
 $expectedAxiomAuditTheorems = @(
     'Ocl2CypherProof.encodeValue_injective:propext',
+    'Ocl2CypherProof.ConcreteOclTyping.classConforms_trans:',
+    'Ocl2CypherProof.ConcreteOclTyping.set_conformance_is_covariant:',
+    'Ocl2CypherProof.ConcreteOclTyping.decideConforms_iff:propext',
+    'Ocl2CypherProof.ConcreteOclTyping.extractedHierarchy_decideConforms_iff:propext',
+    'Ocl2CypherProof.NestedEncoding.nested_decode_encode_value:propext',
+    'Ocl2CypherProof.NestedEncoding.nested_encodeValue_injective:propext',
+    'Ocl2CypherProof.extensional_nested_encodeValue_injective:propext,Quot.sound',
+    'Ocl2CypherProof.extensional_nested_encode_preserves_finiteness:propext,Quot.sound',
+    'Ocl2CypherProof.extensional_nested_payload_encode_injective:propext,Quot.sound',
+    'Ocl2CypherProof.extensional_nested_payload_encode_preserves_finiteness:propext,Quot.sound',
+    'Ocl2CypherProof.canonical_scalar_codec_injective:propext,Quot.sound',
+    'Ocl2CypherProof.canonical_scalar_escape_injective:propext,Quot.sound',
+    'Ocl2CypherProof.extensional_nested_canonical_payload_encode_injective:propext,Quot.sound',
     'Ocl2CypherProof.ToOneLift.lift1_consumer_agreement:',
     'Ocl2CypherProof.BoolExpr.normalize_preserves_eval:propext',
     'Ocl2CypherProof.BoolExpr.normalize_reaches_redex_free:propext',
@@ -653,6 +697,14 @@ $expectedAxiomAuditTheorems = @(
     'Ocl2CypherProof.BoundVaAbstraction.bound_va_abstraction:',
     'Ocl2CypherProof.AdapterComposition.pa_comp:',
     'Ocl2CypherProof.theorem6_at_object:',
+    'Ocl2CypherProof.case_study_entity_id_injective:',
+    'Ocl2CypherProof.nested_sequence_payload_injective:propext',
+    'Ocl2CypherProof.nested_sequence_preserves_width:propext',
+    'Ocl2CypherProof.nested_sequence_preserves_inner_widths:propext,Quot.sound',
+    'Ocl2CypherProof.nested_scalar_bottom_separated:propext',
+    'Ocl2CypherProof.nary_projection_agreement:propext,Quot.sound',
+    'Ocl2CypherProof.nary_projection_noGhost:',
+    'Ocl2CypherProof.nested_entity_noGhost:',
     'Ocl2CypherProof.Normalization.all_rewrite_semantics:',
     'Ocl2CypherProof.Normalization.typed_rewrite_preserves_type:propext',
     'Ocl2CypherProof.Normalization.Scoped.scoped_rename_preserves_binder_boundary:propext',
@@ -702,6 +754,13 @@ if ($null -eq $registry.mechanization) {
         if ([string]::IsNullOrWhiteSpace($relativePath) -or $null -eq $resolvedPath -or
             -not (Test-Path -LiteralPath $resolvedPath -PathType Leaf)) {
             Add-CheckError "Mechanization $property is missing: $relativePath"
+        }
+    }
+    Test-ExactSequence @($registry.mechanization.modulePaths) $expectedMechanizationModules 'Registry mechanization modules'
+    foreach ($modulePath in @($registry.mechanization.modulePaths)) {
+        $resolvedModulePath = Resolve-ContractPath $workspace ([string]$modulePath) 'Mechanization module'
+        if ($null -eq $resolvedModulePath -or -not (Test-Path -LiteralPath $resolvedModulePath -PathType Leaf)) {
+            Add-CheckError "Mechanization module is missing: $modulePath"
         }
     }
     $mechanizedSourcePath = Resolve-ContractPath $workspace ([string]$registry.mechanization.sourcePath) 'Mechanization source'

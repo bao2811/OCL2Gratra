@@ -30,9 +30,11 @@ public class OclMetamodelIndex {
 
     private final MModel model;
     private final Map<String, ClassInfo> classes;
+    private final UmlClassHierarchyIndex classHierarchy;
 
     public OclMetamodelIndex(MModel model) {
         this.model = model;
+        this.classHierarchy = UmlClassHierarchyIndex.fromModel(model);
         this.classes = buildClassIndex(model);
     }
 
@@ -52,6 +54,16 @@ public class OclMetamodelIndex {
                     "Unknown class in context: " + className);
         }
         return classInfo.modelClass();
+    }
+
+    public UmlClassHierarchyIndex classHierarchy() {
+        return classHierarchy;
+    }
+
+    public boolean classConformsTo(String actualClass, String declaredClass) {
+        requireClass(actualClass);
+        requireClass(declaredClass);
+        return classHierarchy.conformsTo(actualClass, declaredClass);
     }
 
     public MAttribute resolveAttribute(String className, String attributeName) {
@@ -198,12 +210,10 @@ public class OclMetamodelIndex {
 
     private OclTypeBinding toBindingInternal(Type type, String fallbackTypeName) {
         if (type != null && type.isKindOfCollection(Type.VoidHandling.EXCLUDE_VOID) && type instanceof CollectionType collectionType) {
-            Type elementType = collectionType.elemType();
             OclTypeBinding.CollectionKind collectionKind = toCollectionKind(collectionType);
-            if (elementType instanceof MClass elementClass) {
-                return OclTypeBinding.nodeCollection(elementClass.name(), collectionKind);
-            }
-            return OclTypeBinding.scalarCollection(elementType.shortName(), collectionKind);
+            Type elementType = collectionType.elemType();
+            return OclTypeBinding.collectionOf(
+                    toBindingInternal(elementType, elementType.shortName()), collectionKind);
         }
         if (type instanceof MClass cls) {
             return OclTypeBinding.node(cls.name());
@@ -281,6 +291,17 @@ public class OclMetamodelIndex {
                     && direction != NavigationDirection.UNDIRECTED
                     && sourceRoleName() != null
                     && targetRoleName() != null;
+        }
+
+        /** General-production path for one unqualified association-hub projection. */
+        public boolean supportsCanonicalNAryNavigation() {
+            return targetEnd != null
+                    && targetEnd.association() != null
+                    && targetEnd.association().associationEnds().size() > 2
+                    && sourceEnd != null
+                    && sourceRoleName() != null
+                    && targetRoleName() != null
+                    && !hasQualifiers();
         }
 
         public String unsupportedReason() {

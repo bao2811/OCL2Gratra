@@ -14,6 +14,8 @@ import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
 import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIrBuilder;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -24,6 +26,70 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclSemanticBinderTest {
+    @Test
+    void preservesMedicalNestedIteratorTypesThroughBoundAndSemanticIr() {
+        String spec = """
+                model MedicalTypes
+                class Medication
+                end
+                class Doctor
+                attributes
+                    shiftSchedule : Sequence(Set(Integer))
+                end
+                class Patient
+                attributes
+                    treatmentHistory : Set(Sequence(String))
+                    prescriptionHistory : Sequence(Sequence(Medication))
+                end
+                """;
+
+        assertNestedIteratorTypes(bind(spec,
+                        "context Doctor inv Rooms: self.shiftSchedule->forAll(shift | shift->size() <= 3)"),
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                OclTypeBinding.CollectionKind.SET,
+                "Integer", false);
+        assertNestedIteratorTypes(bind(spec,
+                        "context Patient inv Treatments: self.treatmentHistory->forAll(batch | batch->notEmpty())"),
+                OclTypeBinding.CollectionKind.SET,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                "String", false);
+        assertNestedIteratorTypes(bind(spec,
+                        "context Patient inv Prescriptions: self.prescriptionHistory->forAll(batch | batch->notEmpty())"),
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                "Medication", true);
+    }
+
+    private void assertNestedIteratorTypes(OclSemanticBinder.BoundContextInvariant bound,
+                                           OclTypeBinding.CollectionKind outerKind,
+                                           OclTypeBinding.CollectionKind innerKind,
+                                           String leafType,
+                                           boolean nodeLeaf) {
+        OclSemanticBinder.BoundIterator iterator = as(
+                bound.expression(), OclSemanticBinder.BoundIterator.class);
+        assertNestedIteratorType(iterator.sourceCollectionType(), iterator.iteratorVariableType(),
+                outerKind, innerKind, leafType, nodeLeaf);
+
+        OclIr.IteratorOperation semantic = as(
+                new OclIrBuilder().buildInvariant(bound).predicate(), OclIr.IteratorOperation.class);
+        assertNestedIteratorType(semantic.sourceCollectionType(), semantic.iteratorVariableType(),
+                outerKind, innerKind, leafType, nodeLeaf);
+    }
+
+    private static void assertNestedIteratorType(OclTypeBinding sourceType,
+                                                 OclTypeBinding iteratorType,
+                                                 OclTypeBinding.CollectionKind outerKind,
+                                                 OclTypeBinding.CollectionKind innerKind,
+                                                 String leafType,
+                                                 boolean nodeLeaf) {
+        assertEquals(outerKind, sourceType.collectionKind());
+        assertEquals(iteratorType, sourceType.elementType());
+        assertTrue(iteratorType.isCollection());
+        assertEquals(innerKind, iteratorType.collectionKind());
+        assertEquals(leafType, iteratorType.elementType().typeName());
+        assertEquals(nodeLeaf, iteratorType.elementType().isNode());
+    }
+
     @Test
     void infersAllInstancesAsSet() {
         OclSemanticBinder.BoundContextInvariant bound = bind("""

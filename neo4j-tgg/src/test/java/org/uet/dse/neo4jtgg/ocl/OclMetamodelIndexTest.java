@@ -19,6 +19,65 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclMetamodelIndexTest {
     @Test
+    void preservesRecursiveCollectionKindsAndLeafTypes() {
+        String spec = """
+                model MedicalTypes
+                class Medication
+                end
+                class Doctor
+                attributes
+                    shiftSchedule : Sequence(Set(Integer))
+                end
+                class Patient
+                attributes
+                    treatmentHistory : Set(Sequence(String))
+                    prescriptionHistory : Sequence(Sequence(Medication))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(
+                spec, "medical-types.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+        OclMetamodelIndex index = new OclMetamodelIndex(model);
+
+        OclTypeBinding shiftSchedule = index.toBinding(
+                index.resolveAttribute("Doctor", "shiftSchedule").type(), "Void");
+        assertCollectionTree(shiftSchedule,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                OclTypeBinding.CollectionKind.SET,
+                "Integer", false);
+
+        OclTypeBinding treatmentHistory = index.toBinding(
+                index.resolveAttribute("Patient", "treatmentHistory").type(), "Void");
+        assertCollectionTree(treatmentHistory,
+                OclTypeBinding.CollectionKind.SET,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                "String", false);
+
+        OclTypeBinding prescriptionHistory = index.toBinding(
+                index.resolveAttribute("Patient", "prescriptionHistory").type(), "Void");
+        assertCollectionTree(prescriptionHistory,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                "Medication", true);
+    }
+
+    private static void assertCollectionTree(OclTypeBinding actual,
+                                             OclTypeBinding.CollectionKind outerKind,
+                                             OclTypeBinding.CollectionKind innerKind,
+                                             String leafType,
+                                             boolean nodeLeaf) {
+        assertTrue(actual.isCollection());
+        assertEquals(outerKind, actual.collectionKind());
+        assertTrue(actual.elementType().isCollection());
+        assertEquals(innerKind, actual.elementType().collectionKind());
+        OclTypeBinding leaf = actual.elementType().elementType();
+        assertEquals(leafType, leaf.typeName());
+        assertEquals(nodeLeaf, leaf.isNode());
+    }
+
+    @Test
     void rejectsAssociationClassAsDirectRelationshipNavigation() throws Exception {
         UseModelApi api = new UseModelApi("EmploymentModel");
         api.createClass("Person", false);

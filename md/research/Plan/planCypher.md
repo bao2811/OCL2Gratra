@@ -490,11 +490,13 @@ The specification artifacts are stored separately under
 ```text
 specification/
   metamodel/
+    OCL-Type-System.emf
     OCL-Source-AST.emf
     OCL-Val.emf
     Normalized-Validation-Algebra.emf
     Cypher-AST-Bridge.emf
   rules/
+    00-type-conformance.md
     01-parse-and-admit.md
     02-ova-to-nva.md
     03-nva-to-cqm.md
@@ -570,3 +572,140 @@ The machine-readable slice registry is
 profiles are in `verification/runtime/neo4j-runtime-matrix.tsv`. Historical
 capture paragraphs remain labeled as archived evidence and are not current
 status sources.
+
+## Post-S8 formal-closure increment (2026-08-23)
+
+| Obligation | Current result | Remaining universal step |
+|---|---|---|
+| UML/OCL subtype and coercion | Lean proves `decideConforms_iff` and its `ExtractedClassHierarchy` instantiation; production computes closure from `parents()`, audits exact `allParents()` agreement, rejects invalid hierarchy inputs, and delegates binding to this sole index | add proof-producing serialization/verified import from the concrete Java index into the Lean hierarchy certificate |
+| Nested `encodeValue` | Lean proves concrete tagged-String framing injective on certified scalar bodies and specializes arbitrary-depth extensional payload injectivity without an abstract scalar-codec premise; production uses strict tagged leaf payloads for flat and nested scalar collections, with writer/readback tests | mechanize Java Int64/finite-Real64 canonical-body refinement and relate `HasNestedCollectionValue` graph shape plus entity leaves to extensional Sets |
+| Java IR 16 constructors | 16/16 payload/refinement matrices and parametric Lean constructor induction are checked | instantiate both algebras with actual Java IR/planner/Raw-AST evaluators and discharge every local primitive case |
+| NVA/CQM 26 constructors | 26/26 rule catalog and parametric Lean NVA-tree induction are checked | replace the generic constructor payload case with typed NVA/CQM evaluators and discharge LR/C/BR/CY |
+| Theorem 6 premises | `universal_theorem6_obligations.csv` names LR, C, BR, CY, `ParamCorr`, `AliasFresh`, `NoGhost`, graph adequacy, Java16, and NVA26 separately | close every row universally; finite tests remain evidence, not a substitute for the proof |
+| Universal Theorem 6 | current Lean theorem derives pointwise/set consequences from abstract agreement plus ID injectivity | derive that agreement from the preceding concrete lemmas and remove it from the public theorem premise list |
+
+The next implementation order is: extensional nested-Set codec bridge;
+Java/Lean conformance biconditional; typed 26-constructor evaluator; concrete
+Raw-AST/Cypher evaluator; then composition into the premise-free admitted-scope
+Theorem 6. New OCL constructs continue as independent vertical slices and are
+promoted into the certified core only after all these boundaries are present.
+
+## Executable roadmap P0--P8 for universal formal closure
+
+The target is universal only over `OCL_VAL_FINITE_SET_V1`, well-formed UML
+models, the canonical graph encoding, and the selected formal Cypher subset.
+It is not a claim for arbitrary OMG OCL, arbitrary Cypher, or every Neo4j
+implementation. Each phase below may change from `pending` to `complete` only
+when its Lean theorem is kernel-checked and its proof-registry status says the
+same thing.
+
+| Phase | Deliverables | Required theorem/gate | Initial status |
+|---|---|---|---|
+| P0 Semantic modules | Split type/value/NVA/CQM/Raw-Cypher definitions out of the registry façade; retain compatibility wrappers and ordered module inventory | every module compiles without `sorry`, `admit`, project `axiom`, or `opaque`; proof and mutation gates compile all modules | IN PROGRESS |
+| P1 Typed values | Intrinsic OCL types, extensional nested Sets, finite-support witness, decidable subtype/coercion, typed encode/decode | `decideConforms_iff`, extensional `encodeValue` injectivity, coercion/codec commuting lemmas | IN PROGRESS |
+| P2 Typed NVA | An independent `NvaExpr : OclType -> Type` with the exact 26 constructors, intrinsic arities/result types, and concrete evaluator | constructor completeness plus evaluator totality/WF theorems | PENDING |
+| P3 Typed CQM | Independent `CqmPlan`, `lowerNvaToCqm`, concrete evaluator, row/environment relation | 26 local realization lemmas and `nva_to_cqm_sound`; no generic `constructorCase` premise | PENDING |
+| P4 Raw Cypher | Typed Raw AST subset, parameterized evaluator, total CQM lowering and printer boundary | `cqm_to_raw_sound` and formal CY1--CY9 lemmas | PENDING |
+| P5 Boundary invariants | Concrete graph/value codec, row/parameter/alias/scope invariants and invariant wrapper | BR1--BR10, C1--C6, `ParamCorr`, `AliasFresh`, `ScopeCorr`, ID injectivity, `NoGhost` | PENDING |
+| P6 Universal T6 | Compose source binding, normalization, NVA, CQM, Raw AST, and graph representation | `ocl_to_cypher_universal` derives pointwise agreement internally | PENDING |
+| P7 Java refinement | Typed projection of all 16 Java optimized constructors and payloads, planner, production Raw AST and parameter state | 16 concrete local simulation lemmas and production-to-reference refinement | PENDING |
+| P8 Extensions/evidence | One vertical slice per new OCL construct plus property/differential/runtime matrices | no slice enters certified core without grammar, typing, semantics, lowering, proof, negative tests, and runtime discriminator | PENDING |
+
+### Execution order inside P1--P6
+
+1. Prove the Boolean base slice (`Variable`, `Literal`, `Not`, `And`, `Or`).
+2. Add scalar comparison, arithmetic and coercion.
+3. Add attribute, `allInstances`, type access and cast.
+4. Add navigation ONE/MANY and collection-boundary lifting.
+5. Add extensional Set constructors and relations.
+6. Add iterators, `If`, `Let`, and the invariant wrapper.
+7. Compose exact returned-ID equality and the no-ghost direction.
+
+### Definition of done for every phase
+
+- the normative datatype and evaluator live in Lean, not only in prose/CSV;
+- every local equality used by a structural induction is a proved lemma rather
+  than a field supplied in an abstract agreement record;
+- the formal source, Emfatic/Ecore, rule files and refinement matrices identify
+  the same constructors, fields, types and erasure policies;
+- Lean kernel, axiom audit, proof sync, Lean mutations and machine-contract
+  mutations pass;
+- finite Java/Neo4j tests remain implementation evidence and are never used as
+  a replacement for a universal lemma;
+- clean runtime evidence is recaptured only after theorem-critical changes are
+  committed to one clean revision.
+
+### First implementation increment
+
+P0/P1 starts by introducing `Ocl2Cypher/SemanticTypes.lean` as the normative
+type relation and `Ocl2Cypher/ExtensionalNestedSet.lean` as a depth-indexed
+extensional Set model. The old public theorem names remain compatibility
+wrappers in `Ocl2CypherProof.lean`. Lean now proves arbitrary-depth
+injectivity, recursive finite-support preservation, and the decidable
+conformance biconditional under the UML reachability-oracle contract. The next
+P1 sub-obligations are proof-producing Java-to-Lean hierarchy serialization,
+formal injectivity of the concrete String codec, and nested graph-shape/entity
+leaf correspondence.
+
+## Executable case-study closure roadmap C0--C6 (2026-08-23)
+
+This roadmap closes the five explicit Medical YTE/Car Rental production gaps
+without weakening the frozen theorem boundary. A production gap is removed
+only after a generated query passes the independent USE oracle and exact-ID
+Neo4j comparison. A certification boundary is removed separately, only after
+the corresponding Lean theorem and Java/formal refinement gates pass.
+
+| Phase | Vertical slice | Production exit gate | Formal exit gate | Status |
+|---|---|---|---|---|
+| C0 | Baseline and reason-coded gap taxonomy | the 23-row matrix distinguishes compiler, planner, renderer, runtime, and theorem-boundary outcomes; Car binary optional navigation is not conflated with ternary `Maintenance` navigation | no proof claim changes | COMPLETE |
+| C1 | Recursive metamodel type binding | `Sequence(Set(Integer))`, `Set(Sequence(String))`, and `Sequence(Sequence(Medication))` retain every nested collection kind and leaf type through Bound OCL and VA | recursive type projection is represented by the same formal type tree | PRODUCTION COMPLETE; FORMAL PENDING |
+| C2 | Native optional navigation collection view | audit the already accepted binary `[0..1]/[1]` collection-operation path, make its collection view explicit in IR, and lock USE-compatible empty/singleton/bottom behavior | object/graph evaluation agrees for the lift constructor | COMPLETE (`PO-22`/`LIFT1`) |
+| C3 | Ternary association navigation | `Maintenance` is lowered through its canonical association hub/spokes with model, association, link, and role identity; it is never rendered as an ordinary binary edge | n-ary link projection agrees with the canonical graph representation | LOCAL SLICE COMPLETE (`nary_projection_agreement`/`nary_projection_noGhost`); GLOBAL GRAPH-WF PROOF PENDING |
+| C4 | Nested scalar iterator slices | `Sequence(Set(Integer))` then `Set(Sequence(String))` compile and match USE on empty, singleton, duplicate, order, and bottom discriminators | collection-kind, nested `size`/`notEmpty`, and `forAll` lemmas are kernel checked | LOCAL SLICE COMPLETE (9 scalar discriminators; 256 seeded codec cases); UNIVERSAL ITERATOR PROOF PENDING |
+| C5 | Nested entity iterator slice | `Sequence(Sequence(Medication))` preserves both order levels and canonical entity identity and has no ghost/dangling result | entity-leaf codec, nested iterator, ID-injectivity, and `NoGhost` lemmas are kernel checked | LOCAL SLICE COMPLETE (5 entity discriminators); UNIVERSAL ENCODER PROOF PENDING |
+| C6 | Existing theorem-boundary closure | all eight production-supported boundary cases plus the five former production gaps have constructor-specific evidence | all 23 case-study invariants are admitted without new `axiom`, `sorry`, generic `constructorCase`, or hidden agreement premise | PRODUCTION COMPLETE (23/23 exact-ID); FORMAL PENDING |
+
+### Required gate sequence per slice
+
+1. Parse and evaluate with USE; record the exact violating object IDs.
+2. Assert the complete recursive bound type, iterator type, and coercion node.
+3. Preserve the same payload through Bound OCL, VA, optimized IR, and CQM.
+4. Build production Raw AST and render Cypher without fallback or unchecked raw
+   fragments.
+5. Run `EXPLAIN` and exact-ID differential execution against real Neo4j.
+6. Add positive, negative, mutation, bottom, order, duplicate, and scope cases.
+7. Prove the local semantic equation in Lean and update the refinement matrix.
+8. Remove the invariant from `expected-production-gaps.txt` only after steps
+   1--6; remove it from `expected-certification-boundaries.txt` only after step
+   7 and all applicable proof-contract gates pass.
+
+### Expected production progression
+
+```text
+18/23 baseline
+  -> 20/23 after ternary navigation (the binary optional lift is audited separately)
+  -> 21/23 after Sequence(Set(Integer))
+  -> 22/23 after Set(Sequence(String))
+  -> 23/23 after Sequence(Sequence(Medication))
+```
+
+The certification count is intentionally not projected from implementation
+work: it changes only when the relevant universal theorem obligations are
+actually discharged. Runtime differential evidence is never relabeled as a
+formal proof.
+
+Development execution on 2026-08-23 reached `23/23` production queries and
+exact-ID USE--Neo4j agreement (`13/13` Medical YTE and `10/10` Car Rental),
+with zero production gaps. A separate 14-row nested discriminator suite also
+passed exact-ID USE--Neo4j comparison for empty, singleton, duplicate, order,
+bottom, entity identity, and NoGhost (`14/14`, missing=0, spurious=0), while a
+seeded codec property test passed 256 generated cases. Static/unit gates passed 660 tests when the three
+clean-evidence freshness tests were intentionally excluded; module `neo4j`
+passed its prior 46/46 baseline plus the new codec/writer/property regressions.
+Lean kernel checking now passes 58 theorem declarations, including the local
+nested/n-ary/ID/NoGhost wrappers. All 7/7
+proof-gate mutants were killed. The three freshness tests remain red by design
+because production/proof sources changed after the last clean capture. C6
+must not be promoted to universally complete, and the canonical evidence hashes
+must not be updated, until a final source revision is committed and the clean
+capture workflow succeeds from that exact revision.

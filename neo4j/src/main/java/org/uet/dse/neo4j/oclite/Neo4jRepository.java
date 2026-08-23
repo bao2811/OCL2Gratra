@@ -8,6 +8,7 @@ import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.oclite.expr.ExpressionNode;
 import org.uet.dse.neo4j.oclite.expr.VariableExpression;
 import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
+import org.uet.dse.neo4j.sync.helper.CanonicalCollectionValueCodec;
 import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
@@ -236,6 +237,11 @@ public class Neo4jRepository {
 
     static Object decodeStoredValue(Object raw, String typeName, boolean collection) {
         if (raw == null) return null;
+        if (collection && raw instanceof String payload
+                && !"Undefined".equals(payload) && !"COLLECTION_DATA".equals(payload)
+                && !"NESTED_COLLECTION".equals(payload)) {
+            return CanonicalCollectionValueCodec.decodeScalarLeaves(payload, typeName);
+        }
         if (!collection && raw instanceof String payload && payload.startsWith("v1|")) {
             if (typeName == null || typeName.isBlank()) {
                 throw new IllegalArgumentException("A typed canonical scalar payload is missing val.type");

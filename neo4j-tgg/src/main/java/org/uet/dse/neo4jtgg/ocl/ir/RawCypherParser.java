@@ -99,10 +99,9 @@ public final class RawCypherParser {
             if (Character.isDigit(current)) {
                 index++;
                 while (index < source.length() && Character.isDigit(source.charAt(index))) index++;
-                if (index < source.length() && source.charAt(index) == '.') {
-                    int fraction = ++index;
-                    if (fraction >= source.length() || !Character.isDigit(source.charAt(fraction)))
-                        throw syntax("Invalid decimal literal", start);
+                if (index + 1 < source.length() && source.charAt(index) == '.'
+                        && Character.isDigit(source.charAt(index + 1))) {
+                    index++;
                     while (index < source.length() && Character.isDigit(source.charAt(index))) index++;
                 }
                 tokens.add(atom(RawCypherAst.RawAtomKind.NUMBER, trivia, source.substring(start, index)));
@@ -179,8 +178,11 @@ public final class RawCypherParser {
         List<Integer> clauses = new ArrayList<>();
         for (int index = 0; index < nodes.size(); index++)
             if (clauseStart(nodes, index) != null) clauses.add(index);
-        if (clauses.isEmpty() || clauses.get(0) != 0)
-            throw new IllegalArgumentException(location + " does not start with a generated Cypher clause");
+        if (clauses.isEmpty() || clauses.get(0) != 0) {
+            String first = nodes.isEmpty() ? "<empty>" : describeNode(nodes.get(0));
+            throw new IllegalArgumentException(location
+                    + " does not start with a generated Cypher clause; first node=" + first);
+        }
         if ("WHERE".equals(clauseStart(nodes, 0)))
             throw new IllegalArgumentException(location + " starts with WHERE");
         for (int clause = 0; clause < clauses.size(); clause++) {
@@ -223,6 +225,16 @@ public final class RawCypherParser {
 
     private String text(RawCypherAst.RawNode node) {
         return ((RawCypherAst.RawAtom) node).text();
+    }
+
+    private String describeNode(RawCypherAst.RawNode node) {
+        if (node instanceof RawCypherAst.RawAtom atom) {
+            return atom.kind() + "(" + atom.text() + ")";
+        }
+        if (node instanceof RawCypherAst.RawGroup group) {
+            return "GROUP(" + group.open().text() + group.close().text() + ")";
+        }
+        return node.getClass().getSimpleName();
     }
 
     private RawCypherAst.RawAtom atom(RawCypherAst.RawAtomKind kind, String trivia, String text) {

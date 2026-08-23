@@ -388,6 +388,13 @@ $expectedMechanizationTheorems = @(
     'image_reflects_membership','image_preserves_subset','exists_over_image','forall_over_image',
     'lift1_source_bound','lift1_bound_validation','lift1_present','lift1_absent','lift1_consumer_agreement',
     'encodeValue_injective','implies_rewrite','forall_rewrite','notEmpty_rewrite',
+    'classConforms_trans','every_certified_type_conforms_to_oclAny','unlimitedNatural_conforms_to_integer',
+    'set_conformance_is_covariant','decideConforms_iff','extractedHierarchy_decideConforms_iff',
+    'nested_decode_encode_value','nested_encodeValue_injective',
+    'extensional_nested_encodeValue_injective','extensional_nested_encode_preserves_finiteness',
+    'extensional_nested_payload_encode_injective','extensional_nested_payload_encode_preserves_finiteness',
+    'canonical_scalar_codec_injective','canonical_scalar_escape_injective',
+    'extensional_nested_canonical_payload_encode_injective',
     'normalize_preserves_eval','normalize_reaches_redex_free','implies_root_strictly_decreases',
     'all_rewrite_semantics','normalize_reaches_normal_form','normalize_idempotent',
     'root_rewrite_strictly_decreases','typed_rewrite_preserves_type',
@@ -395,7 +402,11 @@ $expectedMechanizationTheorems = @(
     'java_capture_guard_sound','java_guarded_rename_preserves_scoped_semantics',
     'structural_preservation','java_ir_eval_refinement','prod_plan_sim_sound','certified_nva_grammar_complete',
     'spec_plan_sim_sound','bound_va_abstraction','pa_comp',
-    'theorem6_forward','theorem6_backward','theorem6_at_object'
+    'theorem6_forward','theorem6_backward','theorem6_at_object',
+    'case_study_entity_id_injective','nested_sequence_payload_injective',
+    'nested_sequence_preserves_width','nested_sequence_preserves_inner_widths',
+    'nested_scalar_bottom_separated',
+    'nary_projection_agreement','nary_projection_noGhost','nested_entity_noGhost'
 )
 if ($null -eq $registry.mechanization) {
     Add-CheckError 'Registry: missing mechanization contract'
@@ -407,7 +418,8 @@ if ($null -eq $registry.mechanization) {
     }
     Test-ExactSequence @($registry.mechanization.requiredTheorems) $expectedMechanizationTheorems 'Registry mechanization theorems'
     Test-ExactSequence @($registry.mechanization.coverage | ForEach-Object { "$($_.id):$($_.status)" }) @(
-        'MK-FINITE-SET:mechanized','MK-LIFT1:mechanized','MK-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:mechanized',
+        'MK-FINITE-SET:mechanized','MK-LIFT1:mechanized','MK-ENCODE:mechanized',
+        'MK-CONCRETE-TYPING:partial','MK-NESTED-ENCODE:mechanized','MK-NORMALIZE:partial','MK-T4:mechanized',
         'MK-PRODPLAN:mechanized','MK-SPECPLAN:mechanized','MK-BOUND-VA:mechanized','MK-PA-COMP:mechanized','MK-T6:mechanized'
     ) 'Registry mechanization coverage'
     if (@($registry.mechanization.openScope).Count -eq 0) {
@@ -419,6 +431,20 @@ if ($null -eq $registry.mechanization) {
         $path = Resolve-WorkspacePath $relativePath "Mechanization $property"
         if ($null -eq $path -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
             Add-CheckError "Mechanization $property is missing: $relativePath"
+        }
+    }
+    Test-ExactSequence @($registry.mechanization.modulePaths) @(
+        'verification/lean/Ocl2Cypher/SemanticTypes.lean',
+        'verification/lean/Ocl2Cypher/ExtensionalNestedSet.lean',
+        'verification/lean/Ocl2Cypher/CanonicalScalarCodec.lean',
+        'verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean'
+    ) 'Registry mechanization modules'
+    foreach ($modulePath in @($registry.mechanization.modulePaths)) {
+        $relativePath = ([string]$modulePath).Replace('\','/')
+        [void]$trackedPaths.Add($relativePath)
+        $path = Resolve-WorkspacePath $relativePath 'Mechanization module'
+        if ($null -eq $path -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Add-CheckError "Mechanization module is missing: $relativePath"
         }
     }
     Test-ExactSequence @($registry.mechanization.projectPaths) @(

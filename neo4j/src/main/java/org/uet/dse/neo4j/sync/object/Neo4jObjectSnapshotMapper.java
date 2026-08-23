@@ -3,6 +3,7 @@ package org.uet.dse.neo4j.sync.object;
 import org.neo4j.driver.Record;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
+import org.uet.dse.neo4j.sync.helper.CanonicalCollectionValueCodec;
 import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 
 import java.util.*;
@@ -43,7 +44,8 @@ public class Neo4jObjectSnapshotMapper {
         ((TreeMap<Integer, String>) attrStructureHelper.get(attrName).get(pathIdx)).put(itemIdx, refId);
       }
       else if (!isObjRef && isColl && leafVal != null && !leafVal.toString().equals("NESTED_COLLECTION")) {
-        attrStructureHelper.get(attrName).put(pathIdx, decodePrimitiveCollection(leafVal.toString()));
+        attrStructureHelper.get(attrName).put(pathIdx,
+            decodePrimitiveCollection(leafVal.toString(), (String) item.get("type")));
       }
       else if (!isObjRef && !isColl && leafVal != null
           && !leafVal.toString().equals("NESTED_COLLECTION")) {
@@ -102,13 +104,11 @@ public class Neo4jObjectSnapshotMapper {
         || type.startsWith("Set(") || type.startsWith("Sequence(");
   }
 
-  private static List<Object> decodePrimitiveCollection(String raw) {
-    if (raw == null || raw.trim().isEmpty() || raw.equals("COLLECTION_EMPTY") || raw.equals("Undefined") || raw.equals("COLLECTION_DATA")) {
+  static List<Object> decodePrimitiveCollection(String raw, String typeName) {
+    if (raw == null || raw.equals("Undefined") || raw.equals("COLLECTION_DATA")) {
       return new ArrayList<>();
     }
-    return Arrays.stream(raw.split("\\s*\\|\\s*"))
-        .map(s -> s.trim().equals("null") ? null : convertStringToTypedObject(s.trim()))
-        .collect(Collectors.toList());
+    return new ArrayList<>(CanonicalCollectionValueCodec.decodeScalarLeaves(raw, typeName));
   }
 
   static Object decodeScalarValue(Object raw, String typeName) {
@@ -120,17 +120,6 @@ public class Neo4jObjectSnapshotMapper {
       return CanonicalScalarValueCodec.decode(payload, typeName);
     }
     return raw;
-  }
-
-  private static Object convertStringToTypedObject(String s) {
-    try {
-      if (s.contains(".")) return Double.parseDouble(s);
-      return Long.parseLong(s);
-    } catch (Exception e) {
-      if (s.equalsIgnoreCase("true")) return true;
-      if (s.equalsIgnoreCase("false")) return false;
-      return s;
-    }
   }
 
   static LinkState toBinaryLink(Record rec) {

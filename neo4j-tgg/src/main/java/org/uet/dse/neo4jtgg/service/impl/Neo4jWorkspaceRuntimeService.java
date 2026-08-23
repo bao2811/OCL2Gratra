@@ -433,9 +433,11 @@ public class Neo4jWorkspaceRuntimeService {
                 participant.put("objName", endpoints.get(i));
                 participant.put("role", associationClass.associationEnds().get(i).name());
                 participant.put("label", "LinkAssociateWith");
+                participant.put("index", i);
                 participants.add(participant);
             }
-            objectRepository.upsertLinkObject(tx, linkObjectName, associationClass.name(), participants);
+            objectRepository.upsertLinkObject(
+                    tx, model.name(), linkObjectName, associationClass.name(), participants);
             return;
         }
 
@@ -444,6 +446,7 @@ public class Neo4jWorkspaceRuntimeService {
             MAssociationEnd targetEnd = association.associationEnds().get(1);
             String label = resolveBinaryLinkLabel(sourceEnd, targetEnd);
             objectRepository.upsertBinaryLink(tx,
+                    model.name(),
                     endpoints.get(0),
                     endpoints.get(1),
                     association.name(),
@@ -465,7 +468,7 @@ public class Neo4jWorkspaceRuntimeService {
             participant.put("label", "LinkAssociateWith");
             participants.add(participant);
         }
-        objectRepository.upsertTernaryLink(tx, association.name(), participants);
+        objectRepository.upsertTernaryLink(tx, model.name(), association.name(), participants);
     }
 
     private String resolveBinaryLinkLabel(MAssociationEnd sourceEnd, MAssociationEnd targetEnd) {

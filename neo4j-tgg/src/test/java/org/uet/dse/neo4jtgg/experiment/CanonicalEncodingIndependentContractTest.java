@@ -32,6 +32,12 @@ class CanonicalEncodingIndependentContractTest {
                         + "::sourceQualifiers=1:5:'HCM'::targetQualifiers=1:4:'A1'",
                 CanonicalGraphEncoding.binaryLinkKey("Sales", "Employment", "p1", "c1",
                         List.of("'HCM'"), List.of("'A1'")));
+        assertEquals("Sales::link::association=11:Maintenance"
+                        + "::participantRoles=3:12:serviceDepot5:check3:car"
+                        + "::participantIds=3:2:d12:ck2:c1",
+                CanonicalGraphEncoding.naryLinkKey("Sales", "Maintenance",
+                        List.of("serviceDepot", "check", "car"),
+                        List.of("d1", "ck", "c1")));
     }
 
     @Test

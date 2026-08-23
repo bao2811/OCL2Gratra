@@ -1,0 +1,397 @@
+model OCLmetamodel
+class ModelElement -- from Core
+attributes
+name : String
+end
+class Constraint -- from Core
+end
+class PreCondition < Constraint
+end
+class PostCondition < Constraint
+end
+class Invariant < Constraint
+end
+class Guard < Constraint
+end
+class Expression -- from Data Types
+end
+class BooleanExpression < Expression -- from Data Types
+end
+association Constraint_ModelElement between
+Constraint[1..*]
+ModelElement[1..*] role constrainedElement ordered
+end
+composition Constraint_BooleanExpression between
+Constraint[0..1]
+BooleanExpression[1] role body
+end
+composition Expression_OclExpression between
+Expression[0..1]
+OclExpression[0..1] role body
+end
+------------------------------------
+-- Package: Types
+------------------------------------
+abstract class Type
+attributes
+name : String
+end
+abstract class BasicType < Type
+end
+class IntegerType < BasicType
+end
+class RealType < BasicType
+end
+class StringType < BasicType
+end
+class BooleanType < BasicType
+end
+class ObjectType < Type
+end
+class Classifier < ModelElement -- from Core
+end
+class Class < Classifier -- from Core
+end
+class EnumType < Type
+--constraints
+--FIXME: self.literal->isUnique(name)
+end
+class EnumLiteral
+attributes
+name : String
+constraints
+inv: self.name.size > 0
+end
+class OclAnyType < Type
+end
+class OclTypeType < Type
+end
+class CollectionType < Type
+end
+class SetType < CollectionType
+end
+class SequenceType < CollectionType
+end
+class BagType < CollectionType
+end
+association Conforms between
+Type[*] role subtype
+Type[*] role supertype
+end
+association CollectionType_Type between
+CollectionType[*]
+Type[1] role elementType
+end
+aggregation ObjectType_Classifier between
+ObjectType[0..1]
+Classifier[1]
+end
+aggregation EnumType_EnumLiteral between
+EnumType[0..1]
+EnumLiteral[1..*]
+end
+constraints
+context IntegerType inv:
+self.name = ’IntegerType’
+------------------------------------
+-- Package: Values
+------------------------------------
+abstract class Value
+end
+abstract class BasicValue < Value
+end
+class IntegerValue < BasicValue
+attributes
+val : Integer
+end
+class RealValue < BasicValue
+attributes
+val : Real
+end
+class StringValue < BasicValue
+attributes
+val : String
+end
+class BooleanValue < BasicValue
+attributes
+val : Boolean
+end
+class ObjectValue < Value
+end
+class Object < ModelElement -- from Common Behavior
+end
+class EnumValue < Value
+end
+class UndefinedValue < Value
+end
+abstract class CollectionValue < Value
+end
+class SequenceValue < CollectionValue
+end
+class BagValue < CollectionValue
+end
+class SetValue < CollectionValue
+end
+class BagOccurrence
+attributes
+count : Integer
+end
+class SequenceOccurrence
+attributes
+index : Integer
+end
+association Value_Type between
+Value[*]
+Type[1]
+end
+association ObjectValue_Object between
+ObjectValue[0..1]
+Object[1]
+end
+aggregation EnumValue_EnumLiteral between
+EnumValue[0..1]
+EnumLiteral[1]
+end
+aggregation SetValue_Value between
+SetValue[*]
+Value[*] role elements
+end
+aggregation BagValue_BagOccurrence between
+BagValue[1]
+BagOccurrence[*]
+end
+association BagOccurrence_Value between
+BagOccurrence[*]
+Value[1] role element
+end
+aggregation SequenceValue_SequenceOccurrence between
+SequenceValue[1]
+SequenceOccurrence[*]
+end
+association SequenceOccurrence_Value between
+SequenceOccurrence[*]
+Value[1] role element
+end
+------------------------------------
+abstract class OclExpression
+end
+class Context
+end
+class VariableDeclaration
+attributes
+var : String
+end
+class VariableInitialization
+end
+class VariableExp < OclExpression
+attributes
+var : String
+end
+class LetExp < OclExpression
+attributes
+var : String
+end
+abstract class OperationExp < OclExpression
+end
+class IfExp < OclExpression
+end
+class TypingExp < OclExpression
+end
+abstract class QueryExp < OclExpression
+end
+class ForAllExp < QueryExp
+end
+class ExistsExp < QueryExp
+end
+class SelectExp < QueryExp
+end
+class RejectExp < QueryExp
+end
+class CollectExp < QueryExp
+end
+class IsUniqueExp < QueryExp
+end
+class SortedByExp < QueryExp
+end
+class IterateExp < QueryExp
+end
+class PropertyOperation < OperationExp
+attributes
+isMarkedPre : Boolean
+end
+class AttributeExp < PropertyOperation
+end
+class Attribute < ModelElement -- from Core
+end
+class NavigationExp < PropertyOperation
+end
+class AssociationEnd < ModelElement -- from Core
+end
+class ClassifierOperation < PropertyOperation
+end
+class Operation < ModelElement -- from Core
+end
+class OclOperation < OperationExp
+attributes
+name : String
+end
+abstract class ConstExp < OperationExp
+end
+class IntegerConstExp < ConstExp
+attributes
+value : Integer
+end
+association Context_Classifier between
+Context[*]
+Classifier[0..1]
+end
+association Context_Operation between
+Context[*]
+Operation[0..1]
+end
+association Context_OclExpression between
+Context[0..1]
+OclExpression[*]
+end
+association Context_VariableDeclaration between
+Context[0..1]
+VariableDeclaration[*]
+end
+aggregation VariableDeclaration_Type between
+VariableDeclaration[*]
+Type[1] role varType
+end
+association OclExpression_Type between
+OclExpression[*]
+Type[1] role resultType
+end
+association OclExpression_Value between
+OclExpression[*]
+Value[1] role result
+end
+aggregation LetExp_OclExpression between
+LetExp[0..1]
+OclExpression[1] role in_
+end
+aggregation LetExp_VariableInitialization between
+LetExp[0..1]
+VariableInitialization[1]
+end
+aggregation IfExp_OclExpression_Condition between
+IfExp[0..1] role conditionIf
+OclExpression[1] role condition
+end
+aggregation IfExp_OclExpression_Then between
+IfExp[0..1] role thenIf
+OclExpression[1] role then_
+end
+aggregation IfExp_OclExpression_Else between
+IfExp[0..1] role elseIf
+OclExpression[1] role else_
+end
+aggregation TypingExp_OclExpression between
+TypingExp[0..1]
+OclExpression[1] role source
+end
+aggregation TypingExp_Type between
+TypingExp[0..1]
+Type[1] role argument
+end
+aggregation QueryExp_OclExpression_Source between
+QueryExp[0..1]
+OclExpression[1] role source
+end
+aggregation QueryExp_OclExpression_Argument between
+QueryExp[0..1] role owner
+OclExpression[1] role argument
+end
+aggregation QueryExp_VariableDeclaration between
+QueryExp[0..1]
+VariableDeclaration[0..1]
+end
+aggregation VariableInitialization_VariableDeclaration between
+VariableInitialization[0..1]
+VariableDeclaration[1]
+end
+aggregation VariableInitialization_OclExpression between
+VariableInitialization[0..1]
+OclExpression[1] role initExpression
+end
+aggregation IterateExp_VariableInitialization between
+IterateExp[1]
+VariableInitialization[1] role varInit
+end
+aggregation PropertyOperation_OclExpression between
+PropertyOperation[*]
+OclExpression[1] role source
+end
+aggregation OclOperation_OclExpression between
+OclOperation[*]
+OclExpression[*] role arguments ordered
+end
+aggregation AttributeExp_Attribute between
+AttributeExp[*]
+Attribute[1]
+end
+aggregation NavigationExp_AssociationEnd between
+NavigationExp[*]
+AssociationEnd[1]
+end
+aggregation NavigationExp_OclExpression between
+NavigationExp[*]
+OclExpression[*] role qualifierValues
+end
+aggregation ClassifierOperation_OclExpression between
+ClassifierOperation[*]
+OclExpression[*] role arguments ordered
+end
+aggregation ClassifierOperation_Operation between
+ClassifierOperation[*]
+Operation[1]
+end
+------------------------------------
+-- Well-formedness rules
+------------------------------------
+constraints
+context Constraint
+-- [1] When a BooleanExpression is used in a Constraint and
+-- it is defined by an OclExpression, the Type of the
+-- OclExpression must be an instance of BooleanType.
+inv Constraint1:
+let b = self.body.body in
+b.isDefined() implies b.resultType.oclIsKindOf(BooleanType)
+context PostCondition
+-- [1] A PostCondition may only be attached to an Operation.
+inv PostCondition1:
+self.constrainedElement->forAll(me : ModelElement |
+me.oclIsKindOf(Operation))
+context Type
+-- [1] OclAnyType is the supertype of all Types except for
+-- the collection types.
+inv Type1:
+not self.oclIsKindOf(CollectionType)
+implies self.supertype->exists(t : Type |
+t.oclIsKindOf(OclAnyType))
+-- [2] Type conformance (represented by the association
+-- Conforms) is transitive.
+inv Type2:
+Type.allInstances->forAll(t1, t3 : Type |
+Type.allInstances->exists(t2 : Type |
+(t1.subtype->includes(t2) and t2.subtype->includes(t3))
+implies t1.subtype->includes(t3)))
+context EnumType
+-- [1] All EnumerationLiterals of an EnumType are distinct.
+inv EnumType1:
+self.enumLiteral->isUnique(el : EnumLiteral | el.name)
+context SetType
+-- [1] A set type Set(T1) conforms to a type Set(T2) if its
+-- element type T1 conforms to T2.
+inv SetType1:
+SetType.allInstances->forAll(s1, s2 : SetType |
+s1.elementType.supertype->includes(s2.elementType)
+implies s1.supertype->includes(s2))
+context QueryExp
+-- [1] The source expression of a QueryExp must have a
+-- collection type.
+inv QueryExp1:
+self.source.resultType.oclIsKindOf(CollectionType)

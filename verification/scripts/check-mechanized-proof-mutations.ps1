@@ -12,7 +12,7 @@ $checker = [System.IO.Path]::GetFullPath($CheckerPath)
 $hostExecutable = (Get-Process -Id $PID).Path
 $mutationRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("lean-proof-mutations-" + [guid]::NewGuid().ToString('N'))
 $passed = 0
-$total = 6
+$total = 7
 
 function Read-Text([string]$Path) {
     return [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
@@ -53,6 +53,8 @@ function New-Case([string]$Name) {
     foreach ($name in @('Ocl2CypherProof.lean','lean-toolchain','lakefile.lean','lake-manifest.json')) {
         Copy-Item -LiteralPath (Join-Path $MechanizedPath $name) -Destination (Join-Path $mechanizedCase $name)
     }
+    Copy-Item -LiteralPath (Join-Path $MechanizedPath 'Ocl2Cypher') `
+        -Destination (Join-Path $mechanizedCase 'Ocl2Cypher') -Recurse
     return [pscustomobject]@{
         Root = $casePath
         Mechanized = $mechanizedCase
@@ -123,6 +125,12 @@ try {
     $text = Read-Text $case.Proof
     Write-Text $case.Proof ($text + "`naxiom injectedBridge : True`n")
     Assert-Killed 'axiom declaration' $case 'declaration'
+
+    $case = New-Case 'module-sorry-placeholder'
+    $modulePath = Join-Path $case.Mechanized 'Ocl2Cypher\ExtensionalNestedSet.lean'
+    $text = Read-Text $modulePath
+    Write-Text $modulePath ($text + "`ntheorem injectedModuleSorry : True := by sorry`n")
+    Assert-Killed 'module sorry placeholder' $case 'placeholder'
 
     $case = New-Case 'missing-theorem'
     $text = Read-Text $case.Proof

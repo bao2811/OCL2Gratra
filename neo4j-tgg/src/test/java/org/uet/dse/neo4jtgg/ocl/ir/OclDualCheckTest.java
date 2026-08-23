@@ -15,7 +15,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
 import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
+import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -616,10 +616,13 @@ class OclDualCheckTest {
         MModel model = USECompiler.compileSpecification(spec, "demo.use", new PrintWriter(buffer, true), new ModelFactory());
         assertNotNull(model, buffer.toString());
 
-        TestRuntime runtime = new TestRuntime(List.of(TestObject.object("p1", "Person")));
-        org.junit.jupiter.api.Assertions.assertThrows(OclCodedUnsupportedOperationException.class,
-                () -> assertDualCheck(model, runtime,
-                        "context Person inv HasPets: self.pet->notEmpty()", "Person"));
+        String invariant = "context Person inv HasPets: self.pet->notEmpty()";
+        var general = new DefaultOclToCypherCompiler(model).compile(invariant);
+        assertTrue(general.isSupported(), general.getReason());
+        assertTrue(general.getCypher().contains(":LinkHub"), general.getCypher());
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> new DefaultOclToCypherCompiler(model)
+                        .compileInvariantInstrumented(invariant));
     }
 
     @Test

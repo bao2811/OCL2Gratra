@@ -83,8 +83,12 @@ public class Neo4jModelRepository {
                 Values.parameters(
                     "modelName", modelName,
                     "srcName", src.cls().name(),
+                        "srcClassKey", CanonicalGraphEncoding.classKey(modelName, src.cls().name()),
                         "tgtName", tgt.cls().name(),
+                        "tgtClassKey", CanonicalGraphEncoding.classKey(modelName, tgt.cls().name()),
                         "acName", ac.name(),
+                        "associationClassKey", CanonicalGraphEncoding.classKey(modelName, ac.name()),
+                        "associationKey", CanonicalGraphEncoding.associationKey(modelName, ac.name()),
                         "sRole", src.name(),
                         "sMult", src.multiplicity().toString(),
                         "tRole", tgt.name(),
@@ -96,11 +100,13 @@ public class Neo4jModelRepository {
     public void upsertTernaryAssociation(MAssociation assoc, String modelName) {
         List<MAssociationEnd> ends = assoc.associationEnds();
         String assocName = assoc.name();
+        String associationKey = CanonicalGraphEncoding.associationKey(modelName, assocName);
 
         withSession(session -> {
             session.run(
                     Neo4jModelQuery.createTernaryHub(assocName),
-                    Values.parameters("name", assocName)
+                    Values.parameters("modelName", modelName, "name", assocName,
+                            "associationKey", associationKey)
             );
             for (int i = 0; i < ends.size(); i++) {
                 MAssociationEnd end = ends.get(i);
@@ -110,6 +116,8 @@ public class Neo4jModelRepository {
                         Values.parameters(
                             "modelName", modelName,
                             "clsName", end.cls().name(),
+                                "classKey", CanonicalGraphEncoding.classKey(modelName, end.cls().name()),
+                                "associationKey", associationKey,
                                 "name", assocName,
                                 "idx", i,
                                 "role", end.name(),

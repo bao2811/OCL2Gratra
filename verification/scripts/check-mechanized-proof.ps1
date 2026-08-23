@@ -39,6 +39,37 @@ $lakefilePath = Join-Path $MechanizedPath 'lakefile.lean'
 $proof = Read-Utf8 $proofPath
 $toolchain = (Read-Utf8 $toolchainPath).Trim()
 [void](Read-Utf8 $lakefilePath)
+$expectedModulePaths = @(
+    'verification/lean/Ocl2Cypher/SemanticTypes.lean',
+    'verification/lean/Ocl2Cypher/ExtensionalNestedSet.lean',
+    'verification/lean/Ocl2Cypher/CanonicalScalarCodec.lean',
+    'verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean'
+)
+$modulePaths = @($registry.mechanization.modulePaths | ForEach-Object { ([string]$_).Replace('\','/') })
+$moduleFiles = [System.Collections.Generic.List[string]]::new()
+if ($modulePaths.Count -ne $expectedModulePaths.Count) {
+    Add-CheckError "Registry Lean module count drift: expected $($expectedModulePaths.Count), actual $($modulePaths.Count)"
+} else {
+    for ($index = 0; $index -lt $expectedModulePaths.Count; $index++) {
+        if ($modulePaths[$index] -cne $expectedModulePaths[$index]) {
+            Add-CheckError "Registry Lean module drift at index $index`: expected '$($expectedModulePaths[$index])', actual '$($modulePaths[$index])'"
+        }
+    }
+}
+foreach ($relativeModulePath in $modulePaths) {
+    if (-not $relativeModulePath.StartsWith('verification/lean/', [System.StringComparison]::Ordinal)) {
+        Add-CheckError "Registered Lean module must be below verification/lean: $relativeModulePath"
+        continue
+    }
+    $packageRelativePath = $relativeModulePath.Substring('verification/lean/'.Length)
+    $moduleFile = [System.IO.Path]::GetFullPath((Join-Path $MechanizedPath $packageRelativePath))
+    if (-not (Test-Path -LiteralPath $moduleFile -PathType Leaf)) {
+        Add-CheckError "Registered Lean module is missing: $relativeModulePath"
+    } else {
+        $moduleFiles.Add($moduleFile)
+    }
+}
+$allLeanSource = $proof + "`n" + (($moduleFiles | ForEach-Object { Read-Utf8 $_ }) -join "`n")
 
 $expectedLeanVersion = '4.32.2'
 $expectedToolchain = "leanprover/lean4:v$expectedLeanVersion"
@@ -56,6 +87,21 @@ $expectedRequiredTheorems = @(
     'implies_rewrite',
     'forall_rewrite',
     'notEmpty_rewrite',
+    'classConforms_trans',
+    'every_certified_type_conforms_to_oclAny',
+    'unlimitedNatural_conforms_to_integer',
+    'set_conformance_is_covariant',
+    'decideConforms_iff',
+    'extractedHierarchy_decideConforms_iff',
+    'nested_decode_encode_value',
+    'nested_encodeValue_injective',
+    'extensional_nested_encodeValue_injective',
+    'extensional_nested_encode_preserves_finiteness',
+    'extensional_nested_payload_encode_injective',
+    'extensional_nested_payload_encode_preserves_finiteness',
+    'canonical_scalar_codec_injective',
+    'canonical_scalar_escape_injective',
+    'extensional_nested_canonical_payload_encode_injective',
     'normalize_preserves_eval',
     'normalize_reaches_redex_free',
     'implies_root_strictly_decreases',
@@ -77,7 +123,15 @@ $expectedRequiredTheorems = @(
     'pa_comp',
     'theorem6_forward',
     'theorem6_backward',
-    'theorem6_at_object'
+    'theorem6_at_object',
+    'case_study_entity_id_injective',
+    'nested_sequence_payload_injective',
+    'nested_sequence_preserves_width',
+    'nested_sequence_preserves_inner_widths',
+    'nested_scalar_bottom_separated',
+    'nary_projection_agreement',
+    'nary_projection_noGhost',
+    'nested_entity_noGhost'
 )
 if ($toolchain -cne $expectedToolchain) {
     Add-CheckError "Lean toolchain drift: expected '$expectedToolchain', actual '$toolchain'"
@@ -99,7 +153,7 @@ $forbidden = @(
     @{ Pattern = '\badmit\b'; Label = 'admit placeholder' }
 )
 foreach ($item in $forbidden) {
-    if ($proof -match $item.Pattern) {
+    if ($allLeanSource -match $item.Pattern) {
         Add-CheckError "Lean proof contains forbidden $($item.Label)"
     }
 }
@@ -168,16 +222,48 @@ if ([string]::IsNullOrWhiteSpace($LeanPath) -or -not (Test-Path -LiteralPath $Le
         try {
             $oleanPath = Join-Path $outputDirectory 'Ocl2CypherProof.olean'
             $previousPreference = $ErrorActionPreference
+            $previousLeanPathEnvironment = $env:LEAN_PATH
             $ErrorActionPreference = 'Continue'
             try {
-                Push-Location (Resolve-Path -LiteralPath $MechanizedPath)
-                try {
-                    $leanOutput = @(& $LeanPath '-o' $oleanPath (Resolve-Path -LiteralPath $proofPath) 2>&1)
-                    $leanExit = $LASTEXITCODE
-                } finally {
-                    Pop-Location
+                $env:LEAN_PATH = $outputDirectory
+                $leanOutput = @()
+                $leanExit = 0
+                foreach ($relativeModulePath in $modulePaths) {
+                    $packageRelative = $relativeModulePath.Substring('verification/lean/'.Length)
+                    $moduleFile = [System.IO.Path]::GetFullPath((Join-Path $MechanizedPath $packageRelative))
+                    if (-not (Test-Path -LiteralPath $moduleFile -PathType Leaf)) {
+                        $leanExit = 1
+                        break
+                    }
+                    $moduleOleanRelative = [System.IO.Path]::ChangeExtension(
+                        $packageRelative.Replace('/', [System.IO.Path]::DirectorySeparatorChar), '.olean')
+                    $moduleOleanPath = Join-Path $outputDirectory $moduleOleanRelative
+                    [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $moduleOleanPath))
+                    $moduleOutput = @(& $LeanPath '-R' (Resolve-Path -LiteralPath $MechanizedPath) `
+                        '-o' $moduleOleanPath $moduleFile 2>&1)
+                    $moduleExit = $LASTEXITCODE
+                    if ($moduleExit -ne 0 -or -not (Test-Path -LiteralPath $moduleOleanPath -PathType Leaf)) {
+                        $leanOutput = @("Module $relativeModulePath failed:") + $moduleOutput
+                        $leanExit = if ($moduleExit -eq 0) { 1 } else { $moduleExit }
+                        break
+                    }
+                }
+                if ($leanExit -eq 0) {
+                    Push-Location (Resolve-Path -LiteralPath $MechanizedPath)
+                    try {
+                        $leanOutput = @(& $LeanPath '-R' (Resolve-Path -LiteralPath $MechanizedPath) `
+                            '-o' $oleanPath (Resolve-Path -LiteralPath $proofPath) 2>&1)
+                        $leanExit = $LASTEXITCODE
+                    } finally {
+                        Pop-Location
+                    }
                 }
             } finally {
+                if ($null -eq $previousLeanPathEnvironment) {
+                    Remove-Item Env:LEAN_PATH -ErrorAction SilentlyContinue
+                } else {
+                    $env:LEAN_PATH = $previousLeanPathEnvironment
+                }
                 $ErrorActionPreference = $previousPreference
             }
             $leanText = $leanOutput | Out-String
