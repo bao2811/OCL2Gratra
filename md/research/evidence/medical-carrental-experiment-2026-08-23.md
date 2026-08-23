@@ -53,13 +53,12 @@ MEDICAL_YTE_NESTED_DIFFERENTIAL_ORACLE=PASS equivalent=14 productionGaps=0 missi
 
 The exact per-invariant matrix is in `medical-carrental-results-2026-08-23.csv`.
 
-These numbers are current development-worktree evidence. They were reproduced
-against real Neo4j with zero failure/error/skip in the two selected methods,
-but they are not yet a clean-revision evidence release. The canonical runtime
-manifests deliberately retain the preceding renderer hash and therefore fail
-their freshness checks until the completed source is committed and recaptured
-with `invoke-clean-evidence-capture.ps1`. The hashes must not be edited merely
-to make those tests green.
+These numbers were subsequently reproduced by the automated clean-capture
+workflow from source revision `36b7fb99f7aa3a5c8700e916782b815faed23c15`.
+The checkout reported `gitDirtyAtCapture=false`; all inventoried commit and
+worktree blobs matched. The report is
+`verification/evidence/clean-capture-36b7fb99f7aa.tsv`. No manifest hash was
+edited manually.
 
 ## Defects found and corrected
 
@@ -108,6 +107,15 @@ separation, entity-ID injectivity, n-ary projection agreement, and local
 NoGhost. These lemmas remove the local proof placeholders for C3--C5, but do
 not establish global encoder well-formedness or discharge LR/C/BR/CY and the
 other premises of universal Theorem 6.
+
+## Clean-revision capture
+
+The final automated run passed proof synchronization, the tracked machine
+contract, Lean kernel checking, both mutation gates, implementation
+conformance, real Neo4j runtime, and the property runtime matrix. Its runtime
+portion executed 10 tests with zero failure, error, or skip in 768.913 seconds.
+The selected Neo4j 2026.06 Enterprise profile also passed 64/64 generated
+property cases with seed `20260823`.
 
 ## Reproduction
 

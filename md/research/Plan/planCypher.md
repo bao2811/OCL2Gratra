@@ -562,7 +562,7 @@ it does not silently redefine the 47-constructor proof corpus.
 
 | Workstream | Current implementation | Remaining closure condition |
 |---|---|---|
-| Evidence hygiene | `invoke-clean-evidence-capture.ps1` creates a detached clean worktree, runs proof/static/Lean/mutation gates, optionally runs fixed and generated runtime suites, verifies commit blobs, and writes one UTF-8 TSV inventory | capture and check in the report from the final source commit whenever theorem-critical inputs change |
+| Evidence hygiene | `invoke-clean-evidence-capture.ps1` creates a detached clean worktree, runs proof/static/Lean/mutation gates, optionally runs fixed and generated runtime suites, verifies commit blobs, and writes one UTF-8 TSV inventory; revision `36b7fb99f7aa` was captured with every gate PASS | recapture and check in a new report whenever theorem-critical inputs change |
 | Production Raw AST | public invariant/expression results carry a strict typed `ProductionQuery`; text is emitted only by `RawCypherRenderer`, with exact AST/text agreement | migrate internal helpers from closed-string assembly to direct structured `Expr/Pattern/Clause` builders before claiming universal `BuildCQ/Expand` closure |
 | Generated differential matrix | deterministic grammar cases use replayable `(seed,index,invariant)` identities; the static suite runs 128 cases and the configured Neo4j 2026.06 Enterprise/Cypher 5 profile passed 64/64 USE-vs-Neo4j generated cases | add independent Neo4j versions/editions as explicit rows; keep every row opt-in and reject skip/failure/error |
 | OCL vertical slices | `SURF-ONE` rewrites `one(S,x,P)` to `select(S,x,P)->size() = 1` before the unchanged closed admission boundary; static and generated runtime paths cover it | add later constructs one slice at a time with a normalization/typing equation, matrix row, negative boundary, property cases, and selected-runtime discriminator |
@@ -703,9 +703,11 @@ seeded codec property test passed 256 generated cases. Static/unit gates passed 
 clean-evidence freshness tests were intentionally excluded; module `neo4j`
 passed its prior 46/46 baseline plus the new codec/writer/property regressions.
 Lean kernel checking now passes 58 theorem declarations, including the local
-nested/n-ary/ID/NoGhost wrappers. All 7/7
-proof-gate mutants were killed. The three freshness tests remain red by design
-because production/proof sources changed after the last clean capture. C6
-must not be promoted to universally complete, and the canonical evidence hashes
-must not be updated, until a final source revision is committed and the clean
-capture workflow succeeds from that exact revision.
+nested/n-ary/ID/NoGhost wrappers. All 7/7 proof-gate mutants were killed.
+Automated clean capture from revision `36b7fb99f7aa3a5c8700e916782b815faed23c15`
+then passed all eight gates with `gitDirtyAtCapture=false`: proof sync, tracked
+machine contract, Lean kernel, both mutation suites, 351 implementation tests,
+10 real-Neo4j tests, and the 64-case selected-profile property matrix. The
+canonical report is `verification/evidence/clean-capture-36b7fb99f7aa.tsv`.
+C6 remains formally pending because this clean finite evidence does not supply
+the universal graph-WF/iterator/encoder proofs or discharge LR/C/BR/CY.
