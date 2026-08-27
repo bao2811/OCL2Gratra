@@ -1,2 +1,0 @@
-slice,surface,normal_form,proof_equation,static_test,property_test,runtime_test,status
-SURF-ONE,one(S x P),select(S x P)->size() = 1,ONE-NORM,OclCertifiedSurfaceNormalizerTest,OclGeneratedPropertyTest,OclPropertyBasedRealNeo4jTest,implemented

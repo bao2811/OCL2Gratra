@@ -119,6 +119,7 @@ target/
 *.log
 
 *.md
+!examples/carrental/README.md
 DAKH/
 md/
 !md/
@@ -146,3 +147,18 @@ md/
 
 # Local Lake build cache; CI rebuilds it from the tracked Lean project
 /verification/lean/.lake/
+
+# Files and directories excluded from the public repository.
+/md/
+**/coverage/
+!/use-core/src/main/java/org/tzi/use/analysis/coverage/
+!/use-core/src/main/java/org/tzi/use/analysis/coverage/**
+/verification/coverage/
+/examples/ocl-dataset/
+**/target/site/jacoco/
+**/build/reports/
+**/*.log
+**/*.aux
+**/*.blg
+**/*.toc
+**/*.out
