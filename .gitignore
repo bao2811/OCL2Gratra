@@ -154,6 +154,7 @@ md/
 !/use-core/src/main/java/org/tzi/use/analysis/coverage/
 !/use-core/src/main/java/org/tzi/use/analysis/coverage/**
 /verification/coverage/
+/verification/evidence/
 /examples/ocl-dataset/
 **/target/site/jacoco/
 **/build/reports/
