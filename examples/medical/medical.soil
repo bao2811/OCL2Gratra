@@ -1,0 +1,111 @@
+-- Mixed medical snapshot. *_bad and *_bottom objects seed explicit failures.
+!new Patient('patient_ok')
+!set patient_ok.name := 'Alice'
+!set patient_ok.age := 34
+!set patient_ok.active := true
+!set patient_ok.code := 'P001'
+!set patient_ok.temperature := 37.0
+!set patient_ok.weight := 70.5
+
+!new Patient('patient_minor')
+!set patient_minor.name := 'Bob'
+!set patient_minor.age := 15
+!set patient_minor.active := true
+!set patient_minor.code := 'P002'
+!set patient_minor.temperature := 39.5
+!set patient_minor.weight := 45.0
+
+!new Patient('patient_inactive_minor')
+!set patient_inactive_minor.name := 'Cara'
+!set patient_inactive_minor.age := 12
+!set patient_inactive_minor.active := false
+!set patient_inactive_minor.code := 'P003'
+!set patient_inactive_minor.temperature := 36.5
+!set patient_inactive_minor.weight := 40.0
+
+!new Patient('patient_bad')
+!set patient_bad.name := ''
+!set patient_bad.age := 0
+!set patient_bad.active := true
+!set patient_bad.code := ''
+!set patient_bad.temperature := 41.5
+!set patient_bad.weight := -1.0
+
+-- Inherited fields and measured values are deliberately absent.
+!new Patient('patient_bottom')
+!set patient_bottom.code := 'P005'
+
+!new Doctor('doctor_ok')
+!set doctor_ok.name := 'Dana'
+!set doctor_ok.age := 45
+!set doctor_ok.active := true
+!set doctor_ok.license := 'D001'
+!set doctor_ok.specialty := 'cardiology'
+
+!new Doctor('doctor_empty')
+!set doctor_empty.name := 'Evan'
+!set doctor_empty.age := 50
+!set doctor_empty.active := true
+!set doctor_empty.license := 'D002'
+!set doctor_empty.specialty := 'general'
+
+!new Doctor('doctor_bad')
+!set doctor_bad.name := ''
+!set doctor_bad.age := -1
+!set doctor_bad.active := true
+!set doctor_bad.license := ''
+!set doctor_bad.specialty := ''
+
+!new Nurse('nurse_ok')
+!set nurse_ok.name := 'Nora'
+!set nurse_ok.age := 29
+!set nurse_ok.active := true
+!set nurse_ok.license := 'N001'
+!set nurse_ok.grade := 3
+
+!new Nurse('nurse_bad')
+!set nurse_bad.name := 'Nina'
+!set nurse_bad.age := 17
+!set nurse_bad.active := true
+!set nurse_bad.license := 'N002'
+!set nurse_bad.grade := 0
+
+!new Ward('ward_a')
+!set ward_a.name := 'Cardiology'
+!new Ward('ward_b')
+!set ward_b.name := ''
+!new Ward('ward_empty')
+!set ward_empty.name := 'Empty'
+
+!new Encounter('encounter_ok')
+!set encounter_ok.closed := true
+!new Encounter('encounter_minor')
+!set encounter_minor.closed := true
+!new Encounter('encounter_bad')
+!set encounter_bad.closed := false
+!new Encounter('encounter_bottom')
+
+!insert (patient_ok, ward_a) into Admission
+!insert (patient_minor, ward_a) into Admission
+!insert (patient_bottom, ward_b) into Admission
+
+!insert (patient_ok, doctor_ok) into Treatment
+!insert (patient_minor, doctor_ok) into Treatment
+!insert (patient_bottom, doctor_bad) into Treatment
+
+!insert (patient_ok, nurse_ok) into Care
+!insert (patient_minor, nurse_bad) into Care
+
+!insert (doctor_ok, ward_a) into Staffing
+!insert (nurse_ok, ward_a) into Staffing
+!insert (doctor_bad, ward_b) into Staffing
+
+!insert (patient_ok, encounter_ok) into PatientEncounter
+!insert (patient_minor, encounter_minor) into PatientEncounter
+!insert (patient_bad, encounter_bad) into PatientEncounter
+!insert (patient_bottom, encounter_bottom) into PatientEncounter
+
+!insert (encounter_ok, doctor_ok) into EncounterDoctor
+!insert (encounter_minor, doctor_ok) into EncounterDoctor
+!insert (encounter_bad, doctor_empty) into EncounterDoctor
+!insert (encounter_bottom, doctor_bad) into EncounterDoctor

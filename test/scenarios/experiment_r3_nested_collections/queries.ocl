@@ -1,0 +1,8 @@
+context Person inv HasBartSomewhere:
+    self.aliases2d->flatten()->count('Bart') >= 1
+
+context Person inv OrderedFirstAliasDefined:
+    self.aliases2d->asOrderedSet()->flatten()->first().isDefined()
+
+context Person inv BagIntersectionKeepsMultiplicity:
+    self.aliases2d->flatten()->asBag()->intersection(self.aliases2d->flatten()->asBag())->count('Bart') >= 2

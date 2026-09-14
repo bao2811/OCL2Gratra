@@ -1,0 +1,2 @@
+profileId	uri	database	user	passwordEnvironment	expectedKernel	expectedEdition
+selected-2026.06-enterprise	bolt://localhost:7687	demo	neo4j		2026.06.0	enterprise

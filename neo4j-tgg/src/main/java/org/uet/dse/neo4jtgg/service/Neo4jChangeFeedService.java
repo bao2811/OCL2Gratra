@@ -7,5 +7,5 @@ public interface Neo4jChangeFeedService {
 
     void stop();
 
-    void applyRemoteProposal(TggWorkspaceContext context);
+    void previewRemoteProposal(TggWorkspaceContext context);
 }

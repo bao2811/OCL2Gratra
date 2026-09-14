@@ -1,0 +1,20 @@
+context FamilyRegister
+inv HasFamilies:
+self.families->notEmpty()
+
+context Family
+inv HasName:
+self.name <> ''
+
+context Family
+inv HasFather:
+self.father->notEmpty()
+
+context Family
+inv ChildrenHaveNames:
+self.sons->forAll(s | s.name <> '') and
+self.daughters->forAll(d | d.name <> '')
+
+context FamilyMember
+inv MappedToPerson:
+self.person->notEmpty()

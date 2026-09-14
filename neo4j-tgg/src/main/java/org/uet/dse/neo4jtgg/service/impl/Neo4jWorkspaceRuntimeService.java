@@ -17,6 +17,8 @@ import org.uet.dse.neo4j.repo.Neo4jObjectRepository;
 import org.uet.dse.neo4j.sync.helper.UmlTypeTranslator;
 import org.uet.dse.neo4j.sync.object.Neo4jObjectSnapshotUtils;
 import org.uet.dse.neo4j.sync.object.ObjectPushService;
+import org.uet.dse.neo4jtgg.engine.CorrRuntimeTraceHelper;
+import org.uet.dse.neo4jtgg.engine.ForwardTransformationResult;
 import org.uet.dse.neo4jtgg.model.GuardReport;
 import org.uet.dse.neo4jtgg.model.ImportBatch;
 import org.uet.dse.neo4jtgg.model.ImportLinkSpec;
@@ -25,6 +27,7 @@ import org.uet.dse.neo4jtgg.model.TggRuleInfo;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceDefinition;
 import org.uet.dse.neo4jtgg.model.WorkspaceSide;
+import org.uet.dse.neo4jtgg.model.WorkspaceMutationBatch;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -195,18 +198,111 @@ public class Neo4jWorkspaceRuntimeService {
             session.executeWrite(tx -> {
                 for (ImportObjectSpec spec : batch.getObjects()) {
                     MClass cls = model.getClass(spec.getClassName());
-                    objectRepository.upsertObjectNode(tx, spec.getObjectName(), spec.getClassName());
+                    objectRepository.upsertObjectNode(tx, model.name(), spec.getObjectName(), spec.getClassName());
 
                     for (Map.Entry<String, String> attr : spec.getAttributes().entrySet()) {
                         MAttribute attribute = cls.attribute(attr.getKey(), true);
                         Map<String, Object> metadata = buildAttributeMetadata(attribute);
                         Object mappedValue = parseImportValue(attribute.type(), attr.getValue());
-                        objectRepository.setAttributeValueNode(tx, spec.getObjectName(),
-                                attribute.owner().name(), attribute.name(), mappedValue, metadata);
+                        objectRepository.setAttributeValueNode(tx, model.name(), spec.getObjectName(),
+                                cls.name(), attribute.name(), mappedValue, metadata);
                     }
                 }
 
                 for (ImportLinkSpec linkSpec : batch.getLinks()) {
+                    upsertLink(tx, model, linkSpec);
+                }
+                return null;
+            });
+        }
+
+        ObjectPushService.updateObjectVersionOnServer();
+    }
+
+    public void applyForwardTransformationResult(TggWorkspaceContext context, ForwardTransformationResult result) {
+        applyImport(context, result.targetBatch());
+        if (!result.hasCorrespondences()) {
+            return;
+        }
+
+        try (Session session = Neo4jDriverManager.getInstance().openSession()) {
+            session.executeWrite(tx -> {
+                for (ForwardTransformationResult.CorrCreation creation : result.corrCreations()) {
+                    upsertCorrCreation(tx, creation);
+                }
+                return null;
+            });
+        }
+
+        ObjectPushService.updateObjectVersionOnServer();
+    }
+
+    public GuardReport validateMutation(TggWorkspaceContext context, WorkspaceMutationBatch batch) {
+        GuardReport report = new GuardReport();
+        if (batch == null || batch.isEmpty()) {
+            report.addWarning("Mutation batch is empty.");
+            return report;
+        }
+
+        MModel model = requireSideModel(context, batch.getReceiverSide());
+        FullObjectSnapshot snapshot = loadSnapshot(context, batch.getReceiverSide());
+
+        for (ImportObjectSpec spec : batch.getUpsertObjects()) {
+            MClass modelClass = model.getClass(spec.getClassName());
+            if (modelClass == null) {
+                report.addError("Class `" + spec.getClassName() + "` is not defined in model `" + model.name() + "`.");
+                continue;
+            }
+            for (String attributeName : spec.getAttributes().keySet()) {
+                if (modelClass.attribute(attributeName, true) == null) {
+                    report.addError("Attribute `" + attributeName + "` is not defined on class `" + spec.getClassName() + "`.");
+                }
+            }
+        }
+
+        for (ImportLinkSpec link : batch.getUpsertLinks()) {
+            MAssociation association = model.getAssociation(link.getAssociationName());
+            if (association == null) {
+                report.addError("Association `" + link.getAssociationName() + "` is not defined in model `" + model.name() + "`.");
+                continue;
+            }
+            for (String endpoint : link.getEndpointNames()) {
+                boolean presentInBatch = batch.getUpsertObjects().stream().anyMatch(obj -> obj.getObjectName().equals(endpoint));
+                if (!presentInBatch && !snapshot.objects.containsKey(endpoint)) {
+                    report.addError("Link `" + link.getAssociationName() + "` references missing Neo4j object `" + endpoint + "`.");
+                }
+            }
+        }
+
+        return report;
+    }
+
+    public void applyMutation(TggWorkspaceContext context, WorkspaceMutationBatch batch) {
+        if (batch == null || batch.isEmpty()) {
+            return;
+        }
+
+        MModel model = requireSideModel(context, batch.getReceiverSide());
+        try (Session session = Neo4jDriverManager.getInstance().openSession()) {
+            session.executeWrite(tx -> {
+                for (ImportLinkSpec linkSpec : batch.getDeleteLinks()) {
+                    deleteLink(tx, linkSpec);
+                }
+                for (String objectId : batch.getDeleteObjectIds()) {
+                    objectRepository.deleteObjectDeeply(tx, objectId);
+                }
+                for (ImportObjectSpec spec : batch.getUpsertObjects()) {
+                    MClass cls = model.getClass(spec.getClassName());
+                    objectRepository.upsertObjectNode(tx, model.name(), spec.getObjectName(), spec.getClassName());
+                    for (Map.Entry<String, String> attr : spec.getAttributes().entrySet()) {
+                        MAttribute attribute = cls.attribute(attr.getKey(), true);
+                        Map<String, Object> metadata = buildAttributeMetadata(attribute);
+                        Object mappedValue = parseImportValue(attribute.type(), attr.getValue());
+                        objectRepository.setAttributeValueNode(tx, model.name(), spec.getObjectName(),
+                                cls.name(), attribute.name(), mappedValue, metadata);
+                    }
+                }
+                for (ImportLinkSpec linkSpec : batch.getUpsertLinks()) {
                     upsertLink(tx, model, linkSpec);
                 }
                 return null;
@@ -236,9 +332,7 @@ public class Neo4jWorkspaceRuntimeService {
     }
 
     private String buildLinkIdentity(ImportLinkSpec link) {
-        return link.getAssociationName() + link.getEndpointNames().stream()
-                .map(endpoint -> "_" + endpoint)
-                .collect(Collectors.joining());
+        return link.getIdentity();
     }
 
     private Map<String, Object> buildAttributeMetadata(MAttribute attribute) {
@@ -302,6 +396,31 @@ public class Neo4jWorkspaceRuntimeService {
         return false;
     }
 
+    private void upsertCorrCreation(org.neo4j.driver.TransactionContext tx,
+                                    ForwardTransformationResult.CorrCreation creation) {
+        var record = creation.record();
+        objectRepository.upsertObjectNode(tx, record.objectId(), record.corrClassName());
+
+        for (Map.Entry<String, String> binding : creation.sourceBindings().entrySet()) {
+            objectRepository.upsertBinaryLink(tx,
+                    record.objectId(),
+                    binding.getValue(),
+                    CorrRuntimeTraceHelper.bindingAssociationName(record.appliedRuleName(), WorkspaceSide.SOURCE, binding.getKey()),
+                    "LinkAssociateWith",
+                    "corr",
+                    binding.getKey());
+        }
+        for (Map.Entry<String, String> binding : creation.targetBindings().entrySet()) {
+            objectRepository.upsertBinaryLink(tx,
+                    record.objectId(),
+                    binding.getValue(),
+                    CorrRuntimeTraceHelper.bindingAssociationName(record.appliedRuleName(), WorkspaceSide.TARGET, binding.getKey()),
+                    "LinkAssociateWith",
+                    "corr",
+                    binding.getKey());
+        }
+    }
+
     private void upsertLink(org.neo4j.driver.TransactionContext tx, MModel model, ImportLinkSpec linkSpec) {
         MAssociation association = model.getAssociation(linkSpec.getAssociationName());
         List<String> endpoints = linkSpec.getEndpointNames();
@@ -314,9 +433,11 @@ public class Neo4jWorkspaceRuntimeService {
                 participant.put("objName", endpoints.get(i));
                 participant.put("role", associationClass.associationEnds().get(i).name());
                 participant.put("label", "LinkAssociateWith");
+                participant.put("index", i);
                 participants.add(participant);
             }
-            objectRepository.upsertLinkObject(tx, linkObjectName, associationClass.name(), participants);
+            objectRepository.upsertLinkObject(
+                    tx, model.name(), linkObjectName, associationClass.name(), participants);
             return;
         }
 
@@ -325,12 +446,15 @@ public class Neo4jWorkspaceRuntimeService {
             MAssociationEnd targetEnd = association.associationEnds().get(1);
             String label = resolveBinaryLinkLabel(sourceEnd, targetEnd);
             objectRepository.upsertBinaryLink(tx,
+                    model.name(),
                     endpoints.get(0),
                     endpoints.get(1),
                     association.name(),
                     label,
                     sourceEnd.name(),
-                    targetEnd.name());
+                    targetEnd.name(),
+                    qualifierValuesForEnd(linkSpec, 0),
+                    qualifierValuesForEnd(linkSpec, 1));
             return;
         }
 
@@ -344,7 +468,7 @@ public class Neo4jWorkspaceRuntimeService {
             participant.put("label", "LinkAssociateWith");
             participants.add(participant);
         }
-        objectRepository.upsertTernaryLink(tx, association.name(), participants);
+        objectRepository.upsertTernaryLink(tx, model.name(), association.name(), participants);
     }
 
     private String resolveBinaryLinkLabel(MAssociationEnd sourceEnd, MAssociationEnd targetEnd) {
@@ -355,5 +479,56 @@ public class Neo4jWorkspaceRuntimeService {
             return "LinkAggregates";
         }
         return "LinkAssociateWith";
+    }
+
+    private void deleteLink(org.neo4j.driver.TransactionContext tx, ImportLinkSpec linkSpec) {
+        List<String> endpoints = linkSpec.getEndpointNames();
+        if (endpoints.size() == 2) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("left", endpoints.get(0));
+            params.put("right", endpoints.get(1));
+            params.put("assocName", linkSpec.getAssociationName());
+            params.put("sourceQualifiers", qualifierValuesForEnd(linkSpec, 0));
+            params.put("targetQualifiers", qualifierValuesForEnd(linkSpec, 1));
+            tx.run("""
+                    MATCH (a {use_id: $left})-[r]->(b {use_id: $right})
+                    WHERE r.name = $assocName OR r.associationName = $assocName
+                      AND coalesce(r.sourceQualifiers, []) = $sourceQualifiers
+                      AND coalesce(r.targetQualifiers, []) = $targetQualifiers
+                    DELETE r
+                    """, params);
+            tx.run("""
+                    MATCH (a {use_id: $right})-[r]->(b {use_id: $left})
+                    WHERE r.name = $assocName OR r.associationName = $assocName
+                      AND coalesce(r.sourceQualifiers, []) = $targetQualifiers
+                      AND coalesce(r.targetQualifiers, []) = $sourceQualifiers
+                    DELETE r
+                    """, params);
+            return;
+        }
+
+        tx.run("""
+                MATCH (hub)
+                WHERE hub.use_id STARTS WITH $hubIdPrefix
+                OPTIONAL MATCH (hub)-[r]-()
+                DELETE r
+                WITH hub
+                DETACH DELETE hub
+                """, Map.of("hubIdPrefix", linkSpec.getAssociationName() + "_"));
+    }
+
+    private String lowerFirst(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        return Character.toLowerCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private List<String> qualifierValuesForEnd(ImportLinkSpec linkSpec, int endIndex) {
+        if (linkSpec.getQualifierValues().size() <= endIndex) {
+            return List.of();
+        }
+        List<String> values = linkSpec.getQualifierValues().get(endIndex);
+        return values != null ? values : List.of();
     }
 }

@@ -1,6 +1,7 @@
 package org.uet.dse.neo4jtgg.ui;
 
 import org.uet.dse.neo4jtgg.service.impl.DefaultTggWorkspaceService;
+import org.uet.dse.neo4jtgg.model.IncrementalApplyResult;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -33,12 +34,24 @@ public class RuntimeStatusPanel extends JPanel {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton btnRefreshStatus = new JButton("Refresh Status");
         JButton btnRefreshMirror = new JButton("Refresh USE Mirror");
+        JButton btnPreviewDelta = new JButton("Preview Remote Delta");
+        JButton btnApplyDelta = new JButton("Apply Remote Delta");
+        JButton btnDiscardDelta = new JButton("Discard Proposal");
+        JButton btnRefreshBaseline = new JButton("Refresh Baseline");
 
         btnRefreshStatus.addActionListener(e -> refreshStatus());
         btnRefreshMirror.addActionListener(e -> refreshMirror());
+        btnPreviewDelta.addActionListener(e -> previewRemoteDelta());
+        btnApplyDelta.addActionListener(e -> applyRemoteDelta());
+        btnDiscardDelta.addActionListener(e -> discardProposal());
+        btnRefreshBaseline.addActionListener(e -> refreshBaseline());
 
         panel.add(btnRefreshStatus);
         panel.add(btnRefreshMirror);
+        panel.add(btnPreviewDelta);
+        panel.add(btnApplyDelta);
+        panel.add(btnDiscardDelta);
+        panel.add(btnRefreshBaseline);
         return panel;
     }
 
@@ -54,5 +67,47 @@ public class RuntimeStatusPanel extends JPanel {
     public void refreshStatus() {
         txtStatus.setText(workspaceService.buildRuntimeStatusText());
         txtStatus.setCaretPosition(0);
+    }
+
+    private void previewRemoteDelta() {
+        try {
+            workspaceService.previewIncrementalRemoteChanges(workspaceService.getOrCreateContext());
+            refreshStatus();
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Preview Remote Delta Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void applyRemoteDelta() {
+        try {
+            IncrementalApplyResult result = workspaceService.applyPendingIncrementalProposal(workspaceService.getOrCreateContext());
+            refreshStatus();
+            JOptionPane.showMessageDialog(this, result.message(), "Apply Remote Delta",
+                    result.status() == org.uet.dse.neo4jtgg.model.IncrementalSyncStatus.APPLIED
+                            ? JOptionPane.INFORMATION_MESSAGE
+                            : JOptionPane.WARNING_MESSAGE);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Apply Remote Delta Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void discardProposal() {
+        try {
+            IncrementalApplyResult result = workspaceService.discardPendingIncrementalProposal(workspaceService.getOrCreateContext());
+            refreshStatus();
+            JOptionPane.showMessageDialog(this, result.message(), "Discard Proposal", JOptionPane.INFORMATION_MESSAGE);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Discard Proposal Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refreshBaseline() {
+        try {
+            IncrementalApplyResult result = workspaceService.refreshIncrementalBaseline(workspaceService.getOrCreateContext());
+            refreshStatus();
+            JOptionPane.showMessageDialog(this, result.message(), "Refresh Baseline", JOptionPane.INFORMATION_MESSAGE);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Refresh Baseline Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

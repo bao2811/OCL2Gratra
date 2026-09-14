@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pgmm:PGSpecification xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:pgmm="https://uet-dse.org/pgmm/canonical/1.0"
+    name="PGMM-CANONICAL-1" profileId="canonical-v1"
+    schemaVersion="canonical-v7.2-typed-scalars-model-isolation" proofStatus="CERTIFIED">
+  <modelScope modelName="Families" modelKey="Families" keyDelimiter="::"/>
+  <nodeTypes name="Object" projection="M1_INSTANCE" proofStatus="CERTIFIED" labels="Object">
+    <properties name="modelKey" physicalName="modelKey" valueType="STRING" required="true"/>
+    <properties name="use_id" physicalName="use_id" valueType="STRING" required="true"/>
+    <properties name="objectKey" physicalName="objectKey" valueType="STRING" required="true"/>
+  </nodeTypes>
+  <nodeTypes name="UmlClass" projection="M2_SCHEMA" proofStatus="CERTIFIED" labels="UmlClass">
+    <properties name="modelKey" physicalName="modelKey" valueType="STRING" required="true"/>
+    <properties name="classKey" physicalName="classKey" valueType="STRING" required="true"/>
+  </nodeTypes>
+  <nodeTypes name="AttributeValue" projection="M1_INSTANCE" proofStatus="CERTIFIED" labels="AttributeValue">
+    <properties name="modelKey" physicalName="modelKey" valueType="STRING" required="true"/>
+    <properties name="attributeKey" physicalName="attributeKey" valueType="STRING" required="true"/>
+    <properties name="value" physicalName="value" valueType="STRING" required="false" codec="scalar-v1"/>
+  </nodeTypes>
+  <relationshipTypes name="ObjectInstanceOf" projection="TYPING" proofStatus="CERTIFIED"
+      physicalTypes="ObjectInstanceOf" direction="OUTGOING" setSemantics="true">
+    <properties name="modelKey" physicalName="modelKey" valueType="STRING" required="true"/>
+    <sourceEnd name="object" roleName="object" lower="0" upper="-1" nodeType="//@nodeTypes.0"/>
+    <targetEnd name="class" roleName="class" lower="1" upper="1" nodeType="//@nodeTypes.1"/>
+  </relationshipTypes>
+  <relationshipTypes name="ObjectHasAttribute" projection="M1_INSTANCE" proofStatus="CERTIFIED"
+      physicalTypes="ObjectHasAttribute" direction="OUTGOING" setSemantics="true">
+    <properties name="modelKey" physicalName="modelKey" valueType="STRING" required="true"/>
+    <sourceEnd name="owner" roleName="owner" lower="0" upper="-1" nodeType="//@nodeTypes.0"/>
+    <targetEnd name="slot" roleName="slot" lower="0" upper="-1" nodeType="//@nodeTypes.2"/>
+  </relationshipTypes>
+  <relationshipTypes name="Link" projection="M1_INSTANCE" proofStatus="CERTIFIED"
+      physicalTypes="Link" direction="OUTGOING" setSemantics="true">
+    <properties name="modelKey" physicalName="modelKey" valueType="STRING" required="true"/>
+    <properties name="sourceQualifiers" physicalName="sourceQualifiers" valueType="STRING_LIST"/>
+    <properties name="targetQualifiers" physicalName="targetQualifiers" valueType="STRING_LIST"/>
+    <sourceEnd name="source" roleName="source" lower="0" upper="-1" nodeType="//@nodeTypes.0"/>
+    <targetEnd name="target" roleName="target" lower="0" upper="-1" nodeType="//@nodeTypes.0"/>
+  </relationshipTypes>
+  <keyDefinitions name="objectKey" unique="true" modelScoped="true"
+      constructionExpression="modelKey::object::use_id" ownerType="//@nodeTypes.0"
+      components="//@nodeTypes.0/@properties.0 //@nodeTypes.0/@properties.1"/>
+  <keyDefinitions name="classKey" unique="true" modelScoped="true"
+      constructionExpression="modelKey::class::name" ownerType="//@nodeTypes.1"
+      components="//@nodeTypes.1/@properties.0 //@nodeTypes.1/@properties.1"/>
+  <codecDefinitions codecId="scalar-v1" name="CanonicalScalarValueCodec" sourceType="OCLScalar"
+      storageType="STRING" bottomToken="v1|V" valuePrefix="v1|" injective="true"
+      decodeExpression="CanonicalScalarValueCodec.decode"/>
+  <accessorDefinitions name="context" kind="CONTEXT" resultKind="SET"
+      cypherTemplate="MATCH context by modelKey and classKey" setSemantics="true" bottomSafe="true"
+      proofStatus="CERTIFIED" nodeTypes="//@nodeTypes.0 //@nodeTypes.1"/>
+  <accessorDefinitions name="allInstances" kind="ALL_INSTANCES" resultKind="SET"
+      cypherTemplate="MATCH conformance closure by modelKey" setSemantics="true" bottomSafe="true"
+      proofStatus="CERTIFIED" nodeTypes="//@nodeTypes.0 //@nodeTypes.1"
+      relationshipTypes="//@relationshipTypes.0"/>
+  <accessorDefinitions name="attribute" kind="ATTRIBUTE" resultKind="SCALAR"
+      cypherTemplate="MATCH ObjectHasAttribute by modelKey and attributeKey" bottomSafe="true"
+      proofStatus="CERTIFIED" nodeTypes="//@nodeTypes.0 //@nodeTypes.2"
+      relationshipTypes="//@relationshipTypes.1" requiredProperties="//@nodeTypes.2/@properties.2"/>
+  <accessorDefinitions name="navigation" kind="NAVIGATION" resultKind="SET"
+      cypherTemplate="MATCH Link* by associationKey roles direction qualifiers and modelKey"
+      setSemantics="true" bottomSafe="true" proofStatus="CERTIFIED"
+      nodeTypes="//@nodeTypes.0" relationshipTypes="//@relationshipTypes.2"/>
+  <accessorDefinitions name="objectIdentity" kind="OBJECT_IDENTITY" resultKind="SCALAR"
+      cypherTemplate="RETURN object.use_id" bottomSafe="true" proofStatus="CERTIFIED"
+      nodeTypes="//@nodeTypes.0" requiredProperties="//@nodeTypes.0/@properties.1"/>
+  <wfConstraints constraintId="PGMM-WF-MODEL-SCOPE" name="model isolation"
+      severity="ERROR" expressionLanguage="OCL" expression="every node and relationship carries the active modelKey"
+      proofStatus="CERTIFIED"/>
+  <wfConstraints constraintId="PGMM-WF-BOTTOM" name="bottom separation"
+      severity="ERROR" expressionLanguage="OCL" expression="v1|V is disjoint from every typed scalar encoding"
+      proofStatus="CERTIFIED"/>
+</pgmm:PGSpecification>

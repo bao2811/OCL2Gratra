@@ -3,6 +3,8 @@ package org.uet.dse.neo4j.sync.object;
 import org.neo4j.driver.Record;
 import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
+import org.uet.dse.neo4j.sync.helper.CanonicalCollectionValueCodec;
+import org.uet.dse.neo4j.sync.helper.CanonicalScalarValueCodec;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,11 +44,13 @@ public class Neo4jObjectSnapshotMapper {
         ((TreeMap<Integer, String>) attrStructureHelper.get(attrName).get(pathIdx)).put(itemIdx, refId);
       }
       else if (!isObjRef && isColl && leafVal != null && !leafVal.toString().equals("NESTED_COLLECTION")) {
-        attrStructureHelper.get(attrName).put(pathIdx, decodePrimitiveCollection(leafVal.toString()));
+        attrStructureHelper.get(attrName).put(pathIdx,
+            decodePrimitiveCollection(leafVal.toString(), (String) item.get("type")));
       }
-      else if (!isObjRef && !isColl && leafVal != null && !leafVal.toString().equals("NESTED_COLLECTION") && !leafVal.toString().equals("Undefined")) {
-
-        os.primitiveValues.putIfAbsent(attrName, leafVal);
+      else if (!isObjRef && !isColl && leafVal != null
+          && !leafVal.toString().equals("NESTED_COLLECTION")) {
+        Object decoded = decodeScalarValue(leafVal, (String) item.get("type"));
+        if (decoded != null) os.primitiveValues.putIfAbsent(attrName, decoded);
       }
     }
 
@@ -100,30 +104,35 @@ public class Neo4jObjectSnapshotMapper {
         || type.startsWith("Set(") || type.startsWith("Sequence(");
   }
 
-  private static List<Object> decodePrimitiveCollection(String raw) {
-    if (raw == null || raw.trim().isEmpty() || raw.equals("COLLECTION_EMPTY") || raw.equals("Undefined") || raw.equals("COLLECTION_DATA")) {
+  static List<Object> decodePrimitiveCollection(String raw, String typeName) {
+    if (raw == null || raw.equals("Undefined") || raw.equals("COLLECTION_DATA")) {
       return new ArrayList<>();
     }
-    return Arrays.stream(raw.split("\\s*\\|\\s*"))
-        .map(s -> s.trim().equals("null") ? null : convertStringToTypedObject(s.trim()))
-        .collect(Collectors.toList());
+    return new ArrayList<>(CanonicalCollectionValueCodec.decodeScalarLeaves(raw, typeName));
   }
-  private static Object convertStringToTypedObject(String s) {
-    try {
-      if (s.contains(".")) return Double.parseDouble(s);
-      return Long.parseLong(s);
-    } catch (Exception e) {
-      if (s.equalsIgnoreCase("true")) return true;
-      if (s.equalsIgnoreCase("false")) return false;
-      return s;
+
+  static Object decodeScalarValue(Object raw, String typeName) {
+    if (raw == null || "Undefined".equals(raw)) return null;
+    if (raw instanceof String payload && payload.startsWith("v1|")) {
+      if (typeName == null || typeName.isBlank()) {
+        throw new IllegalArgumentException("A typed canonical scalar payload is missing val.type");
+      }
+      return CanonicalScalarValueCodec.decode(payload, typeName);
     }
+    return raw;
   }
 
   static LinkState toBinaryLink(Record rec) {
     LinkState ls = new LinkState();
     ls.assocName = rec.get("assocName").asString();
-    ls.edgeLabel = rec.get("label").asString();
+    if (rec.containsKey("label") && !rec.get("label").isNull()) {
+      ls.edgeLabel = rec.get("label").asString();
+    }
     ls.participants = Arrays.asList(rec.get("src").asString(), rec.get("tgt").asString());
+    ls.qualifierValues = List.of(
+        rec.get("sourceQualifiers").asList(v -> v.isNull() ? null : v.asString()),
+        rec.get("targetQualifiers").asList(v -> v.isNull() ? null : v.asString())
+    );
     return ls;
   }
 

@@ -116,5 +116,52 @@ fabric.properties
 .project
 
 target/
+*.log
 
 *.md
+!examples/carrental/README.md
+DAKH/
+md/
+!md/
+!md/research/
+!md/research/specification/
+!md/research/specification/**/*.md
+!md/research/specification/**/*.emf
+!md/research/evidence/
+!md/research/evidence/medical-carrental-experiment-2026-08-23.md
+!md/research/evidence/medical-carrental-results-2026-08-23.csv
+!md/research/model/
+!md/research/model/structure/
+!md/research/model/structure/yte-model-comparison.md
+!md/research/model/structure/yte.png
+*.html
+
+# Paper sources and generated publication artifacts must remain local.
+/verification/publication/
+
+# Local assembled runtime used only for verification runs
+/_runtime_clean/
+
+# Downloaded local Lean toolchain and release archive
+/_build_lib/
+
+# Local Lake build cache; CI rebuilds it from the tracked Lean project
+/verification/lean/.lake/
+
+# Files and directories excluded from the public repository.
+/md/
+**/coverage/
+!/use-core/src/main/java/org/tzi/use/analysis/coverage/
+!/use-core/src/main/java/org/tzi/use/analysis/coverage/**
+/verification/coverage/
+/verification/evidence/
+/examples/ocl-dataset/
+**/target/site/jacoco/
+**/build/reports/
+**/*.log
+**/*.aux
+**/*.blg
+**/*.toc
+**/*.out
+/research
+/a

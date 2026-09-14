@@ -1,0 +1,33 @@
+context FamilyRegister
+inv HasFamilies:
+self.families->size() > 0
+
+context Family
+inv HasName:
+self.name <> ''
+
+context Family
+inv HasFather:
+self.father->size() > 0
+
+context Family
+inv ChildrenHaveNames:
+self.sons->forAll(s | s.name <> '') and
+self.daughters->forAll(d | d.name <> '')
+
+context Family
+inv AtLeastOneParent:
+self.father->size() > 0 or self.mother->size() > 0
+
+context Family
+inv AtLeastOneChild:
+self.sons->size() > 0 or self.daughters->size() > 0
+
+context Family
+inv MotherNamePresentIfExists:
+self.mother->forAll(m | m.name <> '')
+
+context Family
+inv FamilyNameNotUsedByChildren:
+self.sons->forAll(s | s.name <> self.name) and
+self.daughters->forAll(d | d.name <> self.name)

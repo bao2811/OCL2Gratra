@@ -1,0 +1,22 @@
+model NonBinaryBuy
+
+class Person
+attributes
+    age : Integer
+end
+
+class Company
+attributes
+    name : String
+end
+
+class Animal
+attributes
+    kind : String
+end
+
+association Buy between
+    Person[0..1] role buyer
+    Company[0..1] role seller
+    Animal[*] role pet
+end

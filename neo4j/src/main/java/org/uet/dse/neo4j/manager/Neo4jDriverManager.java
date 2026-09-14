@@ -62,6 +62,16 @@ public class Neo4jDriverManager implements AutoCloseable {
 
         // Kiểm tra kết nối ngay lập tức
         instance.driver.verifyConnectivity();
+        // Server connectivity alone does not prove that the selected database
+        // exists. Verify it before dependent UI operations are unlocked.
+        try (Session targetSession = instance.openSession()) {
+            targetSession.run("RETURN 1 AS connectionCheck").consume();
+        } catch (Exception exception) {
+            instance.driver.close();
+            instance = null;
+            throw new Exception("Cannot access target database `" + database + "`: "
+                    + exception.getMessage(), exception);
+        }
         WorkLogManager.getInstance().log("CONNECTION", "Connected to " + uri + " [DB: " + database + "]");
     }
 

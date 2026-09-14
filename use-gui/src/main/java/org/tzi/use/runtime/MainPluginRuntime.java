@@ -25,7 +25,11 @@ public class MainPluginRuntime {
 	 */
 	public static class JarFilter implements FilenameFilter {
 		public boolean accept(File dir, String name) {
-			return (name.endsWith(".jar"));
+			if (!name.endsWith(".jar")) {
+				return false;
+			}
+			String normalized = name.toLowerCase();
+			return !normalized.startsWith("validator") && !normalized.startsWith("use-validator");
 		}
 	}
 

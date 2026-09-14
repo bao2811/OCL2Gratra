@@ -1,0 +1,313 @@
+param(
+    [string]$RegistryPath = (Join-Path $PSScriptRoot '..\contract\proof-contract-registry.json'),
+    [string]$MechanizedPath = (Join-Path $PSScriptRoot '..\lean'),
+    [string]$LeanPath = '',
+    [switch]$AllowMissingToolchain
+)
+
+$ErrorActionPreference = 'Stop'
+$errors = [System.Collections.Generic.List[string]]::new()
+
+function Add-CheckError([string]$Message) {
+    $script:errors.Add($Message)
+}
+
+function Read-Utf8([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Missing file: $Path"
+    }
+    return [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path), [System.Text.Encoding]::UTF8)
+}
+
+function Get-Utf8LfSha256([string]$Path) {
+    $canonical = (Read-Utf8 $Path).Replace("`r`n", "`n").Replace("`r", "`n")
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($canonical))
+        return ([System.BitConverter]::ToString($digest)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
+$workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$registry = (Read-Utf8 $RegistryPath) | ConvertFrom-Json
+$registryHash = Get-Utf8LfSha256 $RegistryPath
+$proofPath = Join-Path $MechanizedPath 'Ocl2CypherProof.lean'
+$toolchainPath = Join-Path $MechanizedPath 'lean-toolchain'
+$lakefilePath = Join-Path $MechanizedPath 'lakefile.lean'
+$proof = Read-Utf8 $proofPath
+$toolchain = (Read-Utf8 $toolchainPath).Trim()
+[void](Read-Utf8 $lakefilePath)
+$expectedModulePaths = @(
+    'verification/lean/Ocl2Cypher/SemanticTypes.lean',
+    'verification/lean/Ocl2Cypher/ExtensionalNestedSet.lean',
+    'verification/lean/Ocl2Cypher/CanonicalScalarCodec.lean',
+    'verification/lean/Ocl2Cypher/CaseStudyVerticalSlices.lean'
+)
+$modulePaths = @($registry.mechanization.modulePaths | ForEach-Object { ([string]$_).Replace('\','/') })
+$moduleFiles = [System.Collections.Generic.List[string]]::new()
+if ($modulePaths.Count -ne $expectedModulePaths.Count) {
+    Add-CheckError "Registry Lean module count drift: expected $($expectedModulePaths.Count), actual $($modulePaths.Count)"
+} else {
+    for ($index = 0; $index -lt $expectedModulePaths.Count; $index++) {
+        if ($modulePaths[$index] -cne $expectedModulePaths[$index]) {
+            Add-CheckError "Registry Lean module drift at index $index`: expected '$($expectedModulePaths[$index])', actual '$($modulePaths[$index])'"
+        }
+    }
+}
+foreach ($relativeModulePath in $modulePaths) {
+    if (-not $relativeModulePath.StartsWith('verification/lean/', [System.StringComparison]::Ordinal)) {
+        Add-CheckError "Registered Lean module must be below verification/lean: $relativeModulePath"
+        continue
+    }
+    $packageRelativePath = $relativeModulePath.Substring('verification/lean/'.Length)
+    $moduleFile = [System.IO.Path]::GetFullPath((Join-Path $MechanizedPath $packageRelativePath))
+    if (-not (Test-Path -LiteralPath $moduleFile -PathType Leaf)) {
+        Add-CheckError "Registered Lean module is missing: $relativeModulePath"
+    } else {
+        $moduleFiles.Add($moduleFile)
+    }
+}
+$allLeanSource = $proof + "`n" + (($moduleFiles | ForEach-Object { Read-Utf8 $_ }) -join "`n")
+
+$expectedLeanVersion = '4.32.2'
+$expectedToolchain = "leanprover/lean4:v$expectedLeanVersion"
+$expectedRequiredTheorems = @(
+    'image_reflects_membership',
+    'image_preserves_subset',
+    'exists_over_image',
+    'forall_over_image',
+    'lift1_source_bound',
+    'lift1_bound_validation',
+    'lift1_present',
+    'lift1_absent',
+    'lift1_consumer_agreement',
+    'encodeValue_injective',
+    'implies_rewrite',
+    'forall_rewrite',
+    'notEmpty_rewrite',
+    'classConforms_trans',
+    'every_certified_type_conforms_to_oclAny',
+    'unlimitedNatural_conforms_to_integer',
+    'set_conformance_is_covariant',
+    'decideConforms_iff',
+    'extractedHierarchy_decideConforms_iff',
+    'nested_decode_encode_value',
+    'nested_encodeValue_injective',
+    'extensional_nested_encodeValue_injective',
+    'extensional_nested_encode_preserves_finiteness',
+    'extensional_nested_payload_encode_injective',
+    'extensional_nested_payload_encode_preserves_finiteness',
+    'canonical_scalar_codec_injective',
+    'canonical_scalar_escape_injective',
+    'extensional_nested_canonical_payload_encode_injective',
+    'normalize_preserves_eval',
+    'normalize_reaches_redex_free',
+    'implies_root_strictly_decreases',
+    'all_rewrite_semantics',
+    'normalize_reaches_normal_form',
+    'normalize_idempotent',
+    'root_rewrite_strictly_decreases',
+    'typed_rewrite_preserves_type',
+    'scoped_rename_preserves_binder_boundary',
+    'named_to_scoped_semantic_correspondence',
+    'java_capture_guard_sound',
+    'java_guarded_rename_preserves_scoped_semantics',
+    'structural_preservation',
+    'java_ir_eval_refinement',
+    'prod_plan_sim_sound',
+    'certified_nva_grammar_complete',
+    'spec_plan_sim_sound',
+    'bound_va_abstraction',
+    'pa_comp',
+    'theorem6_forward',
+    'theorem6_backward',
+    'theorem6_at_object',
+    'case_study_entity_id_injective',
+    'nested_sequence_payload_injective',
+    'nested_sequence_preserves_width',
+    'nested_sequence_preserves_inner_widths',
+    'nested_scalar_bottom_separated',
+    'nary_projection_agreement',
+    'nary_projection_noGhost',
+    'nested_entity_noGhost'
+)
+if ($toolchain -cne $expectedToolchain) {
+    Add-CheckError "Lean toolchain drift: expected '$expectedToolchain', actual '$toolchain'"
+}
+if (-not $proof.Contains("def proofContractVersion : String := `"$($registry.version)`"")) {
+    Add-CheckError "Lean proof does not pin registry contract $($registry.version)"
+}
+if (-not $proof.Contains($registryHash)) {
+    Add-CheckError "Lean proof has stale registry SHA-256; expected $registryHash"
+}
+if (-not $proof.Contains("def pinnedLeanVersion : String := `"$expectedLeanVersion`"")) {
+    Add-CheckError "Lean proof does not pin Lean $expectedLeanVersion"
+}
+
+$forbidden = @(
+    @{ Pattern = '(?m)^\s*axiom\b'; Label = 'axiom declaration' },
+    @{ Pattern = '(?m)^\s*opaque\b'; Label = 'opaque declaration' },
+    @{ Pattern = '\bsorry\b'; Label = 'sorry placeholder' },
+    @{ Pattern = '\badmit\b'; Label = 'admit placeholder' }
+)
+foreach ($item in $forbidden) {
+    if ($allLeanSource -match $item.Pattern) {
+        Add-CheckError "Lean proof contains forbidden $($item.Label)"
+    }
+}
+
+$requiredTheorems = @($registry.mechanization.requiredTheorems | ForEach-Object { [string]$_ })
+if ($requiredTheorems.Count -ne $expectedRequiredTheorems.Count) {
+    Add-CheckError "Registry mechanization theorem count drift: expected $($expectedRequiredTheorems.Count), actual $($requiredTheorems.Count)"
+} else {
+    for ($i = 0; $i -lt $expectedRequiredTheorems.Count; $i++) {
+        if ($requiredTheorems[$i] -cne $expectedRequiredTheorems[$i]) {
+            Add-CheckError "Registry mechanization theorem drift at index $i`: expected '$($expectedRequiredTheorems[$i])', actual '$($requiredTheorems[$i])'"
+        }
+    }
+}
+foreach ($theorem in $requiredTheorems) {
+    if ($proof -notmatch ('(?m)^\s*theorem\s+' + [regex]::Escape($theorem) + '\b')) {
+        Add-CheckError "Lean proof is missing required theorem $theorem"
+    }
+}
+$allowedCoreAxioms = @($registry.mechanization.axiomAudit.allowedCoreAxioms | ForEach-Object { [string]$_ })
+if ($allowedCoreAxioms.Count -ne 2 -or
+    $allowedCoreAxioms[0] -cne 'propext' -or
+    $allowedCoreAxioms[1] -cne 'Quot.sound') {
+    Add-CheckError "Lean allowed-core-axiom policy drift: expected propext,Quot.sound; actual '$($allowedCoreAxioms -join ',')'"
+}
+$axiomAuditTheorems = @($registry.mechanization.axiomAudit.theorems)
+foreach ($audit in $axiomAuditTheorems) {
+    if (-not $proof.Contains("#print axioms $($audit.name)")) {
+        Add-CheckError "Lean proof is missing axiom audit for $($audit.name)"
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($LeanPath)) {
+    $portable = Join-Path $workspace '_build_lib\lean-4.32.2\lean-4.32.2-windows\bin\lean.exe'
+    if (Test-Path -LiteralPath $portable -PathType Leaf) {
+        $LeanPath = $portable
+    } else {
+        $command = Get-Command 'lean' -ErrorAction SilentlyContinue
+        if ($null -ne $command) { $LeanPath = $command.Source }
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($LeanPath) -or -not (Test-Path -LiteralPath $LeanPath -PathType Leaf)) {
+    if ($AllowMissingToolchain) {
+        Write-Warning "Lean $expectedLeanVersion is unavailable; static mechanization contract checks ran, kernel check skipped."
+    } else {
+        Add-CheckError "Lean $expectedLeanVersion executable is required but unavailable"
+    }
+} else {
+    Push-Location (Resolve-Path -LiteralPath $MechanizedPath)
+    try {
+        # On CI, LeanPath can be the elan shim without a global default
+        # toolchain. Resolve its version inside the Lake project so elan reads
+        # this proof package's pinned lean-toolchain file.
+        $versionOutput = (& $LeanPath '--version' 2>&1 | Out-String)
+        $versionExit = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($versionExit -ne 0 -or -not $versionOutput.Contains("version $expectedLeanVersion")) {
+        Add-CheckError "Lean executable version mismatch: $versionOutput"
+    } else {
+        $tempRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+        $outputDirectory = Join-Path $tempRoot ("ocl2cypher-lean-" + [guid]::NewGuid().ToString('N'))
+        [void][System.IO.Directory]::CreateDirectory($outputDirectory)
+        try {
+            $oleanPath = Join-Path $outputDirectory 'Ocl2CypherProof.olean'
+            $previousPreference = $ErrorActionPreference
+            $previousLeanPathEnvironment = $env:LEAN_PATH
+            $ErrorActionPreference = 'Continue'
+            try {
+                $env:LEAN_PATH = $outputDirectory
+                $leanOutput = @()
+                $leanExit = 0
+                foreach ($relativeModulePath in $modulePaths) {
+                    $packageRelative = $relativeModulePath.Substring('verification/lean/'.Length)
+                    $moduleFile = [System.IO.Path]::GetFullPath((Join-Path $MechanizedPath $packageRelative))
+                    if (-not (Test-Path -LiteralPath $moduleFile -PathType Leaf)) {
+                        $leanExit = 1
+                        break
+                    }
+                    $moduleOleanRelative = [System.IO.Path]::ChangeExtension(
+                        $packageRelative.Replace('/', [System.IO.Path]::DirectorySeparatorChar), '.olean')
+                    $moduleOleanPath = Join-Path $outputDirectory $moduleOleanRelative
+                    [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $moduleOleanPath))
+                    $moduleOutput = @(& $LeanPath '-R' (Resolve-Path -LiteralPath $MechanizedPath) `
+                        '-o' $moduleOleanPath $moduleFile 2>&1)
+                    $moduleExit = $LASTEXITCODE
+                    if ($moduleExit -ne 0 -or -not (Test-Path -LiteralPath $moduleOleanPath -PathType Leaf)) {
+                        $leanOutput = @("Module $relativeModulePath failed:") + $moduleOutput
+                        $leanExit = if ($moduleExit -eq 0) { 1 } else { $moduleExit }
+                        break
+                    }
+                }
+                if ($leanExit -eq 0) {
+                    Push-Location (Resolve-Path -LiteralPath $MechanizedPath)
+                    try {
+                        $leanOutput = @(& $LeanPath '-R' (Resolve-Path -LiteralPath $MechanizedPath) `
+                            '-o' $oleanPath (Resolve-Path -LiteralPath $proofPath) 2>&1)
+                        $leanExit = $LASTEXITCODE
+                    } finally {
+                        Pop-Location
+                    }
+                }
+            } finally {
+                if ($null -eq $previousLeanPathEnvironment) {
+                    Remove-Item Env:LEAN_PATH -ErrorAction SilentlyContinue
+                } else {
+                    $env:LEAN_PATH = $previousLeanPathEnvironment
+                }
+                $ErrorActionPreference = $previousPreference
+            }
+            $leanText = $leanOutput | Out-String
+            if ($leanExit -ne 0 -or -not (Test-Path -LiteralPath $oleanPath -PathType Leaf)) {
+                Add-CheckError "Lean kernel rejected the proof (exit $leanExit): $leanText"
+            }
+            if ($leanText.Contains('sorryAx')) {
+                Add-CheckError 'Lean axiom report contains sorryAx'
+            }
+            foreach ($match in [regex]::Matches($leanText, 'depends on axioms:\s*\[([^\]]*)\]')) {
+                $reported = @($match.Groups[1].Value.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                foreach ($axiom in $reported) {
+                    if ($allowedCoreAxioms -cnotcontains $axiom) {
+                        Add-CheckError "Lean axiom report contains unapproved core axiom $axiom"
+                    }
+                }
+            }
+            $leanNormalizedText = [regex]::Replace($leanText, '\s+', ' ')
+            foreach ($audit in $axiomAuditTheorems) {
+                $expected = @($audit.expected | ForEach-Object { [string]$_ })
+                $expectedText = if ($expected.Count -eq 0) {
+                    "'$($audit.name)' does not depend on any axioms"
+                } else {
+                    "'$($audit.name)' depends on axioms: [$($expected -join ', ')]"
+                }
+                $expectedNormalizedText = [regex]::Replace($expectedText, '\s+', ' ')
+                if (-not $leanNormalizedText.Contains($expectedNormalizedText)) {
+                    Add-CheckError "Lean axiom audit drift for $($audit.name); expected '$expectedText'"
+                }
+            }
+        } finally {
+            $resolvedOutput = [System.IO.Path]::GetFullPath($outputDirectory)
+            if ($resolvedOutput.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
+                (Split-Path $resolvedOutput -Leaf).StartsWith('ocl2cypher-lean-')) {
+                Remove-Item -LiteralPath $resolvedOutput -Recurse -Force
+            }
+        }
+    }
+}
+
+if ($errors.Count -gt 0) {
+    foreach ($message in $errors) { Write-Error $message -ErrorAction Continue }
+    exit 1
+}
+
+$kernelStatus = if ([string]::IsNullOrWhiteSpace($LeanPath)) { 'skipped' } else { 'PASS' }
+Write-Host "Mechanized proof check PASS: contract=$($registry.version), registry=$registryHash, Lean=$expectedLeanVersion, theorems=$($requiredTheorems.Count), kernel=$kernelStatus."

@@ -1,0 +1,50 @@
+-- Losing an empty value, singleton, duplicate, order index, bottom token, or
+-- entity identity changes at least one exact violation-ID set below.
+
+context Doctor inv NestedScalarOuterNonEmpty:
+    self.shiftSchedule->notEmpty()
+
+context Doctor inv NestedScalarSingleton:
+    self.shiftSchedule->exists(shift | shift->size() = 1)
+
+context Doctor inv NestedScalarOuterMultiplicity:
+    self.shiftSchedule->count(self.shiftSchedule->first()) = 1
+
+context Doctor inv NestedScalarOuterOrder:
+    self.shiftSchedule->first()->includes(101)
+
+context Patient inv NestedStringEmpty:
+    self.treatmentHistory->forAll(batch | batch->notEmpty())
+
+context Patient inv NestedStringSingleton:
+    self.treatmentHistory->exists(batch | batch->size() = 1)
+
+context Patient inv NestedStringMultiplicity:
+    self.treatmentHistory->forAll(batch |
+        batch->isEmpty() or batch->count(batch->first()) = 1)
+
+context Patient inv NestedStringOrder:
+    self.treatmentHistory->exists(batch |
+        batch->notEmpty() and batch->first() = 'Admission')
+
+context Patient inv NestedScalarBottom:
+    self.treatmentHistory->forAll(batch | batch->excludes(null))
+
+context Patient inv NestedEntityEmpty:
+    self.prescriptionHistory->forAll(batch | batch->notEmpty())
+
+context Patient inv NestedEntitySingleton:
+    self.prescriptionHistory->exists(batch | batch->size() = 1)
+
+context Patient inv NestedEntityMultiplicity:
+    self.prescriptionHistory->forAll(batch |
+        batch->isEmpty() or batch->count(batch->first()) = 1)
+
+context Patient inv NestedEntityOrder:
+    self.prescriptionHistory->exists(batch |
+        batch->notEmpty() and batch->first().brandName = 'BoundaryDrug')
+
+context Patient inv NestedEntityNoGhost:
+    self.prescriptionHistory->forAll(batch |
+        batch->forAll(medication |
+            Medication.allInstances()->includes(medication)))

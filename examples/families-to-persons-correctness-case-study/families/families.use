@@ -1,0 +1,39 @@
+model FamiliesValidation
+
+class FamilyRegister
+end
+
+class Family
+attributes
+    name : String
+end
+
+class FamilyMember
+attributes
+    name : String
+end
+
+association FamilyRegistration between
+    FamilyRegister[0..1] role familyRegister
+    Family[*] role families
+end
+
+association Father between
+    Family[0..1] role familyFather
+    FamilyMember[*] role father
+end
+
+association Mother between
+    Family[0..1] role familyMother
+    FamilyMember[*] role mother
+end
+
+association Sons between
+    Family[0..1] role familySon
+    FamilyMember[*] role sons
+end
+
+association Daughters between
+    Family[0..1] role familyDaughter
+    FamilyMember[*] role daughters
+end

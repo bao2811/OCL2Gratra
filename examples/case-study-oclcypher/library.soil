@@ -1,0 +1,56 @@
+-- Library snapshot used by the case study harness.
+-- The identifier of each object is its stable id (use_id) in the graph.
+
+-- Branch with its staff and members
+!new Branch('branch')
+!set branch.location := 'Hanoi'
+!set branch.name := 'Central'
+
+!new Member('alice')
+!set alice.name := 'Alice'
+!set alice.age := 22
+
+!new Member('bob')
+!set bob.name := 'Bob'
+!set bob.age := 15
+
+!new Member('carol')
+-- carol has no age slot — so AdultMember is bottom → violation.
+
+-- Staff are a subset of members (for ManagerIsEmployee)
+!new StaffMember('mgr')
+!set mgr.name := 'Mgr'
+!set mgr.age := 40
+
+-- Book and loan
+!new Book('book1')
+!set book1.title := 'OCL in Action'
+
+!new Book('bookBlank')
+!set bookBlank.title := ''
+
+!new Loan('loan1')
+!set loan1.fee := 0
+
+!new Loan('loan2')
+!set loan2.fee := -5
+
+!new Loan('loan3')
+!set loan3.fee := 10
+
+!insert (branch, alice) into BranchMember
+!insert (branch, bob) into BranchMember
+!insert (branch, carol) into BranchMember
+!insert (branch, mgr) into BranchStaff
+!insert (branch, book1) into BranchBook
+!insert (branch, bookBlank) into BranchBook
+!insert (mgr, branch) into Manages
+!insert (loan1, alice) into LoanMember
+!insert (loan1, book1) into LoanBook
+!insert (loan1, branch) into LoanBranch
+!insert (loan2, bob) into LoanMember
+!insert (loan2, bookBlank) into LoanBook
+!insert (loan2, branch) into LoanBranch
+!insert (loan3, carol) into LoanMember
+!insert (loan3, book1) into LoanBranch
+-- loan3 book link missing → LoanBookOfferedByBranch should catch it via materialization gap

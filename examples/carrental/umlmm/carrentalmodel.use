@@ -1,0 +1,117 @@
+model CarRentalUmlmm
+------------------------------------
+-- Classes
+------------------------------------
+abstract class Person
+attributes
+firstname : String
+lastname : String
+age : Integer
+isMarried : Boolean
+end
+
+class Customer < Person
+attributes
+address : String
+end
+class Employee < Person
+attributes
+salary : Real
+end
+class Branch
+attributes
+location : String
+end
+class Rental
+attributes
+fromDay : String
+untilDay : String
+end
+class CarGroup
+attributes
+kind : String -- compact, intermediate, luxury
+end
+
+class Car
+attributes
+id : String
+end
+class ServiceDepot
+attributes
+location : String
+end
+class Check
+attributes
+description : String
+end
+------------------------------------
+-- Associations
+------------------------------------
+association Management between
+Employee[1] role manager
+Branch[0..1] role managedBranch
+end
+association Employment between
+Employee[*] role employee
+Branch[1] role employer
+end
+association Fleet between
+Branch[1]
+Car[*]
+end
+association Offers between
+Branch[*]
+CarGroup[*]
+end
+association Classification between
+CarGroup[1]
+Car[*]
+end
+association Booking between
+Rental[*]
+Customer[1]
+end
+association Provider between
+
+Rental[*]
+Branch[1]
+end
+association Reservation between
+Rental[*]
+CarGroup[1]
+end
+association Assignment between
+Rental[0..1]
+Car[0..1]
+end
+association Quality between
+CarGroup[0..1] role lower
+CarGroup[0..1] role higher
+end
+-- One record per original ordered Maintenance tuple.
+class MaintenanceRecord
+end
+class EmailAddress
+attributes
+value : String
+end
+
+association MaintenanceDepot between
+MaintenanceRecord[*] role depotMaintenances
+ServiceDepot[1] role maintenanceDepot
+end
+association MaintenanceCheck between
+MaintenanceRecord[*] role checkMaintenances
+Check[1] role maintenanceCheck
+end
+association MaintenanceCar between
+MaintenanceRecord[*] role maintenances
+Car[1] role maintainedCar
+end
+association PersonEmail between
+Person[1] role emailOwner
+EmailAddress[*] role emails
+end
+------------------------------------
+-- Constraints
+------------------------------------

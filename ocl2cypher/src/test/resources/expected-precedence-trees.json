@@ -1,0 +1,17 @@
+[
+  {"expr": "a or b and c",                 "shape": "(a or (b and c))",        "tests": "and binds tighter than or"},
+  {"expr": "a and b or c",                 "shape": "((a and b) or c)",        "tests": "and binds tighter than or, left"},
+  {"expr": "a and b and c",                "shape": "((a and b) and c)",       "tests": "and left-associative"},
+  {"expr": "a or b or c",                  "shape": "((a or b) or c)",         "tests": "or left-associative"},
+  {"expr": "a implies b implies c",        "shape": "(a implies (b implies c))", "tests": "implies RIGHT-associative (EBNF self-recurses)"},
+  {"expr": "a xor b or c",                 "shape": "(a xor (b or c))",         "tests": "xor binds looser than or"},
+  {"expr": "1 + 2 * 3",                    "shape": "(1 + (2 * 3))",            "tests": "* binds tighter than +"},
+  {"expr": "1 - 2 - 3",                    "shape": "((1 - 2) - 3)",            "tests": "additive left-associative"},
+  {"expr": "1 * 2 * 3",                    "shape": "((1 * 2) * 3)",            "tests": "multiplicative left-associative"},
+  {"expr": "1 div 2",                      "shape": "(1 div 2)",                "tests": "contextual div in multiplicative"},
+  {"expr": "1 mod 2",                      "shape": "(1 mod 2)",                "tests": "contextual mod in multiplicative"},
+  {"expr": "a = b and c",                  "shape": "((a = b) and c)",          "tests": "equality binds tighter than and"},
+  {"expr": "a < b and c < d",              "shape": "((a < b) and (c < d))",    "tests": "relational binds tighter than and"},
+  {"expr": "a = b = c",                    "shape": "((a = b) = c)",            "tests": "equality left-associative"},
+  {"expr": "not a and b",                  "shape": "((not a) and b)",          "tests": "unary not binds tighter than and"}
+]

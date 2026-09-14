@@ -1,0 +1,15 @@
+a or b and c
+a and b or c
+a and b and c
+a or b or c
+a implies b implies c
+a xor b or c
+1 + 2 * 3
+1 - 2 - 3
+1 * 2 * 3
+1 div 2
+1 mod 2
+a = b and c
+a < b and c < d
+a = b = c
+not a and b

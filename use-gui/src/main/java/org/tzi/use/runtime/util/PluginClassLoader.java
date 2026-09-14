@@ -62,4 +62,8 @@ public class PluginClassLoader implements IPluginClassLoader {
 	public Class<?> loadClass(String className) throws ClassNotFoundException {
 		return PluginClassLoader.classLoader.loadClass(className);
 	}
+
+	public static void reset() {
+		classLoader = null;
+	}
 }

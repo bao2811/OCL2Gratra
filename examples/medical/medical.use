@@ -1,0 +1,71 @@
+model MedicalValidation
+
+abstract class Person
+attributes
+name : String
+age : Integer
+active : Boolean
+end
+
+class Patient < Person
+attributes
+code : String
+temperature : Real
+weight : Real
+end
+
+class Clinician < Person
+attributes
+license : String
+end
+
+class Doctor < Clinician
+attributes
+specialty : String
+end
+
+class Nurse < Clinician
+attributes
+grade : Integer
+end
+
+class Ward
+attributes
+name : String
+end
+
+class Encounter
+attributes
+closed : Boolean
+end
+
+association Admission between
+Patient[*] role patients
+Ward[0..1] role ward
+end
+
+association Treatment between
+Patient[*] role patients
+Doctor[*] role doctors
+end
+
+association Care between
+Patient[*] role patients
+Nurse[*] role nurses
+end
+
+association Staffing between
+Clinician[*] role clinicians
+Ward[*] role wards
+end
+
+association PatientEncounter between
+Patient[1] role patient
+Encounter[*] role encounters
+end
+
+association EncounterDoctor between
+Encounter[*] role encounters
+Doctor[1] role attending
+end
+

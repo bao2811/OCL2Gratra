@@ -1,0 +1,36 @@
+model Ocl2CypherCompanyCase
+
+class Company
+attributes
+    name : String
+    active : Boolean
+    revenue : Real
+end
+
+class Person
+attributes
+    name : String
+    age : Integer
+    rating : Real
+    active : Boolean
+end
+
+class Employee < Person
+attributes
+    salary : Real
+end
+
+class Manager < Employee
+attributes
+    level : Integer
+end
+
+association Employment between
+    Company[1] role employer
+    Person[*] role employee
+end
+
+association CompanyManagement between
+    Company[0..1] role managedCompany
+    Manager[0..1] role manager
+end

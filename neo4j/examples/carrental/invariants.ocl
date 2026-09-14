@@ -1,0 +1,30 @@
+context Person inv PositiveAge:
+    self.age > 0
+
+context Person inv NamesDefined:
+    self.firstname <> '' and self.lastname <> ''
+
+context Branch inv ManagerIsEmployee:
+    self.employee->includes(self.manager)
+
+context Branch inv ManagerSalaryDominates:
+    self.employee->forAll(e |
+        e <> self.manager implies self.manager.salary > e.salary)
+
+context CarGroup inv QualityNotReflexive:
+    self.higher <> self and self.lower <> self
+
+context CarGroup inv ExactlyOneLowest:
+    CarGroup.allInstances()->select(cg | cg.lower->isEmpty())->size() = 1
+
+context Car inv NotRentedDuringMaintenance:
+    self.rental->isEmpty() or self.serviceDepot->isEmpty()
+
+context Car inv AtMostOneServiceDepot:
+    self.serviceDepot->size() <= 1
+
+context Rental inv OfferedGroup:
+    self.branch.carGroup->includes(self.carGroup)
+
+context Rental inv AssignedRequestedGroup:
+    self.car->notEmpty() implies self.car.carGroup = self.carGroup

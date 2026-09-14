@@ -1,16 +1,16 @@
 package org.uet.dse.neo4jtgg.service.impl;
 
+import javax.swing.Timer;
+
 import org.uet.dse.neo4j.manager.Neo4jDriverManager;
 import org.uet.dse.neo4j.repo.Neo4jVersionRepository;
-import org.uet.dse.neo4j.sync.object.ObjectSyncCoordinator;
 import org.uet.dse.neo4jtgg.model.GuardReport;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
 import org.uet.dse.neo4jtgg.service.ChangeGuardService;
 import org.uet.dse.neo4jtgg.service.Neo4jChangeFeedService;
 
-import javax.swing.*;
-
 public class PollingNeo4jChangeFeedService implements Neo4jChangeFeedService {
+
     private final ChangeGuardService guardService;
     private Timer timer;
     private long lastObjectTimestamp;
@@ -42,7 +42,14 @@ public class PollingNeo4jChangeFeedService implements Neo4jChangeFeedService {
         long remoteTimestamp = new Neo4jVersionRepository().getRemoteObjectTimestamp();
         if (remoteTimestamp > 0 && remoteTimestamp != lastObjectTimestamp) {
             GuardReport report = guardService.validateRemotePull(context);
-            context.setRemoteChangeSummary("Remote Neo4j delta detected.\n" + report.toDisplayText());
+            if (context.getCurrentProposal() != null
+                    && context.getCurrentProposal().status() == org.uet.dse.neo4jtgg.model.IncrementalSyncStatus.PENDING) {
+                context.setRemoteChangeSummary("Remote Neo4j delta detected, but an incremental proposal is already pending.\n"
+                        + report.toDisplayText());
+            } else {
+                previewRemoteProposal(context);
+                context.setRemoteChangeSummary("Remote Neo4j delta detected.\n" + report.toDisplayText());
+            }
             lastObjectTimestamp = remoteTimestamp;
             onChange.run();
         }
@@ -57,8 +64,7 @@ public class PollingNeo4jChangeFeedService implements Neo4jChangeFeedService {
     }
 
     @Override
-    public void applyRemoteProposal(TggWorkspaceContext context) {
-        ObjectSyncCoordinator coordinator = new ObjectSyncCoordinator(context.getSession().system());
-        coordinator.syncObjectsBackward(true);
+    public void previewRemoteProposal(TggWorkspaceContext context) {
+        DefaultTggWorkspaceService.getInstance().previewIncrementalRemoteChanges(context);
     }
 }

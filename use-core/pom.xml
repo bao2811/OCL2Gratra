@@ -12,8 +12,7 @@
     <artifactId>use-core</artifactId>
 
     <properties>
-        <maven.compiler.source>14</maven.compiler.source>
-        <maven.compiler.target>14</maven.compiler.target>
+        <maven.compiler.release>14</maven.compiler.release>
     </properties>
 
     <dependencies>

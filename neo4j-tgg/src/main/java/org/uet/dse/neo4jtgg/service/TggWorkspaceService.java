@@ -1,6 +1,8 @@
 package org.uet.dse.neo4jtgg.service;
 
 import org.uet.dse.neo4jtgg.model.ImportBatch;
+import org.uet.dse.neo4jtgg.model.IncrementalApplyResult;
+import org.uet.dse.neo4jtgg.model.IncrementalSyncProposal;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
 import org.uet.dse.neo4jtgg.model.WorkspaceSide;
 import org.uet.dse.neo4jtgg.engine.TransformationReport;
@@ -33,4 +35,12 @@ public interface TggWorkspaceService {
     TransformationReport previewBackwardTransformation(TggWorkspaceContext context);
 
     TransformationReport runBackwardTransformation(TggWorkspaceContext context);
+
+    IncrementalSyncProposal previewIncrementalRemoteChanges(TggWorkspaceContext context);
+
+    IncrementalApplyResult applyPendingIncrementalProposal(TggWorkspaceContext context);
+
+    IncrementalApplyResult discardPendingIncrementalProposal(TggWorkspaceContext context);
+
+    IncrementalApplyResult refreshIncrementalBaseline(TggWorkspaceContext context);
 }

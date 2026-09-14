@@ -6,6 +6,7 @@ import org.uet.dse.neo4j.model.LinkState;
 import org.uet.dse.neo4j.model.ObjectState;
 import org.uet.dse.neo4j.repo.Neo4jObjectRepository;
 import org.uet.dse.neo4j.sync.object.ObjectPushService;
+import org.uet.dse.neo4jtgg.engine.CorrRuntimeTraceHelper;
 import org.uet.dse.neo4jtgg.model.TggRuleInfo;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceContext;
 import org.uet.dse.neo4jtgg.model.TggWorkspaceDefinition;
@@ -199,7 +200,10 @@ public class RuleDrivenCorrMaterializer {
                     sourceObjectId,
                     sourceObject.className,
                     targetObjectId,
-                    targetObject.className
+                    targetObject.className,
+                    rule.getName(),
+                    Map.of(pattern.sourceVarName(), sourceObjectId),
+                    Map.of(pattern.targetVarName(), targetObjectId)
             ));
         }
     }
@@ -210,20 +214,24 @@ public class RuleDrivenCorrMaterializer {
             session.executeWrite(tx -> {
                 for (CorrRecord record : records.values()) {
                     objectRepository.upsertObjectNode(tx, record.objectId, record.corrClassName);
-                    objectRepository.upsertBinaryLink(tx,
-                            record.objectId,
-                            record.sourceObjectId,
-                            record.corrClassName + "_" + record.sourceClassName,
-                            "LinkAssociateWith",
-                            lowerFirst(record.corrClassName),
-                            lowerFirst(record.sourceClassName));
-                    objectRepository.upsertBinaryLink(tx,
-                            record.objectId,
-                            record.targetObjectId,
-                            record.corrClassName + "_" + record.targetClassName,
-                            "LinkAssociateWith",
-                            lowerFirst(record.corrClassName),
-                            lowerFirst(record.targetClassName));
+                    for (Map.Entry<String, String> binding : record.sourceBindings.entrySet()) {
+                        objectRepository.upsertBinaryLink(tx,
+                                record.objectId,
+                                binding.getValue(),
+                                CorrRuntimeTraceHelper.bindingAssociationName(record.ruleName, WorkspaceSide.SOURCE, binding.getKey()),
+                                "LinkAssociateWith",
+                                "corr",
+                                binding.getKey());
+                    }
+                    for (Map.Entry<String, String> binding : record.targetBindings.entrySet()) {
+                        objectRepository.upsertBinaryLink(tx,
+                                record.objectId,
+                                binding.getValue(),
+                                CorrRuntimeTraceHelper.bindingAssociationName(record.ruleName, WorkspaceSide.TARGET, binding.getKey()),
+                                "LinkAssociateWith",
+                                "corr",
+                                binding.getKey());
+                    }
                 }
                 return null;
             });
@@ -401,6 +409,9 @@ public class RuleDrivenCorrMaterializer {
                               String sourceObjectId,
                               String sourceClassName,
                               String targetObjectId,
-                              String targetClassName) {
+                              String targetClassName,
+                              String ruleName,
+                              Map<String, String> sourceBindings,
+                              Map<String, String> targetBindings) {
     }
 }

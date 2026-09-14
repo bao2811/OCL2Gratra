@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nva:NvaModule xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:nva="https://uet-dse.org/nva/1.0"
+    languageVersion="nva-certified-v1" certificationProfile="OCL_VAL_FINITE_SET_V1">
+  <invariants invariantId="nva_inv_person_true" name="PersonTrueInvariant"
+      contextClassName="Person" producerVersion="t-norm-v1">
+    <selfVariable symbolId="self_symbol" name="self">
+      <declaredType kind="OBJECT" typeName="Person"/>
+    </selfVariable>
+    <predicate xsi:type="nva:NvaLiteral" nodeId="nva_literal_true"
+        kind="BOOLEAN" lexicalValue="true">
+      <resultType kind="BOOLEAN" typeName="Boolean"/>
+    </predicate>
+  </invariants>
+</nva:NvaModule>

@@ -1,0 +1,11 @@
+invariant,violation_ids,classification
+FamilyRegister::ExactlyTwoFamilies,,ALL_PASS
+Family::Named,,ALL_PASS
+Family::HasFather,,ALL_PASS
+Family::HasMother,flanders,NON_VACUOUS_MIXED
+Family::AtLeastThreeMembers,,ALL_PASS
+Family::UniqueMemberNames,,ALL_PASS
+Family::MembersNamed,flanders,NON_VACUOUS_MIXED
+FamilyMember::Named,todd,NON_VACUOUS_MIXED
+Family::SimpsonFather,,ALL_PASS
+Family::FlandersHasTwoSons,,ALL_PASS

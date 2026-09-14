@@ -1,0 +1,93 @@
+transformation Company2IT
+direction forward
+
+rule RootToRegister
+checkSource(
+){
+    root: BenchmarkRoot
+}checkTarget(
+){
+    reg: ITRegister
+}checkCorr(
+){
+    (root, reg) as (root, reg) in r2r:Root2Register
+}
+end
+
+rule CompanyToCompanyNode
+checkSource(
+    root: BenchmarkRoot
+    (root, company): RootCompanies
+){
+    company: Company
+    [company.name <> Undefined]
+}checkTarget(
+    reg: ITRegister
+){
+    node: ITCompany
+    (reg, node): RegisterCompanies
+}checkCorr(
+    (root, reg) as (root, reg) in r2r:Root2Register
+){
+    (company, node) as (company, node) in c2n:Company2Node
+    Company2Node:[self.node.name = self.company.name]
+    `self.node.name := self.company.name`
+    ``
+}
+end
+
+rule PersonToWorker
+checkSource(
+){
+    person: Person
+    [person.firstName <> Undefined]
+}checkTarget(
+    reg: ITRegister
+){
+    worker: ITWorker
+    (reg, worker): RegisterWorkers
+}checkCorr(
+){
+    (person, worker) as (person, worker) in p2w:Person2Worker
+    Person2Worker:[self.worker.firstName = self.person.firstName]
+    `self.worker.firstName := self.person.firstName`
+    `self.worker.age := self.person.age`
+    `self.worker.salary := self.person.salary`
+}
+end
+
+rule EmploymentToCompanyWorker
+checkSource(
+){
+    company: Company
+    person: Person
+    (company, person): CompanyEmployee
+}checkTarget(
+){
+    node: ITCompany
+    worker: ITWorker
+    (node, worker): CompanyWorker
+}checkCorr(
+){
+    (company, node) as (company, node) in c2n:Company2Node
+    (person, worker) as (person, worker) in p2w:Person2Worker
+}
+end
+
+rule ManagerToCompanyManager
+checkSource(
+){
+    company: Company
+    person: Person
+    (company, person): CompanyManager
+}checkTarget(
+){
+    node: ITCompany
+    worker: ITWorker
+    (node, worker): CompanyManagerTarget
+}checkCorr(
+){
+    (company, node) as (company, node) in c2n:Company2Node
+    (person, worker) as (person, worker) in p2w:Person2Worker
+}
+end

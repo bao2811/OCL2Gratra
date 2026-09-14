@@ -1,0 +1,37 @@
+Family.allInstances()->size()
+Kỳ vọng: 2
+
+FamilyMember.allInstances()->size()
+Kỳ vọng: 8
+
+FamilyRegister.allInstances()->size()
+Kỳ vọng: 1
+
+Family.allInstances()->exists(f | f.name = 'Simpson')
+Kỳ vọng: true
+
+Family.allInstances()->exists(f | f.name = 'Flanders' and f.sons->size() = 2)
+Kỳ vọng: true
+
+Family.allInstances()->exists(f | f.name = 'Simpson' and f.daughters->size() = 2)
+Kỳ vọng: true
+
+Query nhiều câu nên demo trong 1 file .ocl, ví dụ families-demo.ocl:
+
+context Family inv FamilyNameDefined:
+  self.name.isDefined()
+
+context FamilyMember inv MemberNameDefined:
+  self.name.isDefined()
+
+context FamilyRegister inv HasTwoFamilies:
+  self.families->size() = 2
+
+context Family inv SimpsonFather:
+  self.name = 'Simpson' implies self.father.name = 'Homer'
+
+context Family inv FlandersHasTwoSons:
+  self.name = 'Flanders' implies self.sons->size() = 2
+Kỳ vọng:
+
+tất cả SUCCESS trên source side.

@@ -1,0 +1,106 @@
+context FamilyRegister
+inv HasFamilies:
+self.families->notEmpty()
+
+context Family
+inv HasName:
+self.name <> ''
+
+context Family
+inv HasFather:
+self.father->notEmpty()
+
+context Family
+inv ChildrenHaveNames:
+self.sons->forAll(s | s.name <> '') and
+self.daughters->forAll(d | d.name <> '')
+
+
+
+context FamilyMember
+inv MappedToPerson:
+self.person->notEmpty()
+
+context Person
+inv FullNamePresent:
+self.fullName <> ''
+
+context Male
+inv MaleHasFullName:
+self.fullName <> ''
+
+
+Invariant kiểm tra logic transform mức đơn giản
+Nếu correspondence/model của bạn đã materialize relation giữa source và target:
+
+context FamilyMember
+inv MappedToPerson:
+self.person->notEmpty()
+
+context FamilyMember
+inv ExactlyOneTargetPerson:
+self.person->size() = 1
+
+context FamilyMember
+inv TargetFullNameContainsSourceName:
+self.person->forAll(p | p.fullName.includes(self.name))
+
+
+2. Kiểm tra cả Families -> Persons sau transform
+
+Lưu ý: bộ này giả định hệ của bạn đã materialize được quan hệ từ FamilyMember sang Person qua navigation person.
+
+context FamilyRegister
+inv HasFamilies:
+self.families->notEmpty()
+
+context Family
+inv HasName:
+self.name <> ''
+
+context Family
+inv HasFather:
+self.father->notEmpty()
+
+context Family
+inv ChildrenHaveNames:
+self.sons->forAll(s | s.name <> '') and
+self.daughters->forAll(d | d.name <> '')
+
+context FamilyMember
+inv MappedToPerson:
+self.person->notEmpty()
+
+context FamilyMember
+inv ExactlyOneMappedPerson:
+self.person->size() = 1
+
+context Person
+inv PersonNameNotEmpty:
+self.name <> ''
+
+context FamilyMember
+inv TargetNameContainsSourceName:
+self.person->forAll(p | p.name.includes(self.name))
+
+context Family
+inv FatherMappedCorrectly:
+self.father->notEmpty() implies
+self.father.person->forAll(p | p.name = self.name + ', ' + self.father.name)
+
+context Family
+inv MotherMappedCorrectly:
+self.mother->notEmpty() implies
+self.mother.person->forAll(p | p.name = self.name + ', ' + self.mother.name)
+
+context Family
+inv SonsMappedCorrectly:
+self.sons->forAll(s |
+    s.person->forAll(p | p.name = self.name + ', ' + s.name)
+)
+
+context Family
+inv DaughtersMappedCorrectly:
+self.daughters->forAll(d |
+    d.person->forAll(p | p.name = self.name + ', ' + d.name)
+)

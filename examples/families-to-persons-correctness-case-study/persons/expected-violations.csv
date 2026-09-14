@@ -1,0 +1,11 @@
+invariant,violation_ids,classification
+Person::Named,male_todd,NON_VACUOUS_MIXED
+Person::Registered,unregistered_person,NON_VACUOUS_MIXED
+Person::ConcreteGender,,ALL_PASS
+PersonRegister::ContainsAllPersons,complete_register,NON_VACUOUS_MIXED
+PersonRegister::UniqueNames,complete_register,NON_VACUOUS_MIXED
+PersonRegister::NoBlankNames,complete_register,NON_VACUOUS_MIXED
+PersonRegister::HasMale,clean_register,NON_VACUOUS_MIXED
+PersonRegister::HasFemale,male_only_register,NON_VACUOUS_MIXED
+PersonRegister::CoveredByGender,,ALL_PASS
+Person::StableSelfMembership,,ALL_PASS

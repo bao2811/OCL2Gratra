@@ -84,6 +84,11 @@ public class PluginRuntime implements IPluginRuntime {
 		return this.registeredServices;
 	}
 
+	public void reset() {
+		this.registeredPlugins.clear();
+		this.registeredServices.clear();
+	}
+
 	public void registerPlugin(String pluginFilename, URL pluginURL) {
 		URL newPluginURL;
 		Log.debug("Current plugin Information [" + pluginFilename + ","

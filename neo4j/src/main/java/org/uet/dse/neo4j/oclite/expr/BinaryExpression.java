@@ -41,6 +41,11 @@ public class BinaryExpression implements ExpressionNode {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
 
+        Number leftNumber = toNumber(a);
+        Number rightNumber = toNumber(b);
+        if (leftNumber != null && rightNumber != null) {
+            return Double.compare(leftNumber.doubleValue(), rightNumber.doubleValue()) == 0;
+        }
         if (a instanceof Number && b instanceof Number) {
             return Double.compare(((Number) a).doubleValue(), ((Number) b).doubleValue()) == 0;
         }
@@ -48,10 +53,12 @@ public class BinaryExpression implements ExpressionNode {
     }
 
     private Object compareNumbers(Object a, Object b, String operator) {
-        if (!(a instanceof Number) || !(b instanceof Number)) return false;
+        Number leftNumber = toNumber(a);
+        Number rightNumber = toNumber(b);
+        if (leftNumber == null || rightNumber == null) return false;
 
-        double n1 = ((Number) a).doubleValue();
-        double n2 = ((Number) b).doubleValue();
+        double n1 = leftNumber.doubleValue();
+        double n2 = rightNumber.doubleValue();
 
         switch (operator) {
             case ">":  return n1 > n2;
@@ -63,10 +70,12 @@ public class BinaryExpression implements ExpressionNode {
     }
 
     private Object calculateNumbers(Object a, Object b, String operator) {
-        if (!(a instanceof Number) || !(b instanceof Number)) return null;
+        Number leftNumber = toNumber(a);
+        Number rightNumber = toNumber(b);
+        if (leftNumber == null || rightNumber == null) return null;
 
-        double n1 = ((Number) a).doubleValue();
-        double n2 = ((Number) b).doubleValue();
+        double n1 = leftNumber.doubleValue();
+        double n2 = rightNumber.doubleValue();
 
         switch (operator) {
             case "+": return n1 + n2;
@@ -75,6 +84,30 @@ public class BinaryExpression implements ExpressionNode {
             case "/":
                 if (n2 == 0) throw new ArithmeticException("Lỗi chia cho 0");
                 return n1 / n2;
+        }
+        return null;
+    }
+
+    private Number toNumber(Object value) {
+        if (value instanceof Number number) {
+            return number;
+        }
+        if (value instanceof String stringValue) {
+            String normalized = stringValue.trim();
+            if ("Undefined".equals(normalized)) {
+                return null;
+            }
+            if (normalized.length() >= 2 && normalized.startsWith("'") && normalized.endsWith("'")) {
+                normalized = normalized.substring(1, normalized.length() - 1).trim();
+            }
+            if (normalized.isEmpty()) {
+                return null;
+            }
+            try {
+                return Double.valueOf(normalized);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
         }
         return null;
     }

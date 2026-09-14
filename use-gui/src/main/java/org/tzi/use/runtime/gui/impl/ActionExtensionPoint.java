@@ -52,6 +52,12 @@ public class ActionExtensionPoint implements IPluginActionExtensionPoint {
 		return this.registeredActions;
 	}
 
+	public void reset() {
+		if (this.registeredActions != null) {
+			this.registeredActions.clear();
+		}
+	}
+
 	private void registerAction(IPluginActionDescriptor pluginActionDescriptor) {
 		getPluginActions().add(pluginActionDescriptor);
 	}

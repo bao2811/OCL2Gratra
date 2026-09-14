@@ -1,0 +1,138 @@
+-- Hospitals: h2 intentionally violates PositiveBudget.
+!new Hospital('h1')
+!new Hospital('h2')
+!set h1.name := 'Central Hospital'
+!set h1.totalBudget := 500000.0
+!set h1.location := 'Ha Noi'
+!set h1.totalBeds := 1000
+!set h1.availableICUs := 50
+!set h1.rating := 4.8
+!set h1.isPublic := true
+!set h1.emergencyContact := '19001000'
+!set h2.name := 'Budget Boundary Hospital'
+!set h2.totalBudget := -1.0
+
+!new Department('d1')
+!new Department('d2')
+!set d1.deptName := 'Emergency'
+!set d2.deptName := 'Cardiology'
+!insert (h1, d1) into HospitalStructure
+!insert (h2, d2) into HospitalStructure
+
+!new Nurse('n1')
+!set n1.name := 'Nurse One'
+!set n1.age := 28
+!set n1.gender := Gender::FEMALE
+!set n1.nurseID := 'N001'
+!set n1.isHeadNurse := true
+!set n1.certificationLevel := 3
+!set n1.assignedWard := 'Emergency'
+!set n1.onCall := true
+!set n1.hourlyRate := 25.0
+!set n1.lastTrainingDate := '2026-01-01'
+
+-- dr2 intentionally has a four-room shift and no assigned nurse.
+!new Doctor('dr1')
+!new Doctor('dr2')
+!set dr1.name := 'Doctor One'
+!set dr1.age := 45
+!set dr1.gender := Gender::MALE
+!set dr1.doctorID := 'D001'
+!set dr1.specialty := Specialty::EMERGENCY
+!set dr1.consultationFee := 200.0
+!set dr1.yearsOfExperience := 15
+!set dr1.qualification := 'MD'
+!set dr1.isAvailable := true
+!set dr1.shiftSchedule := Sequence{Set{101, 102}, Set{201}, Set{101, 102}}
+!set dr1.assignedNurses := Set{n1}
+!set dr1.collaborationHistory := Sequence{Set{dr2}}
+!set dr2.name := 'Doctor Two'
+!set dr2.age := 50
+!set dr2.gender := Gender::OTHER
+!set dr2.doctorID := 'D002'
+!set dr2.specialty := Specialty::CARDIOLOGY
+!set dr2.consultationFee := 250.0
+!set dr2.yearsOfExperience := 20
+!set dr2.qualification := 'MD'
+!set dr2.isAvailable := false
+!set dr2.shiftSchedule := Sequence{Set{301, 302, 303, 304}}
+!set dr2.assignedNurses := Set{}
+!set dr2.collaborationHistory := Sequence{Set{dr1}}
+
+!new Medication('m1')
+!new Medication('m2')
+!set m1.brandName := 'Ascriptin'
+!set m1.genericName := 'Aspirin'
+!set m1.price := 15.5
+!set m2.brandName := 'BoundaryDrug'
+!set m2.genericName := 'Boundary'
+!set m2.price := -1.0
+
+!new Disease('dis1')
+!new Disease('dis2')
+!set dis1.diseaseName := 'Influenza'
+!set dis2.diseaseName := ''
+
+-- p2 intentionally violates the age, physician and nested-batch fixtures.
+!new Patient('p1')
+!new Patient('p2')
+!set p1.name := 'Patient One'
+!set p1.age := 30
+!set p1.gender := Gender::FEMALE
+!set p1.patientID := 'P001'
+!set p1.isEmergency := true
+!set p1.bloodType := BloodType::A_POS
+!set p1.weight := 60.0
+!set p1.height := 165.0
+!set p1.symptoms := Sequence{'Fever', 'Headache'}
+!set p1.treatmentHistory := Set{Sequence{'Admission', null, 'Blood test'}, Sequence{'Medication', 'Medication'}}
+!set p1.allergies := Set{'Pollen'}
+!set p1.attendingPhysicians := Set{dr1}
+!set p1.currentMeds := Set{m1}
+!set p1.prescriptionHistory := Sequence{Sequence{m1}, Sequence{m2, m1}, Sequence{m1, m2, m1}}
+!set p2.name := 'Patient Two'
+!set p2.age := -2
+!set p2.gender := Gender::MALE
+!set p2.patientID := 'P002'
+!set p2.isEmergency := false
+!set p2.bloodType := BloodType::O_NEG
+!set p2.weight := 70.0
+!set p2.height := 175.0
+!set p2.symptoms := Sequence{}
+!set p2.treatmentHistory := Set{Sequence{}}
+!set p2.allergies := Set{}
+!set p2.attendingPhysicians := Set{}
+!set p2.currentMeds := Set{}
+!set p2.prescriptionHistory := Sequence{Sequence{}}
+
+!set dr1.patientQueue := Sequence{p1}
+!set dr2.patientQueue := Sequence{p2}
+!set h1.medicalStaff := Set{dr1, n1}
+!set h2.medicalStaff := Set{dr2}
+
+!new MedicalRecord('mr1')
+!new MedicalRecord('mr2')
+!insert (p1, mr1) into PatientRecord
+!insert (p2, mr2) into PatientRecord
+!new RecordEntry('re1')
+!set re1.entryDate := '2026-03-01'
+!set re1.description := 'Stable'
+!insert (mr1, re1) into RecordEntries
+
+!new Dosage('dosage1')
+!set dosage1.patientNumber := 1
+!set dosage1.adminMethod := Administration::ENTERAL
+!set dosage1.brandName := Brand::ASCRIPTIN
+!new DosagePlan('plan1')
+
+!insert (dr1, p1, dis1) into Consultation
+!insert (dr2, p2, dis2) into Consultation
+!insert (dr1, p1, d1) into Appointment
+!insert (dr2, p2, d2) into Appointment
+
+!new Hospitalization('hosp1') between (p1, d1)
+!set hosp1.admissionDate := '2026-03-01'
+!set hosp1.roomNumber := 502
+!new Prescription('presc1') between (dr1, p1)
+!set presc1.prescriptionID := 'RX001'
+!set presc1.dosageInstructions := 'Twice daily'

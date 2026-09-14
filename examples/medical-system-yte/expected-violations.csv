@@ -1,0 +1,14 @@
+invariant,ids
+Person::AgeNonNegative,p2
+Person::NameDefined,
+Hospital::PositiveBudget,h2
+Doctor::ScheduleMaxThreeRooms,dr2
+Doctor::HasAssignedNurse,dr2
+Patient::EmergencyHasSymptoms,
+Patient::HasAttendingPhysician,p2
+Patient::TreatmentBatchesNonEmpty,p2
+Patient::PrescriptionBatchesNonEmpty,p2
+MedicalRecord::HasRecordEntry,mr2
+Department::HasParentHospital,
+Medication::PositivePrice,m2
+Disease::NameDefined,dis2

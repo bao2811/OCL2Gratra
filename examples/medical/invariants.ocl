@@ -1,0 +1,115 @@
+context Person inv PositiveAge:
+  self.age > 0
+
+context Person inv NamePresent:
+  self.name <> ''
+
+context Person inv ActiveAdult:
+  self.active implies self.age >= 18
+
+context Person inv ActivityDefined:
+  self.active = true or self.active = false
+
+context Patient inv CodePresent:
+  self.code <> ''
+
+context Patient inv TemperatureBelowForty:
+  self.temperature < 40.0
+
+context Patient inv WeightPositive:
+  self.weight > 0.0
+
+context Patient inv HasWard:
+  Ward.allInstances()->includes(self.ward)
+
+context Patient inv HasDoctor:
+  self.doctors->notEmpty()
+
+context Patient inv DoctorsAreClinicians:
+  self.doctors->forAll(d | d.oclIsKindOf(Clinician))
+
+context Patient inv DoctorsKnowPatient:
+  self.doctors->forAll(d | d.patients->includes(self))
+
+context Patient inv EncountersAttended:
+  self.encounters->forAll(e | e.attending.oclIsKindOf(Doctor))
+
+context Patient inv ExactPatientType:
+  self.oclIsTypeOf(Patient)
+
+context Person inv DowncastPreservesPatientType:
+  self.oclIsKindOf(Patient) implies
+    self.oclAsType(Patient).oclIsTypeOf(Patient)
+
+context Doctor inv HasPatients:
+  self.patients->notEmpty()
+
+context Doctor inv AdultPatients:
+  self.patients->forAll(p | p.age >= 18)
+
+context Doctor inv PatientCodesPresent:
+  self.patients->forAll(p | p.code <> '')
+
+context Ward inv HasPatients:
+  self.patients->notEmpty()
+
+context Ward inv PatientsNamed:
+  self.patients->forAll(p | p.name <> '')
+
+context Ward inv ActivePatientExists:
+  self.patients->exists(p | p.active)
+
+context Ward inv PatientPartition:
+  self.patients->select(p | p.active)
+    ->union(self.patients->reject(p | p.active)) = self.patients
+
+context Ward inv CollectedNameCount:
+  self.patients->collect(p | p.name)->size() = self.patients->size()
+
+context Ward inv NestedDoctorBacklinks:
+  self.patients->forAll(p |
+    p.doctors->forAll(d | d.patients->includes(p)))
+
+context Ward inv IntersectionKeepsPatients:
+  self.patients->intersection(Patient.allInstances()) = self.patients
+
+context Ward inv UnionIsIdempotent:
+  self.patients->union(self.patients) = self.patients
+
+context Ward inv AdultFilterIsSound:
+  let adults = self.patients->select(p | p.age >= 18) in
+    adults->forAll(p | p.age >= 18)
+
+context Ward inv EmptyWardNaming:
+  if self.patients->isEmpty()
+  then self.name = 'Empty'
+  else self.name <> ''
+  endif
+
+context Encounter inv AttendingBacklink:
+  self.attending.encounters->includes(self)
+
+context Encounter inv PatientBacklink:
+  self.patient.encounters->includes(self)
+
+context Encounter inv ClosedRequiresAdult:
+  self.closed implies self.patient.age >= 18
+
+context Patient inv SetDeduplicates:
+  Set{'dose', 'dose'} = Set{'dose'}
+
+context Patient inv BagRetainsMultiplicity:
+  Bag{'dose', 'dose'} = Bag{'dose'}
+
+context Patient inv CertifiedIntegerArithmetic:
+  (2 + 3) * 4 - 1 = 19 and (-2).abs() = 2
+
+context Patient inv CertifiedDivModAndSum:
+  (-7) div 3 = -2 and (-7).mod(3) = -1 and
+  Set{2, 2, (0 - 1)}->sum() = 1 and Bag{2, 2, (0 - 1)}->sum() = 3
+
+context Patient inv CertifiedIntegerMinMax:
+  2.min(3) = 2 and 2.max(3) = 3
+
+context Patient inv BooleanXorBottom:
+  self.active xor false

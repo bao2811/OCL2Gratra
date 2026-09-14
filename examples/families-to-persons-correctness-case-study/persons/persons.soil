@@ -1,0 +1,39 @@
+!new PersonRegister('complete_register')
+!new PersonRegister('clean_register')
+!new PersonRegister('male_only_register')
+!set complete_register.label := 'complete'
+!set clean_register.label := 'partial'
+!set male_only_register.label := 'partial'
+!new Male('male_homer')
+!new Female('female_marge')
+!new Male('male_bart')
+!new Female('female_lisa')
+!new Male('male_ned')
+!new Male('male_rod')
+!new Male('male_todd')
+!new Male('duplicate_homer')
+!new Female('orphan_person')
+!new Male('male_clean')
+!new Female('unregistered_person')
+!set male_homer.name := 'Simpson, Homer'
+!set female_marge.name := 'Simpson, Marge'
+!set male_bart.name := 'Simpson, Bart'
+!set female_lisa.name := 'Simpson, Lisa'
+!set male_ned.name := 'Flanders, Ned'
+!set male_rod.name := 'Flanders, Rod'
+!set male_todd.name := ''
+!set duplicate_homer.name := 'Simpson, Homer'
+!set orphan_person.name := 'Ghost, Person'
+!set male_clean.name := 'Clean, Male'
+!set unregistered_person.name := 'Missing, Registration'
+!insert (complete_register,male_homer) into PersonRegistration
+!insert (complete_register,female_marge) into PersonRegistration
+!insert (complete_register,male_bart) into PersonRegistration
+!insert (complete_register,female_lisa) into PersonRegistration
+!insert (complete_register,male_ned) into PersonRegistration
+!insert (complete_register,male_rod) into PersonRegistration
+!insert (complete_register,male_todd) into PersonRegistration
+!insert (complete_register,duplicate_homer) into PersonRegistration
+!insert (clean_register,orphan_person) into PersonRegistration
+!insert (male_only_register,male_clean) into PersonRegistration
+-- unregistered_person deliberately has no register.

@@ -1,0 +1,51 @@
+model IT
+
+class IT
+attributes
+    name: String
+end
+
+class Router
+attributes
+    name: String
+end
+
+class Network
+attributes
+    name: String
+end
+
+class PC
+attributes
+    name: String
+end
+
+class Laptop
+attributes
+    name: String
+end
+
+composition ITRouters between
+    IT [0..1] role itRouter
+    Router [*] role router
+end
+
+composition ITNetworks between
+    IT [0..1] role itNetwork
+    Network [*] role network
+end
+
+association RouterNetwork between
+    Router [*] role routers
+    Network [0..1] role network
+end
+
+composition NetworkPCs between
+    Network [0..1] role networkPC
+    PC [*] role pc
+end
+
+composition NetworkLaptops between
+    Network [0..1] role networkLaptop
+    Laptop [*] role laptop
+end

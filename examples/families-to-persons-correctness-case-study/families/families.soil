@@ -1,0 +1,29 @@
+!new FamilyRegister('family_register')
+!new Family('simpson')
+!new Family('flanders')
+!set simpson.name := 'Simpson'
+!set flanders.name := 'Flanders'
+!insert (family_register,simpson) into FamilyRegistration
+!insert (family_register,flanders) into FamilyRegistration
+
+!new FamilyMember('homer')
+!new FamilyMember('marge')
+!new FamilyMember('bart')
+!new FamilyMember('lisa')
+!new FamilyMember('ned')
+!new FamilyMember('rod')
+!new FamilyMember('todd')
+!set homer.name := 'Homer'
+!set marge.name := 'Marge'
+!set bart.name := 'Bart'
+!set lisa.name := 'Lisa'
+!set ned.name := 'Ned'
+!set rod.name := 'Rod'
+!set todd.name := ''
+!insert (simpson,homer) into Father
+!insert (simpson,marge) into Mother
+!insert (simpson,bart) into Sons
+!insert (simpson,lisa) into Daughters
+!insert (flanders,ned) into Father
+!insert (flanders,rod) into Sons
+!insert (flanders,todd) into Sons

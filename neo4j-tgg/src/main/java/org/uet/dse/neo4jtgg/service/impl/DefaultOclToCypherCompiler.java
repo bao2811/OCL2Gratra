@@ -1,35 +1,57 @@
 package org.uet.dse.neo4jtgg.service.impl;
 
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.Token;
-import org.tzi.use.uml.mm.MModel;
-import org.uet.dse.neo4j.OCLLexer;
-import org.uet.dse.neo4j.OCLParser;
-import org.uet.dse.neo4j.oclite.ast.ASTContext;
-import org.uet.dse.neo4j.oclite.ast.ASTNode;
-import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCompilationException;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnostic;
-import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticPhase;
-import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
-import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
-import org.uet.dse.neo4jtgg.ocl.ir.OclCypherRenderer;
-import org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlanner;
-import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
-import org.uet.dse.neo4jtgg.ocl.ir.OclIrBuilder;
-import org.uet.dse.neo4jtgg.ocl.ir.OclIrOptimizer;
-import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
-import org.uet.dse.neo4jtgg.service.OclToCypherCompiler;
-
 import java.util.List;
 import java.util.Map;
 
+import org.tzi.use.uml.mm.MModel;
+import org.uet.dse.neo4j.oclite.ast.ASTBinary;
+import org.uet.dse.neo4j.oclite.ast.ASTCollectionOp;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
+import org.uet.dse.neo4j.oclite.ast.ASTContext;
+import org.uet.dse.neo4j.oclite.ast.ASTExpression;
+import org.uet.dse.neo4j.oclite.ast.ASTIf;
+import org.uet.dse.neo4j.oclite.ast.ASTIterator;
+import org.uet.dse.neo4j.oclite.ast.ASTLet;
+import org.uet.dse.neo4j.oclite.ast.ASTMethodCall;
+import org.uet.dse.neo4j.oclite.ast.ASTNot;
+import org.uet.dse.neo4j.oclite.ast.ASTOperationConstraint;
+import org.uet.dse.neo4j.oclite.ast.ASTProperty;
+import org.uet.dse.neo4j.oclite.ast.ASTVar;
+import org.uet.dse.neo4jtgg.model.CypherCompilationResult;
+import org.uet.dse.neo4jtgg.model.OclFileCompilationResult;
+import org.uet.dse.neo4jtgg.model.OclResultLocation;
+import org.uet.dse.neo4jtgg.model.OclRuleDescriptor;
+import org.uet.dse.neo4jtgg.model.OclRuleCompilationResult;
+import org.uet.dse.neo4jtgg.model.OclRuleKind;
+import org.uet.dse.neo4jtgg.model.OclRuleOwnerKind;
+import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
+import org.uet.dse.neo4jtgg.ocl.OclMetamodelSnapshot;
+import org.uet.dse.neo4jtgg.ocl.OclCertifiedSurfaceNormalizer;
+import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
+import org.uet.dse.neo4jtgg.ocl.OclValAdmissionPolicy;
+import org.uet.dse.neo4jtgg.ocl.OclValBoundAdmissionPolicy;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCodedUnsupportedOperationException;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclCompilationException;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnostic;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticPhase;
+import org.uet.dse.neo4jtgg.ocl.ir.OclCertifiedModelValidator;
+import org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlanner;
+import org.uet.dse.neo4jtgg.ocl.ir.OclCypherRenderer;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIr;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIrBuilder;
+import org.uet.dse.neo4jtgg.ocl.ir.OclIrOptimizer;
+import org.uet.dse.neo4jtgg.ocl.ir.OclMetamodelRefinement;
+import org.uet.dse.neo4jtgg.ocl.ir.OclOptimizedIr;
+import org.uet.dse.neo4jtgg.service.OclToCypherCompiler;
+import org.uet.dse.neo4jtgg.experiment.InstrumentedCompilationResult;
+import org.uet.dse.neo4jtgg.experiment.PipelineStageTimings;
+
 public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
+
     private final OclMetamodelIndex metamodelIndex;
     private final OclSemanticBinder binder;
+    private final OclSemanticBinder certifiedBinder;
     private final OclIrBuilder irBuilder;
     private final OclIrOptimizer irOptimizer;
     private final OclCypherPlanner cypherPlanner;
@@ -38,20 +60,22 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
     public DefaultOclToCypherCompiler(MModel model) {
         this.metamodelIndex = new OclMetamodelIndex(model);
         this.binder = new OclSemanticBinder(metamodelIndex);
+        this.certifiedBinder = this.binder.forCertifiedProfile();
         this.irBuilder = new OclIrBuilder();
         this.irOptimizer = new OclIrOptimizer();
-        this.cypherPlanner = new OclCypherPlanner();
-        this.cypherRenderer = new OclCypherRenderer();
+        this.cypherPlanner = new OclCypherPlanner(model.name());
+        this.cypherRenderer = new OclCypherRenderer(model.name());
     }
 
     DefaultOclToCypherCompiler(OclMetamodelIndex metamodelIndex,
-                               OclSemanticBinder binder,
-                               OclIrBuilder irBuilder,
-                               OclIrOptimizer irOptimizer,
-                               OclCypherPlanner cypherPlanner,
-                               OclCypherRenderer cypherRenderer) {
+            OclSemanticBinder binder,
+            OclIrBuilder irBuilder,
+            OclIrOptimizer irOptimizer,
+            OclCypherPlanner cypherPlanner,
+            OclCypherRenderer cypherRenderer) {
         this.metamodelIndex = metamodelIndex;
         this.binder = binder;
+        this.certifiedBinder = binder.forCertifiedProfile();
         this.irBuilder = irBuilder;
         this.irOptimizer = irOptimizer;
         this.cypherPlanner = cypherPlanner;
@@ -60,13 +84,265 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
 
     @Override
     public CypherCompilationResult compile(String oclExpression) {
+        OclFileCompilationResult fileResult = compileFile(oclExpression);
+        if (!fileResult.getRuleResults().isEmpty()) {
+            return fileResult.getRuleResults().get(0).getCompilation();
+        }
+        if (!fileResult.getDocumentDiagnostics().isEmpty()) {
+            OclDiagnostic primary = fileResult.getDocumentDiagnostics().get(0);
+            return new CypherCompilationResult(false, "", Map.of(), primary.toUserMessage(), false,
+                    fileResult.getDocumentDiagnostics());
+        }
+        return unsupported(new OclDiagnostic(OclDiagnosticPhase.SEMANTIC, OclDiagnosticCode.UNSUPPORTED_AST_NODE,
+                "Only context invariants are compiled to Cypher in v1.", null, null, null, null));
+    }
+
+    @Override
+    public OclFileCompilationResult compileFile(String oclText) {
+        long responseStartedAt = System.nanoTime();
+        long parseStartedAt = System.nanoTime();
         try {
-            ASTNode ast = parseAst(oclExpression);
-            if (!(ast instanceof ASTContext context)) {
+            ASTFile astFile = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
+            long parseTimeMs = elapsedMillis(parseStartedAt);
+            long compileStartedAt = System.nanoTime();
+            OclFileCompilationResult result = compileFile(astFile);
+            long compileTimeMs = elapsedMillis(compileStartedAt);
+            return new OclFileCompilationResult("document",
+                    result.getRuleResults(),
+                    result.getDocumentDiagnostics(),
+                    result.getFreeExpressionCount(),
+                    elapsedMillis(responseStartedAt),
+                    parseTimeMs,
+                    compileTimeMs);
+        } catch (OclCompilationException ex) {
+            return new OclFileCompilationResult("document", List.of(), buildDiagnostics(ex), 0,
+                    elapsedMillis(responseStartedAt), elapsedMillis(parseStartedAt), 0L);
+        } catch (Exception ex) {
+            OclDiagnostic diagnostic = new OclDiagnostic(OclDiagnosticPhase.RENDERING, OclDiagnosticCode.GENERIC_FAILURE,
+                    "INTERNAL: Compilation failed: " + ex.getMessage(), null, null, null, null);
+            return new OclFileCompilationResult("document", List.of(), List.of(diagnostic), 0,
+                    elapsedMillis(responseStartedAt), elapsedMillis(parseStartedAt), 0L);
+        }
+    }
+
+    OclFileCompilationResult compileFile(ASTFile astFile) {
+        return compileFile(astFile, false);
+    }
+
+    /**
+     * Compiles class invariants through the exact certified T1--T6 admission
+     * path while retaining the general compiler for explicitly non-theorem
+     * rule kinds such as operation contracts and free expressions.
+     *
+     * <p>A context invariant rejected by OCL_val admission is returned as an
+     * unsupported rule and may be handled by an explicitly labelled fallback;
+     * it is never emitted as compiled Cypher carrying the theorem claim.</p>
+     */
+    OclFileCompilationResult compileFileWithCertifiedContextInvariants(ASTFile astFile) {
+        return compileFile(astFile, true);
+    }
+
+    private OclFileCompilationResult compileFile(ASTFile astFile, boolean certifyContextInvariants) {
+        List<OclRuleCompilationResult> results = new java.util.ArrayList<>();
+        List<OclDiagnostic> documentDiagnostics = new java.util.ArrayList<>();
+        List<OclRuleDescriptor> rules = OclRuleExtractor.extractRules(astFile);
+        for (OclRuleDescriptor rule : rules) {
+            long ruleStartedAt = System.nanoTime();
+            CypherCompilationResult compilation;
+            if (rule.ast() instanceof ASTContext context) {
+                compilation = certifyContextInvariants
+                        ? compileCertifiedContext(context)
+                        : compileContext(context);
+            } else if (rule.ast() instanceof ASTOperationConstraint operationConstraint
+                    && (rule.ruleKind() == OclRuleKind.PRE || rule.ruleKind() == OclRuleKind.POST)) {
+                compilation = compileOperationConstraint(operationConstraint);
+            } else if (rule.expression() != null && rule.className() == null) {
+                compilation = compileTopLevelExpression(rule.expression());
+            } else {
+                compilation = unsupportedRuleKind(rule);
+            }
+            results.add(new OclRuleCompilationResult(
+                    rule.ownerKind(),
+                    rule.ruleKind(),
+                    rule.className(),
+                    rule.operationName(),
+                    rule.attributeName(),
+                    rule.ruleName(),
+                    compilation,
+                    elapsedMillis(ruleStartedAt),
+                    inferResultLocation(rule.className(), rule.ruleName(), compilation),
+                    inferRequiredInputs(rule)));
+        }
+        return new OclFileCompilationResult(results, documentDiagnostics, astFile.freeExpressions().size());
+    }
+
+    private CypherCompilationResult compileCertifiedContext(ASTContext context) {
+        try {
+            InstrumentedCompilationResult certified = compileInvariantInstrumented(context);
+            return new CypherCompilationResult(true, certified.cypher(), certified.parameters(), "", true);
+        } catch (OclCompilationException ex) {
+            return unsupported(ex);
+        } catch (OclCodedUnsupportedOperationException ex) {
+            return unsupported(new OclDiagnostic(
+                    OclDiagnosticPhase.SEMANTIC, ex.code(), ex.getMessage(),
+                    null, null, null, null));
+        } catch (UnsupportedOperationException ex) {
+            return unsupported(new OclDiagnostic(
+                    OclDiagnosticPhase.SEMANTIC, classifySemanticCode(ex.getMessage()), ex.getMessage(),
+                    null, null, null, null));
+        } catch (Exception ex) {
+            return unsupported(new OclDiagnostic(
+                    OclDiagnosticPhase.RENDERING, OclDiagnosticCode.GENERIC_FAILURE,
+                    "INTERNAL: Certified compilation failed: " + ex.getMessage(),
+                    null, null, null, null));
+        }
+    }
+
+    /** Builds the exact same binder pipeline from an M2 view read from the graph. */
+    public DefaultOclToCypherCompiler(OclMetamodelSnapshot graphBackedMetamodel) {
+        this(graphBackedMetamodel.toUseModel());
+    }
+
+    /** Compiles one context invariant while retaining every research artifact. */
+    public InstrumentedCompilationResult compileInvariantInstrumented(String oclText) {
+        long parseStart = System.nanoTime();
+        ASTFile file = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
+        long parseNs = System.nanoTime() - parseStart;
+        if (file.invariants().size() != 1 || file.elements().size() != 1) {
+            throw new IllegalArgumentException("Instrumented compilation requires exactly one context invariant.");
+        }
+        return compileInvariantInstrumented(file.invariants().get(0), parseNs);
+    }
+
+    /** Compiles every context invariant in one OCL research suite. */
+    public List<InstrumentedCompilationResult> compileInvariantsInstrumented(String oclText) {
+        long parseStart = System.nanoTime();
+        ASTFile file = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
+        long parseNs = System.nanoTime() - parseStart;
+        if (file.invariants().isEmpty()) {
+            throw new IllegalArgumentException("Research suite requires at least one context invariant.");
+        }
+        long allocatedParseNs = parseNs / file.invariants().size();
+        List<InstrumentedCompilationResult> results = new java.util.ArrayList<>();
+        for (ASTContext invariant : file.invariants()) {
+            results.add(compileInvariantInstrumented(invariant, allocatedParseNs));
+        }
+        return List.copyOf(results);
+    }
+
+    /** Parses the invariant suite once so callers can isolate per-rule failures. */
+    public List<ASTContext> parseContextInvariants(String oclText) {
+        ASTFile file = OclDocumentParser.parse(metamodelIndex.getModel(), oclText);
+        if (file.invariants().isEmpty()) {
+            throw new IllegalArgumentException("Research suite requires at least one context invariant.");
+        }
+        return List.copyOf(file.invariants());
+    }
+
+    /** Compiles an already parsed invariant; parsing time is intentionally zero. */
+    public InstrumentedCompilationResult compileInvariantInstrumented(ASTContext invariant) {
+        if (invariant == null) throw new IllegalArgumentException("Invariant is required.");
+        return compileInvariantInstrumented(invariant, 0L);
+    }
+
+    private InstrumentedCompilationResult compileInvariantInstrumented(ASTContext ast, long parseNs) {
+        ASTContext normalizedAst = OclCertifiedSurfaceNormalizer.normalize(ast);
+        OclValAdmissionPolicy.verify(normalizedAst);
+
+        long bindStart = System.nanoTime();
+        OclSemanticBinder.BoundContextInvariant bound = certifiedBinder.bindContext(normalizedAst);
+        OclValBoundAdmissionPolicy.verify(bound);
+        long bindNs = System.nanoTime() - bindStart;
+
+        long vaStart = System.nanoTime();
+        OclIr.InvariantQuery va = irBuilder.buildInvariant(bound);
+        OclCertifiedModelValidator.requireWfOva(va);
+        OclCertifiedModelValidator.requireCertifiedOva(va);
+        OclMetamodelRefinement.refineOva(va).requireValid("Ref_OVA_SEMANTIC");
+        long vaNs = System.nanoTime() - vaStart;
+
+        long normalizeStart = System.nanoTime();
+        OclIr.InvariantQuery normalized = irOptimizer.optimizeInvariant(va);
+        OclCertifiedModelValidator.requireWfOva(normalized);
+        OclCertifiedModelValidator.requireCertifiedOva(normalized);
+        OclMetamodelRefinement.refineOva(normalized).requireValid("Ref_OVA_OPTIMIZED");
+        long normalizeNs = System.nanoTime() - normalizeStart;
+
+        long planStart = System.nanoTime();
+        org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlan.InvariantPlan plan = cypherPlanner.planInvariant(normalized);
+        OclCertifiedModelValidator.requireWfCqm(plan);
+        OclCertifiedModelValidator.requireCertifiedCqm(plan);
+        OclMetamodelRefinement.refineCqm(plan).requireValid("Ref_CQM");
+        long planNs = System.nanoTime() - planStart;
+
+        long renderStart = System.nanoTime();
+        OclCypherRenderer.RenderedInvariant rendered = cypherRenderer.renderInvariant(plan);
+        long renderNs = System.nanoTime() - renderStart;
+
+        return new InstrumentedCompilationResult(normalizedAst, bound, va, normalized, plan,
+                rendered.cypher(), rendered.parameters(),
+                new PipelineStageTimings(parseNs, bindNs, vaNs, normalizeNs, planNs, renderNs));
+    }
+
+    private CypherCompilationResult compileTopLevelExpression(ASTExpression expression) {
+        try {
+            OclSemanticBinder.BoundExpression boundExpression = binder.bind(expression, new OclSemanticBinder.Scope());
+            OclIr.SemanticExpression semanticExpression = irBuilder.buildExpression(boundExpression);
+            OclOptimizedIr.Artifact optimizedExpression = irOptimizer.optimizeForPlanning(semanticExpression);
+            org.uet.dse.neo4jtgg.ocl.ir.OclCypherPlan.ExpressionPlan plan =
+                    cypherPlanner.planExpression(optimizedExpression);
+            OclCypherRenderer.RenderedTopLevelExpression renderedExpression =
+                    cypherRenderer.renderTopLevelExpression(plan);
+            return new CypherCompilationResult(true, renderedExpression.cypher(), renderedExpression.parameters(), "", false);
+        } catch (OclCompilationException ex) {
+            return unsupported(ex);
+        } catch (OclCodedUnsupportedOperationException ex) {
+            return unsupported(new OclDiagnostic(OclDiagnosticPhase.SEMANTIC, ex.code(), ex.getMessage(),
+                    null, null, null, null));
+        } catch (UnsupportedOperationException ex) {
+            return unsupported(new OclDiagnostic(OclDiagnosticPhase.SEMANTIC, classifySemanticCode(ex.getMessage()),
+                    ex.getMessage(), null, null, null, null));
+        } catch (Exception ex) {
+            return unsupported(new OclDiagnostic(OclDiagnosticPhase.RENDERING, OclDiagnosticCode.GENERIC_FAILURE,
+                    "INTERNAL: Compilation failed: " + ex.getMessage(), null, null, null, null));
+        }
+    }
+
+    private CypherCompilationResult compileOperationConstraint(ASTOperationConstraint constraint) {
+        try {
+            OclSemanticBinder.BoundContextInvariant boundConstraint = binder.bindOperationConstraint(constraint);
+            OclIr.InvariantQuery invariantQuery = buildIr(boundConstraint);
+            OclCypherRenderer.RenderedInvariant renderedInvariant = renderInvariant(invariantQuery);
+            return new CypherCompilationResult(true, renderedInvariant.cypher(), renderedInvariant.parameters(), "", true);
+        } catch (OclCompilationException ex) {
+            return unsupported(ex);
+        } catch (Exception ex) {
+            return unsupported(new OclDiagnostic(OclDiagnosticPhase.RENDERING, OclDiagnosticCode.GENERIC_FAILURE,
+                    "INTERNAL: Compilation failed: " + ex.getMessage(), null, null, null, null));
+        }
+    }
+
+    private CypherCompilationResult unsupportedRuleKind(OclRuleDescriptor rule) {
+        String ownerLabel = switch (rule.ownerKind()) {
+            case CLASS -> "class";
+            case OPERATION -> "operation";
+            case ATTRIBUTE -> "attribute";
+        };
+        OclDiagnostic diagnostic = new OclDiagnostic(
+                OclDiagnosticPhase.SEMANTIC,
+                OclDiagnosticCode.UNSUPPORTED_RULE_KIND,
+                "Unsupported OCL rule kind `" + rule.ruleKind().name().toLowerCase()
+                        + "` on " + ownerLabel + " context. Current compiler path executes only `Class -> inv`.",
+                null, null, null, null);
+        return unsupported(diagnostic);
+    }
+
+    private CypherCompilationResult compileContext(ASTContext context) {
+        try {
+            if (context == null) {
                 throw new OclCompilationException(OclDiagnosticPhase.SEMANTIC,
                         "Only context invariants are compiled to Cypher in v1.");
             }
-
             OclSemanticBinder.BoundContextInvariant boundInvariant = bindContext(context);
             OclIr.InvariantQuery invariantQuery = buildIr(boundInvariant);
             OclCypherRenderer.RenderedInvariant renderedInvariant = renderInvariant(invariantQuery);
@@ -77,34 +353,6 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         } catch (Exception ex) {
             return unsupported(new OclDiagnostic(OclDiagnosticPhase.RENDERING, OclDiagnosticCode.GENERIC_FAILURE,
                     "INTERNAL: Compilation failed: " + ex.getMessage(), null, null, null, null));
-        }
-    }
-
-    private ASTNode parseAst(String oclExpression) {
-        try {
-            OCLLexer lexer = new OCLLexer(CharStreams.fromString(oclExpression));
-            OCLParser parser = new OCLParser(new CommonTokenStream(lexer));
-            ASTNode ast = new ASTVisitor().visit(parser.oclFile());
-            if (parser.getNumberOfSyntaxErrors() > 0) {
-                Token token = parser.getCurrentToken();
-                Integer line = token != null ? token.getLine() : null;
-                Integer column = token != null ? token.getCharPositionInLine() : null;
-                Integer endLine = line;
-                Integer endColumn = token != null
-                        ? token.getCharPositionInLine() + Math.max(token.getText() != null ? token.getText().length() - 1 : 0, 0)
-                        : null;
-                String tokenText = token != null ? token.getText() : null;
-                String sourceSnippet = extractSourceSnippet(oclExpression, line);
-                throw new OclCompilationException(OclDiagnosticPhase.PARSE, OclDiagnosticCode.PARSE_ERROR,
-                        "Failed to parse OCL input.", line, column, endLine, endColumn, tokenText, sourceSnippet);
-            }
-            return ast;
-        } catch (OclCompilationException ex) {
-            throw ex;
-        } catch (RuntimeException ex) {
-            throw new OclCompilationException(OclDiagnosticPhase.PARSE,
-                    ex.getMessage() != null ? ex.getMessage() : "Failed to parse OCL input.",
-                    ex);
         }
     }
 
@@ -211,6 +459,15 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                     primary.tokenText(), primary.sourceSnippet());
         }
 
+        if (primary.code() == OclDiagnosticCode.UNSUPPORTED_RULE_KIND) {
+            return new OclDiagnostic(
+                    OclDiagnosticPhase.PARSE,
+                    primary.code(),
+                    "Hint: keep `inv` on the current production path; `pre/post/body/init/derive` need the generalized Class/Operation/Attribute rule model and are planned next.",
+                    primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
+                    primary.tokenText(), primary.sourceSnippet());
+        }
+
         if (primary.phase() == OclDiagnosticPhase.SEMANTIC && primary.message() != null) {
             if (primary.code() == OclDiagnosticCode.UNKNOWN_CONTEXT_CLASS) {
                 return new OclDiagnostic(
@@ -249,6 +506,22 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
                         "Hint: iterators require a collection source; convert or navigate to a collection before using exists/forall/select/collect.",
+                        primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
+                        primary.tokenText(), primary.sourceSnippet());
+            }
+            if (primary.code() == OclDiagnosticCode.UNKNOWN_DECLARED_TYPE) {
+                return new OclDiagnostic(
+                        OclDiagnosticPhase.SEMANTIC,
+                        primary.code(),
+                        "Hint: use a primitive, enumeration, collection, or class type declared by the active USE model.",
+                        primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
+                        primary.tokenText(), primary.sourceSnippet());
+            }
+            if (primary.code() == OclDiagnosticCode.LET_TYPE_MISMATCH) {
+                return new OclDiagnostic(
+                        OclDiagnosticPhase.SEMANTIC,
+                        primary.code(),
+                        "Hint: the initializer type must conform to the declared `let` variable type.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -320,7 +593,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
-                        "Hint: remodel this as navigation, or project the collection through supported operations before Cypher compilation.",
+                        "Hint: collection-valued attributes are supported, but this case still needs valid collection metadata or the nested collection graph path during rendering.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -336,7 +609,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
-                        "Hint: expose the qualified lookup as an explicit attribute/filter pair or refactor the model to a supported binary navigation.",
+                        "Hint: primitive scalar qualifier expressions are supported, but custom typed qualifier serialization still needs dedicated support.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -368,7 +641,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         OclDiagnosticPhase.SEMANTIC,
                         primary.code(),
-                        "Hint: rewrite this iterator into a supported one such as select/collect/exists/forall/one/any, or extend semantic binding first.",
+                        "Hint: rewrite this iterator into a supported one such as select/reject/collect/exists/forall/one/any/isUnique/sortedBy, or extend semantic binding first.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -433,7 +706,7 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
                 return new OclDiagnostic(
                         primary.phase(),
                         primary.code(),
-                        "Hint: rewrite this iterator into select/collect/exists/forall/one/any, or add planner-renderer support for the missing iterator.",
+                        "Hint: rewrite this iterator into select/reject/collect/exists/forall/one/any/isUnique/sortedBy, or add planner-renderer support for the missing iterator.",
                         primary.line(), primary.column(), primary.endLine(), primary.endColumn(),
                         primary.tokenText(), primary.sourceSnippet());
             }
@@ -517,6 +790,12 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         if (message.contains("Iterator source must be a collection")) {
             return OclDiagnosticCode.INVALID_ITERATOR_SOURCE;
         }
+        if (message.contains("Unknown or unsupported declared type")) {
+            return OclDiagnosticCode.UNKNOWN_DECLARED_TYPE;
+        }
+        if (message.contains("Let type mismatch")) {
+            return OclDiagnosticCode.LET_TYPE_MISMATCH;
+        }
         if (message.contains("allInstances() must be called on a class name")) {
             return OclDiagnosticCode.INVALID_METHOD_RECEIVER;
         }
@@ -540,9 +819,6 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
         }
         if (message.contains("only supported on ordered collections")) {
             return OclDiagnosticCode.UNORDERED_POSITIONAL_ACCESS;
-        }
-        if (message.contains("Collection-valued attributes are not supported yet")) {
-            return OclDiagnosticCode.COLLECTION_VALUED_ATTRIBUTE_UNSUPPORTED;
         }
         if (message.contains("non-binary associations")) {
             return OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED;
@@ -588,14 +864,121 @@ public class DefaultOclToCypherCompiler implements OclToCypherCompiler {
     }
 
     private String extractSourceSnippet(String source, Integer line) {
-        if (source == null || line == null || line < 1) {
-            return null;
+        return OclDocumentParser.extractSourceSnippet(source, line);
+    }
+
+    private OclResultLocation inferResultLocation(String contextClassName,
+                                                  String invariantName,
+                                                  CypherCompilationResult compilation) {
+        if (compilation != null && !compilation.getDiagnostics().isEmpty()) {
+            return OclResultLocation.fromDiagnostic(contextClassName, invariantName, compilation.getDiagnostics().get(0));
         }
-        String[] lines = source.split("\\R", -1);
-        if (line > lines.length) {
-            return null;
+        return new OclResultLocation(contextClassName, invariantName, null, null, null, null, null, null, List.of());
+    }
+
+    private List<String> inferRequiredInputs(OclRuleDescriptor rule) {
+        List<String> requiredInputs = new java.util.ArrayList<>();
+        switch (rule.ruleKind()) {
+            case PRE -> {
+                for (String parameterName : rule.parameterNames()) {
+                    requiredInputs.add("parameter:" + parameterName);
+                }
+            }
+            case POST -> {
+                for (String parameterName : rule.parameterNames()) {
+                    requiredInputs.add("parameter:" + parameterName);
+                }
+                if (referencesVariable(rule.expression(), "result")) {
+                    requiredInputs.add("resultValue");
+                }
+            }
+            case BODY -> {
+                requiredInputs.add("self");
+                for (String parameterName : rule.parameterNames()) {
+                    requiredInputs.add("parameter:" + parameterName);
+                }
+            }
+            case INIT, DERIVE -> requiredInputs.add("self");
+            case INV -> {
+            }
         }
-        String snippet = lines[line - 1].trim();
-        return snippet.isEmpty() ? null : snippet;
+        return List.copyOf(requiredInputs);
+    }
+
+    private boolean referencesVariable(ASTExpression expression, String variableName) {
+        if (expression == null || variableName == null || variableName.isBlank()) {
+            return false;
+        }
+        if (expression instanceof ASTVar variable) {
+            return variableName.equals(variable.name);
+        }
+        if (expression instanceof ASTBinary binary) {
+            return referencesVariable(binary.left, variableName)
+                    || referencesVariable(binary.right, variableName);
+        }
+        if (expression instanceof ASTProperty property) {
+            if (referencesVariable(property.source, variableName)) {
+                return true;
+            }
+            for (ASTExpression qualifier : property.qualifiers) {
+                if (referencesVariable(qualifier, variableName)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (expression instanceof ASTMethodCall methodCall) {
+            if (referencesVariable(methodCall.source, variableName)) {
+                return true;
+            }
+            for (ASTExpression argument : methodCall.args) {
+                if (referencesVariable(argument, variableName)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (expression instanceof ASTCollectionOp collectionOp) {
+            if (referencesVariable(collectionOp.source, variableName)) {
+                return true;
+            }
+            for (ASTExpression argument : collectionOp.args) {
+                if (referencesVariable(argument, variableName)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (expression instanceof ASTIterator iterator) {
+            if (referencesVariable(iterator.source, variableName)) {
+                return true;
+            }
+            if (variableName.equals(iterator.iteratorName)) {
+                return false;
+            }
+            return referencesVariable(iterator.body, variableName);
+        }
+        if (expression instanceof ASTIf ifExpression) {
+            return referencesVariable(ifExpression.condition, variableName)
+                    || referencesVariable(ifExpression.thenBranch, variableName)
+                    || referencesVariable(ifExpression.elseBranch, variableName);
+        }
+        if (expression instanceof ASTLet letExpression) {
+            if (referencesVariable(letExpression.value, variableName)) {
+                return true;
+            }
+            if (variableName.equals(letExpression.variableName)) {
+                return false;
+            }
+            return referencesVariable(letExpression.body, variableName);
+        }
+        if (expression instanceof ASTNot not) {
+            return referencesVariable(not.expression, variableName);
+        }
+        return false;
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000L;
     }
 }

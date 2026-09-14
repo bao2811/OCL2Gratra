@@ -1,0 +1,6 @@
+Doctor::ScheduleMaxThreeRooms
+Doctor::HasAssignedNurse
+Patient::EmergencyHasSymptoms
+Patient::HasAttendingPhysician
+Patient::TreatmentBatchesNonEmpty
+Patient::PrescriptionBatchesNonEmpty

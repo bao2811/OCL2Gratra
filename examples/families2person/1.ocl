@@ -1,0 +1,14 @@
+context Family inv FamilyNameDefined:
+  self.name.isDefined()
+
+context FamilyMember inv MemberNameDefined:
+  self.name.isDefined()
+
+context FamilyRegister inv HasTwoFamilies:
+  self.families->size() = 2
+
+context Family inv SimpsonFather:
+  self.name = 'Simpson' implies self.father.name = 'Homer'
+
+context Family inv FlandersHasTwoSons:
+  self.name = 'Flanders' implies self.sons->size() = 2

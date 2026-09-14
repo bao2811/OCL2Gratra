@@ -96,6 +96,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>use-validator_jar-dependencies</finalName>
 		<sourceDirectory>src/main/java</sourceDirectory>
 <!--		<testSourceDirectory>src/main/test</testSourceDirectory>-->
 
@@ -134,7 +135,6 @@
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
 					<appendAssemblyId>false</appendAssemblyId>
-					<finalName>use-validator_jar-dependencies</finalName>
 				</configuration>
 
 				<executions>

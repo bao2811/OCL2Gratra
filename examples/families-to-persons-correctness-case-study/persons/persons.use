@@ -1,0 +1,22 @@
+model PersonsValidation
+
+class PersonRegister
+attributes
+    label : String
+end
+
+abstract class Person
+attributes
+    name : String
+end
+
+class Male < Person
+end
+
+class Female < Person
+end
+
+association PersonRegistration between
+    PersonRegister[0..1] role personRegister
+    Person[*] role persons
+end

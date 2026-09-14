@@ -15,6 +15,7 @@ public class TggRuleInfo {
     private final List<CorrPattern> requiredCorrPatterns = new ArrayList<>();
     private final List<CorrPattern> outputCorrPatterns = new ArrayList<>();
     private final List<CorrInvariant> corrInvariants = new ArrayList<>();
+    private final List<AttributeMapping> attributeMappings = new ArrayList<>();
 
     public TggRuleInfo(String name) {
         this.name = name;
@@ -92,6 +93,15 @@ public class TggRuleInfo {
         corrInvariants.addAll(invariants);
     }
 
+    public List<AttributeMapping> getAttributeMappings() {
+        return List.copyOf(attributeMappings);
+    }
+
+    public void setAttributeMappings(List<AttributeMapping> mappings) {
+        attributeMappings.clear();
+        attributeMappings.addAll(mappings);
+    }
+
     public record AssociationPattern(String leftVarName, String rightVarName, String associationName) {
     }
 
@@ -104,5 +114,11 @@ public class TggRuleInfo {
     }
 
     public record CorrInvariant(String corrClassName, String expression) {
+    }
+
+    public record AttributeMapping(WorkspaceSide targetSide,
+                                   String targetVariableName,
+                                   String targetAttributeName,
+                                   String sourceExpression) {
     }
 }

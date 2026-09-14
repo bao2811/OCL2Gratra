@@ -26,20 +26,36 @@
         </dependency>
         <dependency>
             <groupId>org.tzi.use</groupId>
-            <artifactId>rtl</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.tzi.use</groupId>
             <artifactId>neo4j</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
+        </dependency>
+        <!-- Dynamic Ecore/XMI loading is part of the certified model boundary.
+             These dependencies let the validators check actual EObjects rather
+             than treating metamodel instances as untyped XML documents. -->
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>org.eclipse.emf.ecore</artifactId>
+            <version>2.42.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.emf</groupId>
+            <artifactId>org.eclipse.emf.ecore.xmi</artifactId>
+            <version>2.40.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.7.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Test-only bridge to the exact Neo4j Cypher 5 parser used by the
+             machine-verification grammar/AST acceptance checks.  The
+             production compiler still renders Cypher text directly. -->
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>cypher-parser-factory</artifactId>
+            <version>2026.06.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

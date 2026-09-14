@@ -1,0 +1,173 @@
+-- Boundary-oriented Car Rental state for the OCL-to-Cypher case study.
+-- The original carrental.soil remains unchanged. Objects with a *_bad or
+-- *_dup identifier deliberately seed one independently reviewable violation.
+
+-- Baseline branch
+!new Branch('branch')
+!set branch.location := 'Bremen'
+
+-- Baseline cars
+!new Car('car1')
+!new Car('car2')
+!new Car('car3')
+!new Car('car4')
+!set car1.id := 'Red car'
+!set car2.id := 'Blue car'
+!set car3.id := 'Silver car'
+!set car4.id := 'Gold car'
+!insert (branch, car1) into Fleet
+!insert (branch, car2) into Fleet
+!insert (branch, car3) into Fleet
+!insert (branch, car4) into Fleet
+
+-- Baseline quality chain plus two boundary groups. cargroup_empty extends the
+-- valid chain but has no classified car. cargroup_bad has a deliberate loop.
+!new CarGroup('cargroup1')
+!new CarGroup('cargroup2')
+!new CarGroup('cargroup3')
+!new CarGroup('cargroup_empty')
+!new CarGroup('cargroup_bad')
+!set cargroup1.kind := 'compact'
+!set cargroup2.kind := 'intermediate'
+!set cargroup3.kind := 'luxury'
+!set cargroup_empty.kind := 'special'
+!set cargroup_bad.kind := 'invalid-loop'
+!insert (cargroup1, cargroup2) into Quality
+!insert (cargroup2, cargroup3) into Quality
+!insert (cargroup3, cargroup_empty) into Quality
+!insert (cargroup_bad, cargroup_bad) into Quality
+
+-- The baseline branch offers the valid chain, including the empty boundary
+-- group. The bad branch below offers only compact cars.
+!insert (branch, cargroup1) into Offers
+!insert (branch, cargroup2) into Offers
+!insert (branch, cargroup3) into Offers
+!insert (branch, cargroup_empty) into Offers
+
+-- Baseline classifications
+!insert (cargroup1, car1) into Classification
+!insert (cargroup1, car2) into Classification
+!insert (cargroup2, car3) into Classification
+!insert (cargroup3, car4) into Classification
+
+-- Baseline customer
+!new Customer('customer1')
+!set customer1.firstname := 'Frank'
+!set customer1.lastname := 'Black'
+!set customer1.age := 36
+!set customer1.isMarried := false
+!set customer1.email := Set{'frank@example.com'}
+!set customer1.address := 'Hamburg'
+
+-- Under-age customer used by Rental::CustomerIsAdult.
+!new Customer('customer_bad')
+!set customer_bad.firstname := 'Young'
+!set customer_bad.lastname := 'Customer'
+!set customer_bad.age := 16
+!set customer_bad.isMarried := false
+!set customer_bad.email := Set{'young@example.com'}
+!set customer_bad.address := 'Bremen'
+
+-- Baseline manager and employee
+!new Employee('manager')
+!set manager.firstname := 'Joe'
+!set manager.lastname := 'White'
+!set manager.age := 48
+!set manager.isMarried := true
+!set manager.email := Set{'joe@branch.com'}
+!set manager.salary := 4000.0
+!insert (manager, branch) into Management
+!insert (manager, branch) into Employment
+
+!new Employee('emp1')
+!set emp1.firstname := 'Jack'
+!set emp1.lastname := 'Green'
+!set emp1.age := 28
+!set emp1.isMarried := false
+!set emp1.email := Set{'jack@branch.com'}
+!set emp1.salary := 3000.0
+!insert (emp1, branch) into Employment
+
+-- Deliberately inconsistent branch. Its manager is employed by the baseline
+-- branch, while two employees named Sam work here. emp_bad also seeds invalid
+-- age, blank surname, and negative salary cases.
+!new Branch('branch_bad')
+!set branch_bad.location := 'Oldenburg'
+
+!new Employee('manager_bad')
+!set manager_bad.firstname := 'Mary'
+!set manager_bad.lastname := 'Gray'
+!set manager_bad.age := 45
+!set manager_bad.isMarried := true
+!set manager_bad.email := Set{'mary@branch.com'}
+!set manager_bad.salary := 2000.0
+!insert (manager_bad, branch_bad) into Management
+!insert (manager_bad, branch) into Employment
+
+!new Employee('emp_bad')
+!set emp_bad.firstname := 'Sam'
+!set emp_bad.lastname := ''
+!set emp_bad.age := 0
+!set emp_bad.isMarried := false
+!set emp_bad.email := Set{'sam.bad@branch.com'}
+!set emp_bad.salary := -100.0
+!insert (emp_bad, branch_bad) into Employment
+
+!new Employee('emp_dup')
+!set emp_dup.firstname := 'Sam'
+!set emp_dup.lastname := 'Twin'
+!set emp_dup.age := 31
+!set emp_dup.isMarried := false
+!set emp_dup.email := Set{'sam.twin@branch.com'}
+!set emp_dup.salary := 3000.0
+!insert (emp_dup, branch_bad) into Employment
+
+-- Cars for the bad branch. car_bad has a blank identifier and a group that
+-- its branch does not offer. car_dup1 and car_dup2 seed duplicate IDs.
+!new Car('car_bad')
+!new Car('car_dup1')
+!new Car('car_dup2')
+!set car_bad.id := ''
+!set car_dup1.id := 'Duplicate car'
+!set car_dup2.id := 'Duplicate car'
+!insert (branch_bad, car_bad) into Fleet
+!insert (branch_bad, car_dup1) into Fleet
+!insert (branch_bad, car_dup2) into Fleet
+!insert (cargroup_bad, car_bad) into Classification
+!insert (cargroup1, car_dup1) into Classification
+!insert (cargroup1, car_dup2) into Classification
+!insert (branch_bad, cargroup1) into Offers
+
+-- Baseline rentals. rental2 deliberately assigns a compact car for an
+-- intermediate reservation, preserving the original fixture's violation.
+!new Rental('rental1')
+!insert (rental1, branch) into Provider
+!insert (rental1, customer1) into Booking
+!insert (rental1, cargroup1) into Reservation
+
+!new Rental('rental2')
+!insert (rental2, branch) into Provider
+!insert (rental2, customer1) into Booking
+!insert (rental2, cargroup2) into Reservation
+!insert (rental2, car2) into Assignment
+
+-- rental_bad combines three independent observations: an under-age customer,
+-- an unoffered reserved group, and a car outside the provider branch's fleet.
+!new Rental('rental_bad')
+!insert (rental_bad, branch_bad) into Provider
+!insert (rental_bad, customer_bad) into Booking
+!insert (rental_bad, cargroup3) into Reservation
+!insert (rental_bad, car1) into Assignment
+
+-- car1 is now rented and maintained at two depots. This makes both ternary
+-- Maintenance invariants non-vacuously mixed.
+!new ServiceDepot('servicedepot1')
+!set servicedepot1.location := 'Bremen North'
+!new ServiceDepot('servicedepot2')
+!set servicedepot2.location := 'Bremen South'
+!new Check('check1')
+!new Check('check2')
+!set check1.description := 'Brakes'
+!set check2.description := 'Engine'
+!insert (servicedepot1, check1, car1) into Maintenance
+!insert (servicedepot2, check2, car1) into Maintenance

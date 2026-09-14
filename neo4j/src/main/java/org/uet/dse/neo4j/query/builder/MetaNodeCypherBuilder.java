@@ -1,5 +1,6 @@
 package org.uet.dse.neo4j.query.builder;
 
+import org.uet.dse.neo4j.encoding.CanonicalGraphSchema;
 import org.uet.dse.neo4j.query.model.MetaNodeDescriptor;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -10,6 +11,7 @@ public class MetaNodeCypherBuilder {
     StringBuilder sb = new StringBuilder();
 
     sb.append(String.format("MERGE (m:ManageModel {name: '%s'}) ", modelName));
+    sb.append("SET m.encodingVersion = '").append(CanonicalGraphSchema.VERSION).append("' ");
     sb.append("WITH m ");
 
     String metaNodesScript = nodes.stream().map(n -> {

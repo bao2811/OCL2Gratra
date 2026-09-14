@@ -13,6 +13,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTIf;
 import org.uet.dse.neo4j.oclite.ast.ASTLet;
 import org.uet.dse.neo4j.oclite.ast.ASTMethodCall;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
 import org.uet.dse.neo4j.oclite.expr.ExecutionContext;
 import org.uet.dse.neo4j.oclite.expr.ExpressionBinder;
@@ -72,9 +73,12 @@ class OcliteTypedIteratorTest {
     }
 
     @Test
-    void multiIteratorSyntaxIsStillRejectedByGrammar() {
-        assertThrows(IllegalArgumentException.class,
-                () -> parse("self->forAll(e1:Integer, e2:Integer | e1 <> e2)"));
+    void multiIteratorSyntaxIsPreservedBySurfaceAstButRejectedByEvaluatorBinder() {
+        ASTNode ast = parse("self->forAll(e1:Integer, e2:Integer | e1 <> e2)");
+        assertTrue(ast instanceof ASTIterator);
+        ASTIterator iterator = (ASTIterator) ast;
+        assertEquals(2, iterator.iteratorVariables.size());
+        assertThrows(RuntimeException.class, () -> new ExpressionBinder("test").bind(ast));
     }
 
     @Test
@@ -129,6 +133,9 @@ class OcliteTypedIteratorTest {
         }
         ASTNode ast = new ASTVisitor().visit(tree);
         assertNotNull(ast);
+        if (ast instanceof ASTFile file && file.freeExpressions().size() == 1) {
+            return file.freeExpressions().get(0);
+        }
         return ast;
     }
 

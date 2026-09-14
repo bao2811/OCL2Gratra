@@ -1,0 +1,46 @@
+model Company
+
+class Company
+attributes
+    name: String
+end
+
+class CEO
+attributes
+    name: String
+end
+
+class Admin
+attributes
+    name: String
+end
+
+class Employee
+attributes
+    name: String
+end
+
+composition CompanyCEO between
+    Company [0..1] role companyCEO
+    CEO [0..1] role ceo
+end
+
+composition CompanyAdmins between
+    Company [0..1] role companyAdmin
+    Admin [*] role admin
+end
+
+composition CompanyEmployees between
+    Company [0..1] role companyEmployee
+    Employee [*] role employee
+end
+
+association CEOEmployees between
+    CEO [0..1] role ceoBoss
+    Employee [*] role employee
+end
+
+association AdminCEO between
+    Admin [*] role admins
+    CEO [0..1] role ceo
+end

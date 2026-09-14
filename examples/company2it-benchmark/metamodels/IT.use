@@ -1,0 +1,36 @@
+model IT
+
+class ITRegister
+end
+
+class ITCompany
+attributes
+    name : String
+end
+
+class ITWorker
+attributes
+    firstName : String
+    age : Integer
+    salary : Integer
+end
+
+association RegisterCompanies between
+    ITRegister [1] role register
+    ITCompany [*] role companies
+end
+
+association RegisterWorkers between
+    ITRegister [1] role workerRegister
+    ITWorker [*] role workers
+end
+
+association CompanyWorker between
+    ITCompany [*] role employer
+    ITWorker [*] role employee
+end
+
+association CompanyManagerTarget between
+    ITCompany [*] role managedCompany
+    ITWorker [1] role manager
+end

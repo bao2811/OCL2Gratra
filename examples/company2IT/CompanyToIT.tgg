@@ -1,0 +1,110 @@
+transformation Company2IT
+direction forward
+
+// Metamodels:
+// - source: Company.use
+// - target: IT.use
+// Instance objects are stored in .xmi files.
+// Correspondence links are declared here in checkCorr sections.
+
+rule CompanyToITRule
+checkSource(
+){
+    company: Company
+    ceo: CEO
+    (company, ceo): CompanyCEO
+}checkTarget(
+){
+    it: IT
+    [it.name = company.name]
+}checkCorr(
+){
+    (company, it) as (company, it) in c2it:CompanyToIT
+}
+end
+
+rule AdminToRouterRule
+checkSource(
+    company: Company
+    ceo: CEO
+    (company, ceo): CompanyCEO
+){
+    admin: Admin
+    (company, admin): CompanyAdmins
+    (admin, ceo): AdminCEO
+}checkTarget(
+    it: IT
+){
+    router: Router
+    network: Network
+    (it, router): ITRouters
+    (it, network): ITNetworks
+    (router, network): RouterNetwork
+    [router.name = admin.name]
+    [network.name = admin.name]
+}checkCorr(
+    (company, it) as (company, it) in c2it:CompanyToIT
+){
+    (admin, router) as (admin, router) in a2r:AdminToRouter
+}
+end
+
+rule EmployeeToPCRule
+checkSource(
+    company: Company
+    ceo: CEO
+    admin: Admin
+    (company, ceo): CompanyCEO
+    (company, admin): CompanyAdmins
+    (admin, ceo): AdminCEO
+){
+    employee: Employee
+    (company, employee): CompanyEmployees
+    (ceo, employee): CEOEmployees
+}checkTarget(
+    it: IT
+    router: Router
+    network: Network
+    (it, router): ITRouters
+    (it, network): ITNetworks
+    (router, network): RouterNetwork
+){
+    pc: PC
+    (network, pc): NetworkPCs
+}checkCorr(
+    (company, it) as (company, it) in c2it:CompanyToIT
+    (admin, router) as (admin, router) in a2r:AdminToRouter
+){
+    (employee, pc) as (employee, pc) in e2pc:EmployeeToPC
+}
+end
+
+rule EmployeeToLaptopRule
+checkSource(
+    company: Company
+    ceo: CEO
+    admin: Admin
+    (company, ceo): CompanyCEO
+    (company, admin): CompanyAdmins
+    (admin, ceo): AdminCEO
+){
+    employee: Employee
+    (company, employee): CompanyEmployees
+    (ceo, employee): CEOEmployees
+}checkTarget(
+    it: IT
+    router: Router
+    network: Network
+    (it, router): ITRouters
+    (it, network): ITNetworks
+    (router, network): RouterNetwork
+){
+    laptop: Laptop
+    (network, laptop): NetworkLaptops
+}checkCorr(
+    (company, it) as (company, it) in c2it:CompanyToIT
+    (admin, router) as (admin, router) in a2r:AdminToRouter
+){
+    (employee, laptop) as (employee, laptop) in e2l:EmployeeToLaptop
+}
+end

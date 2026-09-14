@@ -1,18 +1,106 @@
 package org.uet.dse.neo4jtgg.ocl;
 
 import org.junit.jupiter.api.Test;
+import org.tzi.use.api.UseModelApi;
 import org.tzi.use.parser.use.USECompiler;
+import org.tzi.use.uml.mm.MAggregationKind;
 import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
+import org.uet.dse.neo4jtgg.ocl.diagnostic.OclDiagnosticCode;
+import org.uet.dse.neo4jtgg.service.impl.DefaultOclToCypherCompiler;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OclMetamodelIndexTest {
+    @Test
+    void preservesRecursiveCollectionKindsAndLeafTypes() {
+        String spec = """
+                model MedicalTypes
+                class Medication
+                end
+                class Doctor
+                attributes
+                    shiftSchedule : Sequence(Set(Integer))
+                end
+                class Patient
+                attributes
+                    treatmentHistory : Set(Sequence(String))
+                    prescriptionHistory : Sequence(Sequence(Medication))
+                end
+                """;
+
+        StringWriter buffer = new StringWriter();
+        MModel model = USECompiler.compileSpecification(
+                spec, "medical-types.use", new PrintWriter(buffer, true), new ModelFactory());
+        assertNotNull(model, buffer.toString());
+        OclMetamodelIndex index = new OclMetamodelIndex(model);
+
+        OclTypeBinding shiftSchedule = index.toBinding(
+                index.resolveAttribute("Doctor", "shiftSchedule").type(), "Void");
+        assertCollectionTree(shiftSchedule,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                OclTypeBinding.CollectionKind.SET,
+                "Integer", false);
+
+        OclTypeBinding treatmentHistory = index.toBinding(
+                index.resolveAttribute("Patient", "treatmentHistory").type(), "Void");
+        assertCollectionTree(treatmentHistory,
+                OclTypeBinding.CollectionKind.SET,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                "String", false);
+
+        OclTypeBinding prescriptionHistory = index.toBinding(
+                index.resolveAttribute("Patient", "prescriptionHistory").type(), "Void");
+        assertCollectionTree(prescriptionHistory,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                OclTypeBinding.CollectionKind.SEQUENCE,
+                "Medication", true);
+    }
+
+    private static void assertCollectionTree(OclTypeBinding actual,
+                                             OclTypeBinding.CollectionKind outerKind,
+                                             OclTypeBinding.CollectionKind innerKind,
+                                             String leafType,
+                                             boolean nodeLeaf) {
+        assertTrue(actual.isCollection());
+        assertEquals(outerKind, actual.collectionKind());
+        assertTrue(actual.elementType().isCollection());
+        assertEquals(innerKind, actual.elementType().collectionKind());
+        OclTypeBinding leaf = actual.elementType().elementType();
+        assertEquals(leafType, leaf.typeName());
+        assertEquals(nodeLeaf, leaf.isNode());
+    }
+
+    @Test
+    void rejectsAssociationClassAsDirectRelationshipNavigation() throws Exception {
+        UseModelApi api = new UseModelApi("EmploymentModel");
+        api.createClass("Person", false);
+        api.createClass("Company", false);
+        api.createAssociationClass("Employment", false,
+                "Person", "employee", "*", MAggregationKind.NONE,
+                "Company", "employer", "*", MAggregationKind.NONE);
+
+        OclMetamodelIndex.NavigationInfo navigation =
+                new OclMetamodelIndex(api.getModel()).resolveNavigation("Person", "employer");
+
+        assertNotNull(navigation);
+        assertTrue(navigation.isAssociationClassNavigation());
+        assertFalse(navigation.supportsDirectCypherNavigation());
+        assertEquals(OclDiagnosticCode.ASSOCIATION_CLASS_UNSUPPORTED, navigation.unsupportedCode());
+
+        var compiled = new DefaultOclToCypherCompiler(api.getModel()).compile(
+                "context Person inv NoDirectLinkObjectShortcut: self.employer->notEmpty()");
+        assertFalse(compiled.isSupported());
+        assertEquals(OclDiagnosticCode.ASSOCIATION_CLASS_UNSUPPORTED,
+                compiled.getDiagnostics().get(0).code());
+    }
+
     @Test
     void indexesAttributesAndNavigations() {
         String spec = """
@@ -178,6 +266,9 @@ class OclMetamodelIndexTest {
         assertEquals("CompanyEmployee", employer.associationName());
         assertEquals("CompanyManager", managedCompany.associationName());
         assertTrue(manager.targetSingleValued());
+        assertFalse(manager.resultBinding().isCollection());
+        assertTrue(manager.resultBinding().isNode());
+        assertEquals("Person", manager.resultBinding().typeName());
         assertEquals(OclMetamodelIndex.NavigationDirection.OUTGOING, employee.direction());
         assertEquals(OclMetamodelIndex.NavigationDirection.OUTGOING, manager.direction());
         assertEquals(OclMetamodelIndex.NavigationDirection.INCOMING, employer.direction());
@@ -219,7 +310,7 @@ class OclMetamodelIndexTest {
     }
 
     @Test
-    void marksNAryNavigationAsNotDirectlySupportedForCypher() {
+    void classifiesNAryAssociationRolesAsOutsideDirectCypherNavigation() {
         String spec = """
                 model Demo
                 class Person
@@ -245,11 +336,12 @@ class OclMetamodelIndexTest {
         assertEquals("Buy", pet.associationName());
         assertEquals(OclMetamodelIndex.NavigationDirection.UNDIRECTED, pet.direction());
         assertTrue(!pet.isBinaryAssociation());
-        assertTrue(!pet.supportsDirectCypherNavigation());
+        assertFalse(pet.supportsDirectCypherNavigation());
+        assertEquals(OclDiagnosticCode.NON_BINARY_ASSOCIATION_UNSUPPORTED, pet.unsupportedCode());
     }
 
     @Test
-    void marksQualifiedNavigationAsNotDirectlySupportedForCypher() {
+    void supportsUnqualifiedDirectNavigationForQualifiedAssociations() {
         String spec = """
                 model Demo
                 class Library
@@ -257,8 +349,8 @@ class OclMetamodelIndexTest {
                 class Book
                 end
                 association Catalog between
-                    Library[1] role library
-                    Book[*] role book qualifier (shelf : String)
+                    Library[1] role library qualifier (shelf : String)
+                    Book[*] role book qualifier (code : String)
                 end
                 """;
 
@@ -271,11 +363,17 @@ class OclMetamodelIndexTest {
         assertNotNull(book);
         assertEquals("Catalog", book.associationName());
         assertTrue(book.hasQualifiers());
-        assertTrue(!book.supportsDirectCypherNavigation());
+        assertTrue(book.supportsDirectCypherNavigation());
+
+        OclMetamodelIndex.NavigationInfo library = index.resolveNavigation("Book", "library");
+        assertNotNull(library);
+        assertTrue(library.targetSingleValued());
+        assertTrue(library.resultBinding().isCollection(),
+                "The native USE result kind, not target multiplicity alone, controls qualified navigation typing");
     }
 
     @Test
-    void marksRedefiningNavigationAsNotDirectlySupportedForCypher() {
+    void supportsDirectNavigationForRedefiningAssociations() {
         String spec = """
                 model Demo
                 class Person
@@ -305,6 +403,6 @@ class OclMetamodelIndexTest {
         assertNotNull(employer);
         assertEquals("StartupWorksFor", employer.associationName());
         assertTrue(employer.isRedefiningAssociation());
-        assertTrue(!employer.supportsDirectCypherNavigation());
+        assertTrue(employer.supportsDirectCypherNavigation());
     }
 }

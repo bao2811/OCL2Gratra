@@ -1,0 +1,32 @@
+context Person inv Named:
+  self.name <> ''
+
+context Person inv Registered:
+  self.personRegister->notEmpty()
+
+context Person inv ConcreteGender:
+  self.oclIsKindOf(Male) or self.oclIsKindOf(Female)
+
+context PersonRegister inv ContainsAllPersons:
+  self.label = 'complete' implies
+    self.persons->includesAll(Person.allInstances())
+
+context PersonRegister inv UniqueNames:
+  self.persons->isUnique(p | p.name)
+
+context PersonRegister inv NoBlankNames:
+  self.persons->forAll(p | p.name <> '')
+
+context PersonRegister inv HasMale:
+  self.persons->exists(p | p.oclIsKindOf(Male))
+
+context PersonRegister inv HasFemale:
+  self.persons->exists(p | p.oclIsKindOf(Female))
+
+context PersonRegister inv CoveredByGender:
+  self.persons->select(p | p.oclIsKindOf(Male))
+    ->union(self.persons->select(p | p.oclIsKindOf(Female)))
+    ->includesAll(self.persons)
+
+context Person inv StableSelfMembership:
+  Person.allInstances()->includes(self)

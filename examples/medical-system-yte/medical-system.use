@@ -1,0 +1,160 @@
+model MedicalSystemYte
+
+enum Gender { MALE, FEMALE, OTHER }
+enum HealthStatus { CRITICAL, STABLE, RECOVERING }
+enum Brand { ASCRIPTIN, AXOTAL, BUFFAPRIN, IBUPRIN }
+enum Administration { ENTERAL, PARENTERAL, OTHER }
+enum Specialty { CARDIOLOGY, NEUROLOGY, ONCOLOGY, EMERGENCY }
+enum BloodType { A_POS, A_NEG, B_POS, B_NEG, O_POS, O_NEG, AB_POS, AB_NEG }
+
+abstract class Person
+attributes
+    name : String
+    age : Integer
+    gender : Gender
+    address : String
+    phoneNumber : String
+    email : String
+    dateOfBirth : String
+    emergencyContacts : Set(Person)
+end
+
+class Nurse < Person
+attributes
+    nurseID : String
+    isHeadNurse : Boolean
+    certificationLevel : Integer
+    assignedWard : String
+    onCall : Boolean
+    hourlyRate : Real
+    lastTrainingDate : String
+end
+
+class Doctor < Person
+attributes
+    doctorID : String
+    specialty : Specialty
+    consultationFee : Real
+    yearsOfExperience : Integer
+    qualification : String
+    isAvailable : Boolean
+    shiftSchedule : Sequence(Set(Integer))
+    patientQueue : Sequence(Patient)
+    assignedNurses : Set(Nurse)
+    collaborationHistory : Sequence(Set(Doctor))
+operations
+    prescribe(p : Patient, m : Medication, quantity : Integer)
+    getChiefResident() : Doctor
+end
+
+class Patient < Person
+attributes
+    patientID : String
+    isEmergency : Boolean
+    bloodType : BloodType
+    weight : Real
+    height : Real
+    symptoms : Sequence(String)
+    treatmentHistory : Set(Sequence(String))
+    allergies : Set(String)
+    attendingPhysicians : Set(Doctor)
+    currentMeds : Set(Medication)
+    prescriptionHistory : Sequence(Sequence(Medication))
+operations
+    checkCriticalStatus() : Boolean =
+        self.isEmergency = true or self.age > 80
+end
+
+class Hospital
+attributes
+    name : String
+    totalBudget : Real
+    location : String
+    totalBeds : Integer
+    availableICUs : Integer
+    rating : Real
+    isPublic : Boolean
+    emergencyContact : String
+    medicalStaff : Set(Person)
+end
+
+class Department
+attributes
+    deptName : String
+end
+
+class Disease
+attributes
+    diseaseName : String
+end
+
+class Medication
+attributes
+    brandName : String
+    genericName : String
+    price : Real
+end
+
+class Dosage
+attributes
+    patientNumber : Integer
+    adminMethod : Administration
+    brandName : Brand
+end
+
+class DosagePlan
+end
+
+class MedicalRecord
+end
+
+class RecordEntry
+attributes
+    entryDate : String
+    description : String
+end
+
+association Appointment between
+    Doctor [1..*] role doctor
+    Patient [1..*] role patient
+    Department [1..*] role department
+end
+
+association Consultation between
+    Doctor [1..*] role consultants
+    Patient [1..*] role patients
+    Disease [0..7] role condition
+end
+
+associationclass Prescription between
+    Doctor [1..*] role physician
+    Patient [0..*] role patient
+attributes
+    prescriptionID : String
+    dosageInstructions : String
+operations
+    updateDosage(newDosage : String)
+end
+
+associationclass Hospitalization between
+    Patient [*] role inpatient
+    Department [0..7] role ward
+attributes
+    admissionDate : String
+    roomNumber : Integer
+end
+
+aggregation HospitalStructure between
+    Hospital [1..*] role parentHospital
+    Department [1..*] role departments
+end
+
+composition PatientRecord between
+    Patient [0..7] role owner
+    MedicalRecord [0..1] role record
+end
+
+composition RecordEntries between
+    MedicalRecord [0..7] role parent
+    RecordEntry [*] role entries
+end

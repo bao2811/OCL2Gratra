@@ -6,6 +6,7 @@ import org.tzi.use.uml.mm.MModel;
 import org.tzi.use.uml.mm.ModelFactory;
 import org.uet.dse.neo4j.OCLLexer;
 import org.uet.dse.neo4j.OCLParser;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
@@ -43,8 +44,7 @@ class OclIrBuilderTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Family inv AdultChildren: self.children->forall(c | c.age >= 18)")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
-        ASTContext context = (ASTContext) ast;
+        ASTContext context = firstContext(ast);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
         OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(context);
@@ -83,10 +83,9 @@ class OclIrBuilderTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Person inv AdultNamed: if self.age >= 18 then self.name else 'minor' endif <> ''")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         assertTrue(invariantQuery.predicate() instanceof OclIr.Binary);
@@ -112,15 +111,21 @@ class OclIrBuilderTest {
         ASTNode ast = new ASTVisitor().visit(new OCLParser(new org.antlr.v4.runtime.CommonTokenStream(
                 new OCLLexer(org.antlr.v4.runtime.CharStreams.fromString(
                         "context Person inv AdultByLet: let threshold = 18 in self.age >= threshold")))).oclFile());
-        assertTrue(ast instanceof ASTContext);
 
         OclSemanticBinder binder = new OclSemanticBinder(new OclMetamodelIndex(model));
-        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext((ASTContext) ast);
+        OclSemanticBinder.BoundContextInvariant bound = binder.bindContext(firstContext(ast));
         OclIr.InvariantQuery invariantQuery = new OclIrBuilder().buildInvariant(bound);
 
         assertTrue(invariantQuery.predicate() instanceof OclIr.Let);
         OclIr.Let letExpression = (OclIr.Let) invariantQuery.predicate();
         assertEquals("threshold", letExpression.variableName());
         assertTrue(letExpression.body() instanceof OclIr.Binary);
+    }
+
+    private ASTContext firstContext(ASTNode ast) {
+        assertTrue(ast instanceof ASTFile);
+        ASTFile file = (ASTFile) ast;
+        assertEquals(1, file.invariants().size());
+        return file.invariants().get(0);
     }
 }

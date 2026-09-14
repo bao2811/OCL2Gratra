@@ -1,0 +1,48 @@
+id	feature	context	obligation	expectedClass	expectedViolations	semanticBasis
+Person::C01	self	Person	PROFILE_TAUTOLOGY	ALL_PASS		object identity is reflexive
+Person::C02	lexical variable	Person	PROFILE_TAUTOLOGY	ALL_PASS		let-bound p denotes self
+Person::C03	Boolean literal	Person	PROFILE_TAUTOLOGY	ALL_PASS		literal true
+Person::C04	Integer literal	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personZero	ages straddle 18
+Person::C05	Real literal	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personZero	exact division by one preserves ages around 18
+Person::C06	String literal	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personBlank	one empty and several non-empty names
+Person::C07	attribute	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	one negative and several non-negative ages
+Company::C08	navigation forward	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty	one empty and several non-empty employee sets
+Person::C09	navigation reverse	Person	PROFILE_TAUTOLOGY	ALL_PASS		Company[1] employer multiplicity in the checked model
+Library::C10	qualified navigation	Library	MIXED_REQUIRED	NON_VACUOUS_MIXED	libraryEmpty	one A1-qualified link and one empty library
+Person::C11	allInstances	Person	PROFILE_TAUTOLOGY	ALL_PASS		self belongs to Person allInstances including subclasses
+Person::C12	not	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	one negative and several non-negative ages
+Person::C13	and	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg;personBlank	negative age and empty name exercise separate conjuncts
+Person::C14	or	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	negative non-empty object falsifies both disjuncts
+Person::C15	implies	Person	PROFILE_TAUTOLOGY	ALL_PASS		age at least 18 implies age at least 0 over Integer
+Person::C16	equals	Person	PROFILE_TAUTOLOGY	ALL_PASS		defined scalar equality is reflexive
+Person::C17	not equals	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personBlank	one empty and several non-empty names
+Person::C18	less than	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personOld	age 201 crosses strict upper boundary 200
+Person::C19	less or equal	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personOld	age 201 crosses inclusive upper boundary 200
+Person::C20	greater than	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg;personZero	negative and zero ages fail strict positivity
+Person::C21	greater or equal	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	negative age fails non-negativity
+Person::C22	addition	Person	PROFILE_TAUTOLOGY	ALL_PASS		x plus one exceeds x under ScalarClosed no-overflow premise
+Person::C23	subtraction	Person	PROFILE_TAUTOLOGY	ALL_PASS		x minus one is below x under ScalarClosed no-overflow premise
+Person::C24	multiplication	Person	PROFILE_TAUTOLOGY	ALL_PASS		multiplication by one is identity
+Person::C25	division	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	personNeg	exact division by one preserves sign
+Person::C26	if	Person	PROFILE_TAUTOLOGY	ALL_PASS		complementary age branches both return true
+Person::C27	let	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personZero	let-bound threshold is crossed by fixture ages
+Company::C28	exists	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty;companyNegative	only some companies have an adult employee
+Company::C29	forAll	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyNegative	negative employee falsifies universal while empty is vacuously true
+Company::C30	select	Company	PROFILE_TAUTOLOGY	ALL_PASS		finite-set size is non-negative
+Company::C31	reject	Company	PROFILE_TAUTOLOGY	ALL_PASS		finite-set size is non-negative
+Company::C32	collect scalar	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty;companyNegative;companyMisc	only companyGood collects exact age 18
+Person::C33	includes	Person	PROFILE_TAUTOLOGY	ALL_PASS		self belongs to Person allInstances
+Person::C34	excludes	Person	PROFILE_TAUTOLOGY	ALL_PASS		excludes self is false because allInstances includes self
+Company::C35	includesAll	Company	PROFILE_TAUTOLOGY	ALL_PASS		finite set includes itself
+Company::C36	excludesAll	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyNegative	selected negative employee intersects source employee set
+Company::C37	size	Company	PROFILE_TAUTOLOGY	ALL_PASS		finite-set cardinality is non-negative
+Company::C38	isEmpty	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyNegative	only negative company has a selected negative employee
+Company::C39	notEmpty	Company	MIXED_REQUIRED	NON_VACUOUS_MIXED	companyEmpty	one empty and several non-empty employee sets
+Person::C40	oclIsKindOf	Person	PROFILE_TAUTOLOGY	ALL_PASS		context objects conform to Person including Employee subclass
+Person::C41	oclAsType	Person	PROFILE_TAUTOLOGY	ALL_PASS		cast to the context supertype preserves age access
+Person::C42	xor	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	person17;personNeg;personBlank;personOld;personZero	ages cover neither exactly-one and both-true regions
+Person::C43	Set literal	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	only age 17 collapses the two set elements
+Person::C44	union	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	union has one element exactly at age 17
+Person::C45	intersection	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	intersection with singleton 17 is non-empty exactly at age 17
+Person::C46	asSet	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	asSet removes duplicate 17 only at age 17
+Person::C47	isUnique	Person	MIXED_REQUIRED	NON_VACUOUS_MIXED	employee30;person18;personNeg;personBlank;personOld;personZero	constant Boolean image is unique only for singleton source at age 17

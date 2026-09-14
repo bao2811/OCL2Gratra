@@ -33,12 +33,14 @@ class ExamplesOclDatasetCompilerTest {
         CypherCompilationResult hasFamilies = compiler.compile(
                 "context FamilyRegister inv HasFamilies: self.families->size() > 0");
         assertTrue(hasFamilies.isSupported(), hasFamilies.getReason());
-        assertTrue(hasFamilies.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"));
+        assertTrue(hasFamilies.getCypher().contains("EXISTS {")
+                && hasFamilies.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
 
         CypherCompilationResult hasFather = compiler.compile(
                 "context Family inv HasFather: self.father->notEmpty()");
         assertTrue(hasFather.isSupported(), hasFather.getReason());
-        assertTrue(hasFather.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"));
+        assertTrue(hasFather.getCypher().contains("EXISTS {")
+                && hasFather.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
 
         CypherCompilationResult namedFather = compiler.compile(
                 "context Family inv NamedFather: self.father.name <> ''");
@@ -48,7 +50,7 @@ class ExamplesOclDatasetCompilerTest {
         CypherCompilationResult incomingFamily = compiler.compile(
                 "context FamilyMember inv BelongsToFamily: self.familyFather->notEmpty()");
         assertTrue(incomingFamily.isSupported(), incomingFamily.getReason());
-        assertTrue(incomingFamily.getCypher().contains("(self)<-[r]-(nav)"));
+        assertTrue(incomingFamily.getCypher().contains(")<-[r]-(nav:Object {modelKey:"));
     }
 
     @Test
@@ -79,7 +81,8 @@ class ExamplesOclDatasetCompilerTest {
         CypherCompilationResult slavery = miniCompanyCompiler.compile(
                 "context Manager inv slavery: self.employs->exists(e | e.salary < 2000)");
         assertTrue(slavery.isSupported(), slavery.getReason());
-        assertTrue(slavery.getCypher().contains("EXISTS { MATCH (self)-[r]->(e)"));
+        assertTrue(slavery.getCypher().contains("EXISTS {")
+                && slavery.getCypher().contains(")-[r]->(e:Object {modelKey:"));
 
         String vehiclesSpec = """
                 model Vehicles
@@ -110,7 +113,8 @@ class ExamplesOclDatasetCompilerTest {
         CypherCompilationResult truckCount = vehiclesCompiler.compile(
                 "context Person inv NumberOfDrivenTrucksNotZero: self.truck->size() <> 0");
         assertTrue(truckCount.isSupported(), truckCount.getReason());
-        assertTrue(truckCount.getCypher().contains("EXISTS { MATCH (self)-[r]->(nav)"));
+        assertTrue(truckCount.getCypher().contains("EXISTS {")
+                && truckCount.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
 
         CypherCompilationResult adultDrivers = vehiclesCompiler.compile(
                 "context Person inv AllPersonsWithDriversLicenseAdult: self.driversLicense->notEmpty() implies self.age > 17");
@@ -119,7 +123,8 @@ class ExamplesOclDatasetCompilerTest {
         CypherCompilationResult allDriversAllowed = vehiclesCompiler.compile(
                 "context Person inv AllDriversAllowedToDriveTheirTrucks: self.truck->forAll(t | t.tons > 0)");
         assertTrue(allDriversAllowed.isSupported(), allDriversAllowed.getReason());
-        assertTrue(allDriversAllowed.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(t)"));
+        assertTrue(allDriversAllowed.getCypher().contains("NOT EXISTS {")
+                && allDriversAllowed.getCypher().contains(")-[r]->(t:Object {modelKey:"));
     }
 
     @Test
@@ -220,31 +225,35 @@ class ExamplesOclDatasetCompilerTest {
         CypherCompilationResult employerEmpty = compiler.compile(
                 "context Person inv NoEmployer: self.employer->isEmpty()");
         assertTrue(employerEmpty.isSupported(), employerEmpty.getReason());
-        assertTrue(employerEmpty.getCypher().contains("(self)<-[r]-(nav)"));
+        assertTrue(employerEmpty.getCypher().contains(")<-[r]-(nav:Object {modelKey:"));
 
         CypherCompilationResult managerCount = compiler.compile(
                 "context Company inv OneManager: self.manager->size() = 1");
         assertTrue(managerCount.isSupported(), managerCount.getReason());
-        assertTrue(managerCount.getCypher().contains("COUNT { MATCH (self)-[r]->(nav)"));
+        assertTrue(managerCount.getCypher().contains("size(COLLECT {")
+                && managerCount.getCypher().contains(")-[r]->(nav:Object {modelKey:"));
 
         CypherCompilationResult olderEmployee = compiler.compile(
                 "context Company inv SeniorEmployeeExists: self.employee->select(e | e.age > 50)->notEmpty()");
         assertTrue(olderEmployee.isSupported(), olderEmployee.getReason());
-        assertTrue(olderEmployee.getCypher().contains("EXISTS { MATCH (self)-[r]->(e)"));
+        assertTrue(olderEmployee.getCypher().contains("EXISTS {")
+                && olderEmployee.getCypher().contains(")-[r]->(e:Object {modelKey:"));
 
         CypherCompilationResult hasJack = compiler.compile(
                 "context Company inv HasJack: self.employee->exists(p | p.firstName = 'Jack')");
         assertTrue(hasJack.isSupported(), hasJack.getReason());
-        assertTrue(hasJack.getCypher().contains("EXISTS { MATCH (self)-[r]->(p)"));
+        assertTrue(hasJack.getCypher().contains("EXISTS {")
+                && hasJack.getCypher().contains(")-[r]->(p:Object {modelKey:"));
 
         CypherCompilationResult retirementAge = compiler.compile(
                 "context Company inv WorkingAgeOnly: self.employee->forAll(p | p.age <= 65)");
         assertTrue(retirementAge.isSupported(), retirementAge.getReason());
-        assertTrue(retirementAge.getCypher().contains("NOT EXISTS { MATCH (self)-[r]->(p)"));
+        assertTrue(retirementAge.getCypher().contains("NOT EXISTS {")
+                && retirementAge.getCypher().contains(")-[r]->(p:Object {modelKey:"));
     }
 
     @Test
-    void rejectsExpectedFailSnippetsFromExamples() throws IOException {
+    void classifiesExampleSnippetsAgainstCurrentFragment() throws IOException {
         String company = readExample("examples/ocl-examples/company/company.ocl");
 
         assertTrue(company.contains("self.employee.birthDate->size() > 0"));
@@ -270,11 +279,13 @@ class ExamplesOclDatasetCompilerTest {
 
         CypherCompilationResult implicitCollect = compiler.compile(
                 "context Company inv BirthDatesPresent: self.employee.birthDate->size() > 0");
-        assertFalse(implicitCollect.isSupported());
+        // The general prototype accepts implicit collection projection. It is
+        // intentionally absent from the frozen OCL_val theorem/coverage list.
+        assertTrue(implicitCollect.isSupported(), implicitCollect.getReason());
 
         CypherCompilationResult reject = compiler.compile(
                 "context Company inv UnmarriedOnly: self.employee->reject(p | p.isMarried)->isEmpty()");
-        assertFalse(reject.isSupported());
+        assertTrue(reject.isSupported(), reject.getReason());
     }
 
     private static String readExample(String relativePath) throws IOException {

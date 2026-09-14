@@ -10,14 +10,21 @@ public class OclValidationResult {
     private final String generatedCypher;
     private final boolean fallbackUsed;
     private final Map<String, String> violations;
+    private final String displayTextOverride;
 
     public OclValidationResult(boolean success, String summary, String generatedCypher, boolean fallbackUsed,
                                Map<String, String> violations) {
+        this(success, summary, generatedCypher, fallbackUsed, violations, null);
+    }
+
+    public OclValidationResult(boolean success, String summary, String generatedCypher, boolean fallbackUsed,
+                               Map<String, String> violations, String displayTextOverride) {
         this.success = success;
         this.summary = summary;
         this.generatedCypher = generatedCypher;
         this.fallbackUsed = fallbackUsed;
         this.violations = new LinkedHashMap<>(violations);
+        this.displayTextOverride = displayTextOverride;
     }
 
     public boolean isSuccess() {
@@ -41,6 +48,9 @@ public class OclValidationResult {
     }
 
     public String toDisplayText() {
+        if (displayTextOverride != null && !displayTextOverride.isBlank()) {
+            return displayTextOverride;
+        }
         StringBuilder sb = new StringBuilder(summary);
         if (generatedCypher != null && !generatedCypher.isBlank()) {
             sb.append("\n\nGenerated Cypher:\n").append(generatedCypher);

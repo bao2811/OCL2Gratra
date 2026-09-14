@@ -96,7 +96,7 @@ public final class Main {
 						.error("Could not load PluginRuntime. Probably use-runtime-...jar is missing.\n"
 								+ "Try starting use with -noplugins switch.\n"
 								+ e.getMessage());
-				System.exit(1);
+				Options.exitApplication(1);
 			}
 			try {
 				Method run = mainPluginRuntimeClass.getMethod("run",
@@ -108,7 +108,7 @@ public final class Main {
 			} catch (Exception e) {
 				e.printStackTrace();
 				Log.error("FATAL ERROR.");
-				System.exit(1);
+				Options.exitApplication(1);
 			}
 		}
 
@@ -121,14 +121,14 @@ public final class Main {
 						new ModelFactory());
 			} catch (FileNotFoundException e) {
 				Log.error("File `" + Options.specFilename + "' not found.");
-				System.exit(1);
+				Options.exitApplication(1);
 			} catch (IOException e1) {
 				// close failed
 			}
 
 			// compile errors?
 			if (model == null) {
-				System.exit(1);
+				Options.exitApplication(1);
 			}
 
 			if(!Options.quiet){
@@ -144,7 +144,7 @@ public final class Main {
 							System.out, true));
 					model.processWithVisitor(v);
 				}
-				System.exit(0);
+				Options.exitApplication(0);
 			}
 
 			// print some info about model
@@ -204,22 +204,35 @@ public final class Main {
 			return Options.pluginDir;
 		}
 
-		Path repoRoot = Options.homeDir.getParent() != null ? Options.homeDir.getParent().getParent() : null;
-		if (repoRoot != null) {
-			Path officialPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
-					.resolve("resources").resolve("plugins").resolve("officalVersion");
-			if (Files.isDirectory(officialPlugins)) {
-				return officialPlugins;
-			}
-
+		for (Path repoRoot : candidateRepoRoots()) {
 			Path devPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
 					.resolve("resources").resolve("plugins");
 			if (Files.isDirectory(devPlugins)) {
 				return devPlugins;
 			}
+
+			Path officialPlugins = repoRoot.resolve("use-assembly").resolve("src").resolve("main")
+					.resolve("resources").resolve("plugins").resolve("officalVersion");
+			if (Files.isDirectory(officialPlugins)) {
+				return officialPlugins;
+			}
 		}
 
 		return Options.pluginDir;
+	}
+
+	private static Path[] candidateRepoRoots() {
+		Path home = Options.homeDir;
+		Path parent = home != null ? home.getParent() : null;
+		Path grandParent = parent != null ? parent.getParent() : null;
+		Path greatGrandParent = grandParent != null ? grandParent.getParent() : null;
+
+		return new Path[] {
+				home,
+				parent,
+				grandParent,
+				greatGrandParent
+		};
 	}
 }
 

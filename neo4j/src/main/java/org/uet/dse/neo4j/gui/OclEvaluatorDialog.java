@@ -1,27 +1,16 @@
 package org.uet.dse.neo4j.gui;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.neo4j.driver.types.Node;
 import org.tzi.use.gui.util.TextComponentWriter;
 import org.tzi.use.main.Session;
-import org.tzi.use.parser.ocl.OCLCompiler;
 import org.tzi.use.uml.mm.MModel;
-import org.tzi.use.uml.ocl.expr.Expression;
-import org.tzi.use.uml.ocl.value.Value;
 import org.tzi.use.uml.sys.MSystemState;
 import org.tzi.use.util.TeeWriter;
-import org.uet.dse.neo4j.OCLLexer;
-import org.uet.dse.neo4j.OCLParser;
-import org.uet.dse.neo4j.ocl.IOCLEvaluator;
-import org.uet.dse.neo4j.ocl.NEvaluator;
-import org.uet.dse.neo4j.ocl.mapper.NExpressionRewriter;
-import org.uet.dse.neo4j.ocl.expr.NExpression;
 import org.uet.dse.neo4j.oclite.Neo4jRepository;
+import org.uet.dse.neo4j.oclite.OclAstParser;
 import org.uet.dse.neo4j.oclite.ast.ASTContext;
+import org.uet.dse.neo4j.oclite.ast.ASTFile;
 import org.uet.dse.neo4j.oclite.ast.ASTNode;
-import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
 import org.uet.dse.neo4j.oclite.expr.ExecutionContext;
 import org.uet.dse.neo4j.oclite.expr.ExpressionBinder;
 import org.uet.dse.neo4j.oclite.expr.ExpressionNode;
@@ -39,13 +28,11 @@ public class OclEvaluatorDialog extends JDialog {
   private final JTextArea txtExpression;
   private final JTextArea txtResult;
   private final Session useSession;
-  private final IOCLEvaluator oclEvaluator;
   private final MSystemState currentState;
 
-  public OclEvaluatorDialog(Frame parent, Session session, IOCLEvaluator oclEvaluator) {
+  public OclEvaluatorDialog(Frame parent, Session session) {
     super(parent, "Evaluate OCL expression", false);
     this.useSession = session;
-    this.oclEvaluator = oclEvaluator;
     this.currentState = session.system().state();
 
     setSize(600, 300);
@@ -133,15 +120,11 @@ public class OclEvaluatorDialog extends JDialog {
     //        // eval như bình thường - nhưng chạy trên neo4j
     //        result = evaluator.eval(currentState, neo4jExpr);
 
-    CharStream stream = CharStreams.fromString(expression);
-    OCLLexer lexer = new OCLLexer(stream);
-    CommonTokenStream tokens = new CommonTokenStream(lexer);
-    OCLParser parser = new OCLParser(tokens);
-    //OCLParser.ExpressionContext parseTree = parser.expression();
-    OCLParser.OclFileContext parseTree = parser.oclFile();
-
-    ASTVisitor astBuilder = new ASTVisitor();
-    ASTNode astTree = astBuilder.visit(parseTree);
+    ASTFile astFile = OclAstParser.parse(expression);
+    if (astFile.elements().size() != 1) {
+      throw new IllegalArgumentException("Enter exactly one OCL expression or constraint.");
+    }
+    ASTNode astTree = astFile.elements().get(0);
 
     String modelName = this.useSession.system().model().name();
     if (modelName == null) {
