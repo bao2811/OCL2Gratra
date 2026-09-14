@@ -1,0 +1,11 @@
+invariant,ids
+Person::PositiveAge,
+Person::NamesDefined,
+Branch::ManagerIsEmployee,
+Branch::ManagerSalaryDominates,
+CarGroup::QualityNotReflexive,
+CarGroup::ExactlyOneLowest,
+Car::NotRentedDuringMaintenance,
+Car::AtMostOneServiceDepot,
+Rental::OfferedGroup,
+Rental::AssignedRequestedGroup,rental2

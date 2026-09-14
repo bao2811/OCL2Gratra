@@ -1617,7 +1617,9 @@ class OclDualCheckTest {
                 return !toBooleanValue(evaluate(not.expression(), scope));
             }
             if (expression instanceof OclSemanticBinder.BoundIf ifExpression) {
-                return toBooleanValue(evaluate(ifExpression.condition(), scope))
+                Object condition = evaluate(ifExpression.condition(), scope);
+                if (condition == null) return null;
+                return toBooleanValue(condition)
                         ? evaluate(ifExpression.thenBranch(), scope)
                         : evaluate(ifExpression.elseBranch(), scope);
             }
@@ -1963,7 +1965,9 @@ class OclDualCheckTest {
                 return !toBooleanValue(evaluate(not.expression(), scope));
             }
             if (expression instanceof OclIr.If ifExpression) {
-                return toBooleanValue(evaluate(ifExpression.condition(), scope))
+                Object condition = evaluate(ifExpression.condition(), scope);
+                if (condition == null) return null;
+                return toBooleanValue(condition)
                         ? evaluate(ifExpression.thenBranch(), scope)
                         : evaluate(ifExpression.elseBranch(), scope);
             }

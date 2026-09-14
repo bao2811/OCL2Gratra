@@ -85,6 +85,7 @@ class OclVoidContextMatrixTest {
             case "RIGHT" -> ((OclSemanticBinder.BoundBinary) root).right();
             case "SOURCE" -> ((OclSemanticBinder.BoundCollectionOperation) root).source();
             case "VALUE" -> ((OclSemanticBinder.BoundLet) root).value();
+            case "CONDITION" -> ((OclSemanticBinder.BoundIf) root).condition();
             default -> throw new IllegalStateException("Unknown focus " + focus);
         };
     }

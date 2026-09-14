@@ -147,6 +147,7 @@ public final class OclValBoundAdmissionPolicy {
         }
     }
 
+    /** Implements the formal scalarAttrOnly admission predicate. */
     private static void verifyAttribute(OclSemanticBinder.BoundProperty property) {
         Type umlType = property.attribute().type();
         if (property.type().isCollection()

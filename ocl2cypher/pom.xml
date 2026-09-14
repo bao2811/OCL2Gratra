@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>use</artifactId>
+        <groupId>org.tzi.use</groupId>
+        <version>7.1.0</version>
+    </parent>
+
+    <artifactId>ocl2cypher</artifactId>
+    <name>OCL2Cypher</name>
+    <modelVersion>4.0.0</modelVersion>
+
+    <properties>
+        <ocl2cypher.testReportsDirectory>${project.build.directory}/surefire-reports</ocl2cypher.testReportsDirectory>
+    </properties>
+
+    <dependencies>
+        <!-- Independent source-semantics oracle used only by differential
+             tests.  Production OCL-to-Cypher code does not depend on USE's
+             parser, object-state runtime, or evaluator. -->
+        <dependency>
+            <groupId>org.tzi.use</groupId>
+            <artifactId>use-core</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+            <version>4.13.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j.driver</groupId>
+            <artifactId>neo4j-java-driver</artifactId>
+            <version>5.21.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.7.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Independent acceptance oracle for generated Cypher 5 text.  This
+             is a direct test dependency of the primary plugin; no code or
+             test utility is loaded from the neo4j/neo4j-tgg reference modules. -->
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>cypher-parser-factory</artifactId>
+            <version>2026.06.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>forbid-reference-plugin-dependencies</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <searchTransitive>true</searchTransitive>
+                                    <excludes>
+                                        <exclude>org.tzi.use:neo4j</exclude>
+                                        <exclude>org.tzi.use:neo4j-tgg</exclude>
+                                    </excludes>
+                                    <message>
+                                        ocl2cypher is the independent product plugin; neo4j and
+                                        neo4j-tgg are reference-only modules and must not enter its
+                                        dependency graph.
+                                    </message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <version>4.13.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>antlr4</goal>
+                        </goals>
+                        <configuration>
+                            <!-- OCL.g4 already declares its package via @parser::members/@header -->
+                            <visitor>false</visitor>
+                            <listener>false</listener>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <reportsDirectory>${ocl2cypher.testReportsDirectory}</reportsDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,63 @@
+-- Library UML model for the case study (Car-Rental-shaped, tiny).
+-- Extends to Branch/Member/Book/Loan are enough for A/B/C slices plus Let/NavigateOne.
+model Library
+
+class Member
+attributes
+    name : String
+    age : Integer
+end
+
+class StaffMember < Member
+end
+
+class Branch
+attributes
+    name : String
+    location : String
+end
+
+class Book
+attributes
+    title : String
+end
+
+class Loan
+attributes
+    fee : Integer
+end
+
+association BranchMember between
+    Branch[1] role branch
+    Member[*] role member
+end
+
+association BranchStaff between
+    Branch[1] role branchStaff
+    Member[*] role staff
+end
+
+association Manages between
+    StaffMember[1] role manager
+    Branch[1] role managedBranch
+end
+
+association BranchBook between
+    Branch[1] role branch
+    Book[*] role book
+end
+
+association LoanMember between
+    Loan[1] role loan
+    Member[1] role member
+end
+
+association LoanBook between
+    Loan[1] role loanBook
+    Book[1] role book
+end
+
+association LoanBranch between
+    Loan[1] role loanBranch
+    Branch[1] role branch
+end

@@ -323,9 +323,37 @@ class OclCypherRendererTest {
         OclCypherPlan.InvariantPlan plan = new OclCypherPlanner().planInvariant(invariantQuery);
 
         OclCypherRenderer.RenderedInvariant rendered = new OclCypherRenderer().renderInvariant(plan);
-        assertTrue(rendered.cypher().contains("CASE WHEN coalesce("));
+        assertTrue(rendered.cypher().contains("CASE WHEN ("));
+        assertTrue(rendered.cypher().contains(" IS NULL OR coalesce("));
         assertTrue(rendered.cypher().contains("THEN"));
         assertTrue(rendered.cypher().contains("ELSE"));
+    }
+
+    @Test
+    void rendersBottomConditionAsBottomInsteadOfSelectingElseBranch() {
+        var booleanType = org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Boolean");
+        var voidType = org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Void");
+        var integerType = org.uet.dse.neo4jtgg.ocl.OclTypeBinding.scalar("Integer");
+        var rendered = new OclCypherRenderer().renderTopLevelExpression(
+                new OclCypherPlan.IfPlan(
+                        new OclCypherPlan.LiteralPlan(null, voidType),
+                        new OclCypherPlan.LiteralPlan(1L, integerType),
+                        new OclCypherPlan.LiteralPlan(2L, integerType),
+                        integerType));
+
+        assertTrue(rendered.cypher().contains("THEN null WHEN"), rendered.cypher());
+        assertTrue(rendered.cypher().contains(" IS NULL OR coalesce(null = $"), rendered.cypher());
+        assertTrue(rendered.parameters().values().stream().anyMatch(OclBottomToken::isToken));
+    }
+
+    @Test
+    void certifiedCompilerKeepsBottomConditionOutOfBothBranches() {
+        var compiler = new DefaultOclToCypherCompiler(personCollectionBottomModel());
+        var compiled = compiler.compileInvariantInstrumented(
+                "context Person inv BottomCondition: if null then true else false endif");
+
+        assertTrue(compiled.cypher().contains("THEN null WHEN"), compiled.cypher());
+        assertTrue(compiled.cypher().contains(" IS NULL OR coalesce(null = $"), compiled.cypher());
     }
 
     @Test

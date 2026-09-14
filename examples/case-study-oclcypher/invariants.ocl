@@ -1,0 +1,29 @@
+-- Library case study — OCL → Cypher (OCL_val slice A/B/C + Let/NavigateOne)
+-- Every invariant below is a 2-valued "inv ...: e" whose body is Boolean3
+-- at the graph level.  The expected violation sets are recorded in
+-- expected-violations.csv and are the oracle against which both Core and
+-- Q-over-G are checked.  No pre/post/closure/Sequence here.
+
+context Member inv AdultMember:
+    self.age >= 18
+
+context Member inv MemberNameDefined:
+    self.name <> ''
+
+context Branch inv ManagerIsEmployee:
+    self.staff->includes(self.manager)
+
+context Branch inv HasMembers:
+    self.member->notEmpty()
+
+context Book inv TitleNotBlank:
+    self.title <> ''
+
+context Loan inv LoanCustomerIsAdult:
+    self.member.age >= 18
+
+context Loan inv LoanBookOfferedByBranch:
+    self.branch.book->includes(self.book)
+
+context Loan inv OverdueFeeNonNegative:
+    self.fee >= 0

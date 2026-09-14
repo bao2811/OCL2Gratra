@@ -17,6 +17,7 @@
         <module>use-gui</module>
         <module>use-assembly</module>
         <module>validator</module>
+        <module>ocl2cypher</module>
 
         <!--
                 <module>use-validator</module>

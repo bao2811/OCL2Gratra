@@ -1,0 +1,198 @@
+model CarRental
+------------------------------------
+-- Classes
+------------------------------------
+abstract class Person
+attributes
+firstname : String
+lastname : String
+age : Integer
+isMarried : Boolean
+email : Set(String)
+operations
+-- Produce a full name, e.g. 'Mr. Frank Black'.
+-- This is an operation without side effects,
+-- the method body is given as an OCL expression.
+fullname(prefix : String) : String =
+prefix.concat(' ').concat(firstname)
+.concat(' ').concat(lastname)
+end
+
+class Customer < Person
+attributes
+address : String
+end
+class Employee < Person
+attributes
+salary : Real
+operations
+-- This operation has side effects,
+-- the method body is left unspecified.
+raiseSalary(amount : Real) : Real
+end
+class Branch
+attributes
+location : String
+operations
+-- Query all rentals for a given day
+rentalsForDay(day : String) : Set(Rental) =
+rental->select(r : Rental |
+r.fromDay <= day and day <= r.untilDay)
+end
+class Rental
+attributes
+fromDay : String
+untilDay : String
+end
+class CarGroup
+attributes
+kind : String -- compact, intermediate, luxury
+operations
+-- Transitive closure of higher grade cars
+allHigher() : Set(CarGroup) =
+if higher->isEmpty() then
+Set{self}
+else
+Set{self}->union(higher.allHigher())
+endif
+-- Transitive closure of lower grade cars
+allLower() : Set(CarGroup) =
+if lower->isEmpty() then
+Set{self}
+else
+Set{self}->union(lower.allLower())
+endif
+isEqualOrBetterThan(other : CarGroup) : Boolean =
+self.allLower()->includes(other)
+end
+
+class Car
+attributes
+id : String
+operations
+description() : String =
+id.concat(' of group ').concat(carGroup.kind)
+end
+class ServiceDepot
+attributes
+location : String
+end
+class Check
+attributes
+description : String
+end
+------------------------------------
+-- Associations
+------------------------------------
+association Management between
+Employee[1] role manager
+Branch[0..1] role managedBranch
+end
+association Employment between
+Employee[*] role employee
+Branch[1] role employer
+end
+association Fleet between
+Branch[1]
+Car[*]
+end
+association Offers between
+Branch[*]
+CarGroup[*]
+end
+association Classification between
+CarGroup[1]
+Car[*]
+end
+association Booking between
+Rental[*]
+Customer[1]
+end
+association Provider between
+
+Rental[*]
+Branch[1]
+end
+association Reservation between
+Rental[*]
+CarGroup[1]
+end
+association Assignment between
+Rental[0..1]
+Car[0..1]
+end
+association Quality between
+CarGroup[0..1] role lower
+CarGroup[0..1] role higher
+end
+association Maintenance between
+ServiceDepot[0..1]
+Check[*]
+Car[*]
+end
+------------------------------------
+-- Constraints
+------------------------------------
+constraints
+context Person
+-- [1] The age attribute of persons is greater than zero.
+inv Person1:
+age > 0
+-- [2] Both names must be defined.
+inv Person2:
+firstname.isDefined() and lastname.isDefined()
+context Branch
+-- [1] Each manager is also an employee of the same branch.
+inv Branch1:
+self.employee->includes(self.manager)
+-- [2] Managers get a higher salary than employees.
+inv Branch2:
+self.employee->forAll(e |
+e <> self.manager implies self.manager.salary > e.salary)
+context CarGroup
+-- [1] The CarGroups association is not reflexive.
+inv CarGroup1:
+higher <> self and lower <> self
+-- [2] The CarGroups association is anti-symmetric.
+inv CarGroup2:
+higher.higher <> self and lower.lower <> self
+-- [3] There is exactly one CarGroup with lowest grade.
+inv CarGroup3:
+CarGroup.allInstances->select(cg |
+cg.lower->isEmpty())->size() = 1
+-- [4] There is exactly one CarGroup with highest grade.
+inv CarGroup4:
+CarGroup.allInstances->select(cg |
+cg.higher->isEmpty())->size() = 1
+-- [5] All CarGroup objects are connected.
+inv CarGroup5:
+CarGroup.allInstances->iterate(cg;
+s : Set(CarGroup) = oclEmpty(Set(CarGroup)) |
+s->including(cg.higher)->including(cg.lower))
+->excluding(oclUndefined(CarGroup)) = CarGroup.allInstances
+context Car
+-- [1] A car may not be assigned to a maintenance and to a
+-- rental at the same time.
+inv Car1:
+rental->isEmpty() or serviceDepot->isEmpty()
+-- [2] A maintenance is done in only one service depot (this
+-- cannot be expressed with multiplicities on ternary
+-- associations).
+inv Car2:
+serviceDepot->size() <= 1
+context Rental
+-- [1] A reserved car group must be offered by the branch
+-- providing the reservation
+inv Rental1:
+self.branch.carGroup->includes(self.carGroup)
+-- [2] Only a car of the requested car group or a higher one
+-- ("upgrading") may be assigned to a rental
+inv Rental2:
+car->notEmpty() implies
+car.carGroup.isEqualOrBetterThan(carGroup)
+context Employee::raiseSalary(amount : Real) : Real
+-- If the amount is positive, raise the salary
+-- by the given amount and return the new salary
+pre: amount > 0
+post: self.salary = self.salary@pre + amount
+and result = self.salary

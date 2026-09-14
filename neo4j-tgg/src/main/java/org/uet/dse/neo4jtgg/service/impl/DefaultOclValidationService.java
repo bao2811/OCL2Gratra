@@ -611,7 +611,7 @@ public class DefaultOclValidationService implements OclValidationService {
             executionContext.setVariable("self", node);
             Object result = expressionNode.evaluate(executionContext);
             if (!(result instanceof Boolean ok) || !ok) {
-                String useId = node.containsKey("use_id") ? node.get("use_id").asString() : String.valueOf(node.id());
+                String useId = stableUseId(node);
                 violations.put(useId, "Fallback evaluation reported false");
             }
         }
@@ -710,7 +710,7 @@ public class DefaultOclValidationService implements OclValidationService {
             }
             Object result = expressionNode.evaluate(executionContext);
             if (!(result instanceof Boolean ok) || !ok) {
-                String useId = node.containsKey("use_id") ? node.get("use_id").asString() : String.valueOf(node.id());
+                String useId = stableUseId(node);
                 violations.put(useId, "Fallback evaluation reported false");
             }
         }
@@ -1097,5 +1097,18 @@ public class DefaultOclValidationService implements OclValidationService {
             return referencesVariable(not.expression, variableName);
         }
         return false;
+    }
+
+    /**
+     * Stable-ID observations must never fall back to Neo4j's internal node id.
+     * A graph that does not satisfy the canonical identity contract is not a
+     * valid input for violation-set comparison.
+     */
+    private static String stableUseId(Node node) {
+        if (node == null || !node.containsKey("use_id") || node.get("use_id").isNull()) {
+            throw new IllegalStateException(
+                    "Canonical graph object is missing required stable property use_id");
+        }
+        return node.get("use_id").asString();
     }
 }

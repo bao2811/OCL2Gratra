@@ -1,0 +1,81 @@
+-- Original Car Rental constraints retained for provenance and comparison.
+context Person inv PositiveAge:
+    self.age > 0
+
+context Person inv NamesDefined:
+    self.firstname <> '' and self.lastname <> ''
+
+context Branch inv ManagerIsEmployee:
+    self.employee->includes(self.manager)
+
+context Branch inv ManagerSalaryDominates:
+    self.employee->forAll(e |
+        e <> self.manager implies self.manager.salary > e.salary)
+
+context CarGroup inv QualityNotReflexive:
+    self.higher <> self and self.lower <> self
+
+context CarGroup inv ExactlyOneLowest:
+    CarGroup.allInstances()->select(cg | cg.lower->isEmpty())->size() = 1
+
+context Car inv NotRentedDuringMaintenance:
+    self.rental->isEmpty() or self.maintenances->isEmpty()
+
+context Car inv AtMostOneServiceDepot:
+    self.maintenances->forAll(m |
+        self.maintenances->forAll(n | m.maintenanceDepot = n.maintenanceDepot))
+
+context Rental inv OfferedGroup:
+    self.branch.carGroup->includes(self.carGroup)
+
+context Rental inv AssignedRequestedGroup:
+    self.car->notEmpty() implies self.car.carGroup = self.carGroup
+
+-- Added domain constraints and coverage-oriented algebraic laws.
+context Employee inv PositiveSalary:
+    self.salary > 0.0
+
+context Customer inv AdultCustomer:
+    self.age >= 18
+
+context Branch inv HasEmployees:
+    self.employee->notEmpty()
+
+context Branch inv UniqueEmployeeFirstNames:
+    self.employee->isUnique(e | e.firstname)
+
+context Branch inv EmployeesHaveNames:
+    self.employee->forAll(e |
+        e.firstname <> '' and e.lastname <> '')
+
+context Branch inv OffersEveryFleetGroup:
+    self.car->forAll(c |
+        self.carGroup->includes(c.carGroup))
+
+context Branch inv EmployeePartition:
+    self.employee->select(e | e.age >= 18)
+        ->union(self.employee->reject(e | e.age >= 18)) = self.employee
+
+context CarGroup inv HasClassifiedCar:
+    self.car->notEmpty()
+
+context CarGroup inv OfferedBySomeBranch:
+    self.branch->notEmpty()
+
+context CarGroup inv ExactlyOneHighest:
+    CarGroup.allInstances()->select(cg | cg.higher->isEmpty())->size() = 1
+
+context Car inv NonBlankId:
+    self.id <> ''
+
+context Car inv GloballyUniqueId:
+    Car.allInstances()->select(c | c.id = self.id)->size() = 1
+
+context Car inv FleetBranchOffersItsGroup:
+    self.branch.carGroup->includes(self.carGroup)
+
+context Rental inv CustomerIsAdult:
+    self.customer.age >= 18
+
+context Rental inv AssignedCarInProviderFleet:
+    self.car->isEmpty() or self.branch.car->includes(self.car)

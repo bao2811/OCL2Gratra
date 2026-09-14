@@ -163,3 +163,5 @@ md/
 **/*.blg
 **/*.toc
 **/*.out
+/research
+/a

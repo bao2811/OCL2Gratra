@@ -46,7 +46,7 @@ class BottomSafeReceiverAgreementTest {
                         + "Person.allInstances()->forAll(p | "
                         + "(if p.age > self.age then p else null endif).oclIsKindOf(Person) or p = self)");
         String guardedPrefix = result.cypher().substring(0, result.cypher().indexOf(" MATCH (typeRecv"));
-        assertTrue(guardedPrefix.contains("WITH (CASE WHEN"), result.cypher());
+        assertTrue(guardedPrefix.contains("CASE WHEN"), result.cypher());
         assertTrue(guardedPrefix.contains("p"), result.cypher());
         assertTrue(guardedPrefix.contains("self"), result.cypher());
     }

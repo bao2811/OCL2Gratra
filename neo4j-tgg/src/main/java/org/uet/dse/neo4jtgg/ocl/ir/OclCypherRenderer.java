@@ -123,10 +123,17 @@ public class OclCypherRenderer {
             RenderedExpression condition = renderExpression(ifPlan.condition(), state);
             RenderedExpression thenBranch = renderExpression(ifPlan.thenBranch(), state);
             RenderedExpression elseBranch = renderExpression(ifPlan.elseBranch(), state);
-            return new RenderedExpression(
-                    "(CASE WHEN " + OclValidationSemantics.validationTruth(condition.cypher()) + " THEN " + thenBranch.cypher() +
-                            " ELSE " + elseBranch.cypher() + " END)",
-                    ifPlan.type());
+            // OCL conditionals have three semantic cases.  A bottom condition
+            // is not false and must not select the else branch; the complete
+            // conditional evaluates to bottom.  Materialize a compound
+            // condition before checking it twice so graph navigation is not
+            // duplicated by the lowering.
+            String rendered = materializeOnce(condition.cypher(), "ifCondition", state, value ->
+                    "(CASE WHEN " + renderIsBottom(value, state)
+                            + " THEN null WHEN " + OclValidationSemantics.validationTruth(value)
+                            + " THEN " + thenBranch.cypher()
+                            + " ELSE " + elseBranch.cypher() + " END)");
+            return new RenderedExpression(rendered, ifPlan.type());
         }
         if (expression instanceof OclCypherPlan.LetPlan letPlan) {
             RenderedExpression value = renderExpression(letPlan.value(), state);

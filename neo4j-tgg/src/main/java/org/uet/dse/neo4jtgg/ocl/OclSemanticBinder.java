@@ -137,6 +137,9 @@ public class OclSemanticBinder {
             return new BoundLiteral(literal, OclTypeBinding.scalar("Boolean"), literal.value);
         }
         if (expression instanceof ASTNullLiteral) {
+            // OCL null has no standalone classifier. Keep Void as the
+            // binder-only bottom type; contextual positions widen it to the
+            // surrounding expected type.
             return new BoundLiteral(expression, OclTypeBinding.scalar("Void"), null);
         }
         if (expression instanceof ASTEnumLiteral literal) {
@@ -538,10 +541,10 @@ public class OclSemanticBinder {
     }
 
     private OclTypeBinding inferIfType(OclTypeBinding conditionType, OclTypeBinding thenType, OclTypeBinding elseType) {
-        if (!"Boolean".equals(conditionType.typeName()) || conditionType.isCollection()) {
+        if (!isBooleanScalarType(conditionType) && !isVoidType(conditionType)) {
             throw new OclCodedUnsupportedOperationException(
                     OclDiagnosticCode.INVALID_IF_CONDITION,
-                    "if condition must be Boolean.");
+                    "if condition must be Boolean or bottom.");
         }
         if ("Void".equals(thenType.typeName())) {
             return elseType;
@@ -995,6 +998,12 @@ public class OclSemanticBinder {
         if (typeName == null || typeName.isBlank()) {
             return inferredType;
         }
+        if ("Void".equals(typeName.trim())) {
+            throw new OclCodedUnsupportedOperationException(
+                    OclDiagnosticCode.UNKNOWN_DECLARED_TYPE,
+                    "Declared type `Void` is internal to null-bottom inference and cannot be written explicitly for "
+                            + declaration);
+        }
         OclTypeBinding resolved = resolveDeclaredType(typeName.trim());
         if (resolved == null || resolved.isClassReference()) {
             throw new OclCodedUnsupportedOperationException(
@@ -1023,7 +1032,7 @@ public class OclSemanticBinder {
         }
 
         return switch (typeName) {
-            case "Boolean", "Integer", "Real", "String", "Void", "OclAny", "UnlimitedNatural" ->
+            case "Boolean", "Integer", "Real", "String", "OclAny", "UnlimitedNatural" ->
                     OclTypeBinding.scalar(typeName);
             default -> {
                 String localName = typeName.contains("::")
@@ -1075,6 +1084,15 @@ public class OclSemanticBinder {
     }
 
     public record BoundContextInvariant(ASTContext ast, BoundExpression expression) {
+        /** Names free in the bound invariant body; lexical binders are removed. */
+        public java.util.Set<String> freeVariables() {
+            return OclFreeVariableAnalyzer.freeVariables(expression);
+        }
+
+        /** Whether the invariant body does not depend on the context variable. */
+        public boolean isSelfIndependent() {
+            return OclFreeVariableAnalyzer.isSelfIndependent(expression);
+        }
     }
 
     public interface BoundExpression {

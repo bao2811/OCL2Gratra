@@ -43,19 +43,28 @@ public class Neo4jRepository {
                 String cypher =
                     "MATCH (o:Object {modelKey:$modelKey}) WHERE elementId(o) = $elementId " +
                         "MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue {modelKey:$modelKey}) " +
-                        "WHERE val.name ENDS WITH $suffix " +
+                        "MATCH (val)-[:InstanceOf]->(attrDef:Attribute {modelKey:$modelKey}) " +
+                        "WHERE attrDef.attrName = $attrName " +
+                        "AND val.attributeKey = attrDef.attributeKey " +
+                        "AND val.slotKey = o.objectKey + '::slot::' + attrDef.attributeKey " +
                         "RETURN val.value AS value,val.type AS type,val.isCollection AS isCollection";
 
                 Result res = tx.run(cypher, Values.parameters(
                     "modelKey", modelKey,
                     "elementId", sourceNode.elementId(),
-                    "suffix", "_" + attrName
+                    "attrName", attrName
                 ));
 
                 if (res.hasNext()) {
-                    return decodeStoredValue(res.next());
+                    Record stored = res.next();
+                    if (res.hasNext()) {
+                        throw new IllegalStateException(
+                                "Ambiguous canonical attribute name '" + attrName + "'");
+                    }
+                    return decodeStoredValue(stored);
                 }
-                return null;
+                throw new IllegalStateException(
+                        "Missing canonical attribute slot for '" + attrName + "'");
             });
         }
     }
@@ -138,16 +147,25 @@ public class Neo4jRepository {
                 String cypher =
                     "MATCH (o:Object {modelKey:$modelKey}) WHERE elementId(o) = $elementId " +
                         "MATCH (o)-[:ObjectHasAttribute]->(val:AttributeValue {modelKey:$modelKey}) " +
-                        "WHERE val.name ENDS WITH $attrName " +
+                        "MATCH (val)-[:InstanceOf]->(attrDef:Attribute {modelKey:$modelKey}) " +
+                        "WHERE attrDef.attrName = $attrName " +
+                        "AND val.attributeKey = attrDef.attributeKey " +
+                        "AND val.slotKey = o.objectKey + '::slot::' + attrDef.attributeKey " +
                         "RETURN val.value AS value,val.type AS type,val.isCollection AS isCollection";
 
                 Result res = tx.run(cypher, Values.parameters(
                         "modelKey", modelKey, "elementId", ownerNode.elementId(),
-                        "attrName", "_" + attrName));
+                        "attrName", attrName));
                 if (res.hasNext()) {
-                    return decodeStoredValue(res.next());
+                    Record stored = res.next();
+                    if (res.hasNext()) {
+                        throw new IllegalStateException(
+                                "Ambiguous canonical attribute name '" + attrName + "'");
+                    }
+                    return decodeStoredValue(stored);
                 }
-                return null;
+                throw new IllegalStateException(
+                        "Missing canonical attribute slot for '" + attrName + "'");
             });
         }
     }

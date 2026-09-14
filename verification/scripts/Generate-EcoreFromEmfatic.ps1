@@ -18,17 +18,52 @@ function TypeRef([string]$type) {
         'int'     { return 'ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt' }
         'long'    { return 'ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong' }
         'double'  { return 'ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble' }
-        default   { return "#//$type" }
+        default {
+            if ($type -match '^umlscope\.([A-Za-z_][A-Za-z0-9_]*)$') {
+                return "https://uet.dse.org/ocl2cypher/profile/uml/1.0#//$($Matches[1])"
+            }
+            if ($type -match '^coreocl\.([A-Za-z_][A-Za-z0-9_]*)$') {
+                return "https://uet.dse.org/ocl2cypher/intermediate/coreocl/1.0#//$($Matches[1])"
+            }
+            if ($type -match '^pgmm\.([A-Za-z_][A-Za-z0-9_]*)$') {
+                return "https://uet.dse.org/ocl2cypher/target/pgmm/2.1#//$($Matches[1])"
+            }
+            return "#//$type"
+        }
     }
+}
+
+function SuperRef([string]$type) {
+    if ($type -match '^umlscope\.([A-Za-z_][A-Za-z0-9_]*)$') {
+        return "https://uet.dse.org/ocl2cypher/profile/uml/1.0#//$($Matches[1])"
+    }
+    if ($type -match '^coreocl\.([A-Za-z_][A-Za-z0-9_]*)$') {
+        return "https://uet.dse.org/ocl2cypher/intermediate/coreocl/1.0#//$($Matches[1])"
+    }
+    if ($type -match '^pgmm\.([A-Za-z_][A-Za-z0-9_]*)$') {
+        return "https://uet.dse.org/ocl2cypher/target/pgmm/2.1#//$($Matches[1])"
+    }
+    return '#//' + $type
 }
 
 function Bounds([string]$multiplicity) {
     if ([string]::IsNullOrWhiteSpace($multiplicity)) { return @{ lower = 0; upper = 1 } }
     switch ($multiplicity) {
+        '?' { return @{ lower = 0; upper = 1 } }
         '1' { return @{ lower = 1; upper = 1 } }
         '+' { return @{ lower = 1; upper = -1 } }
         '*' { return @{ lower = 0; upper = -1 } }
-        default { throw "Unsupported multiplicity [$multiplicity]" }
+        default {
+            if ($multiplicity -match '^\d+$') {
+                $exact = [int]$multiplicity
+                return @{ lower = $exact; upper = $exact }
+            }
+            if ($multiplicity -match '^(\d+)\.\.(\d+|\*)$') {
+                $upper = if ($Matches[2] -eq '*') { -1 } else { [int]$Matches[2] }
+                return @{ lower = [int]$Matches[1]; upper = $upper }
+            }
+            throw "Unsupported multiplicity [$multiplicity]"
+        }
     }
 }
 
@@ -44,19 +79,21 @@ $nsPrefix = $namespace.Groups[2].Value
 $enums = New-Object System.Collections.Generic.List[object]
 foreach ($match in [regex]::Matches($source, '(?ms)enum\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{(.*?)\}')) {
     $literals = New-Object System.Collections.Generic.List[string]
-    foreach ($literal in [regex]::Matches($match.Groups[2].Value, '(?m)^\s*([A-Za-z_][A-Za-z0-9_]*)\s*;')) {
-        $literals.Add($literal.Groups[1].Value)
+    foreach ($literal in [regex]::Matches($match.Groups[2].Value, '(?m)^\s*(~?[A-Za-z_][A-Za-z0-9_]*)\s*;')) {
+        # Emfatic escapes reserved identifiers (for example ~in and ~return).
+        # Ecore stores the actual UML literal name without the escape marker.
+        $literals.Add($literal.Groups[1].Value.TrimStart('~'))
     }
     $enums.Add([pscustomobject]@{ name = $match.Groups[1].Value; literals = $literals })
 }
 
 $classes = New-Object System.Collections.Generic.List[object]
-foreach ($match in [regex]::Matches($source, '(?ms)(abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+extends\s+([A-Za-z_][A-Za-z0-9_]*))?\s*\{(.*?)\}')) {
+foreach ($match in [regex]::Matches($source, '(?ms)^\s*(abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+extends\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)*))?\s*\{(.*?)\}')) {
     $features = New-Object System.Collections.Generic.List[object]
     foreach ($line in ($match.Groups[4].Value -split "`n")) {
         $trimmed = $line.Trim()
         if ([string]::IsNullOrWhiteSpace($trimmed)) { continue }
-        $feature = [regex]::Match($trimmed, '^(?:(id)\s+)?(attr|val|ref)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\[([+*1])\])?\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*=\s*(.*?))?;\s*$')
+        $feature = [regex]::Match($trimmed, '^(?:(id)\s+)?(attr|val|ref)\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)(?:\[([+*?]|\d+|\d+\.\.(?:\d+|\*))\])?\s+(~?[A-Za-z_][A-Za-z0-9_]*)(?:\s*=\s*(.*?))?;\s*$')
         if (-not $feature.Success) { throw "Cannot parse feature '$trimmed' in $InputPath" }
         $bounds = Bounds $feature.Groups[4].Value
         $default = $feature.Groups[6].Value.Trim()
@@ -67,7 +104,7 @@ foreach ($match in [regex]::Matches($source, '(?ms)(abstract\s+)?class\s+([A-Za-
             type = $feature.Groups[3].Value
             lower = $bounds.lower
             upper = $bounds.upper
-            name = $feature.Groups[5].Value
+            name = $feature.Groups[5].Value.TrimStart('~')
             default = $default
         })
     }
@@ -98,7 +135,10 @@ foreach ($enum in $enums) {
 }
 foreach ($class in $classes) {
     $abstract = if ($class.abstract) { ' abstract="true"' } else { '' }
-    $super = if ([string]::IsNullOrWhiteSpace($class.super)) { '' } else { ' eSuperTypes="#//' + $class.super + '"' }
+    $super = if ([string]::IsNullOrWhiteSpace($class.super)) { '' } else {
+        $refs = ($class.super -split '\s*,\s*' | ForEach-Object { SuperRef $_ }) -join ' '
+        ' eSuperTypes="' + $refs + '"'
+    }
     $lines.Add(('  <eClassifiers xsi:type="ecore:EClass" name="{0}"{1}{2}>' -f (Xml $class.name), $abstract, $super))
     foreach ($feature in $class.features) {
         $type = TypeRef $feature.type

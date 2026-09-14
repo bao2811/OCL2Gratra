@@ -1,0 +1,4 @@
+package org.uet.dse.ocl2cypher.qcyp;
+import java.math.BigInteger; import org.uet.dse.ocl2cypher.core.*; import org.uet.dse.ocl2cypher.diagnostics.SourceSpan; import org.uet.dse.ocl2cypher.runtime.OclType;
+public final class QValidatorCheck{public static void main(String[]x){var s=SourceSpan.UNKNOWN;var d=new CoreDeclaration(1,"x",CoreDeclaration.Kind.ITERATOR,OclType.INTEGER);var c=new QNode.QExpr.CollectionLiteral(s,CoreExpr.CollectionKind.SET,java.util.List.of(),OclType.set(OclType.INTEGER));var p=new QNode.QPlan.PlanLet(s,d,new QNode.QExpr.Constant(s,OclType.INTEGER,BigInteger.ONE),new QNode.QPlan.FromCollection(s,c));var q=new QQuery(new QNode.QExpr.Materialize(s,p),null,QQuery.QResultShape.SET,QQuery.QueryMode.VALUE,p.type,null,null,false);if(!QValidator.validate(q).isEmpty())throw new AssertionError(QValidator.validate(q));System.out.println("PASS: Q validator corpus â€” empty Set, PlanLet, materialize and VALUE contract");}}
+

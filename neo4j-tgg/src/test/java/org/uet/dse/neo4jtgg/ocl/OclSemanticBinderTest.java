@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +104,24 @@ class OclSemanticBinderTest {
                 as(comparison.left(), OclSemanticBinder.BoundCollectionOperation.class).source(),
                 OclSemanticBinder.BoundMethodCall.class);
         assertEquals(OclTypeBinding.CollectionKind.SET, allInstances.type().collectionKind());
+    }
+
+    @Test
+    void distinguishesSelfIndependentGlobalBodyFromSelfDependentBody() {
+        String spec = """
+                model SelfDependency
+                class CarGroup
+                end
+                """;
+        OclSemanticBinder.BoundContextInvariant global = bind(spec,
+                "context CarGroup inv ExactlyOne: CarGroup.allInstances()->size() = 1");
+        OclSemanticBinder.BoundContextInvariant local = bind(spec,
+                "context CarGroup inv HasSelf: self.oclIsKindOf(CarGroup)");
+
+        assertTrue(global.isSelfIndependent());
+        assertEquals(java.util.Set.of(), global.freeVariables());
+        assertFalse(local.isSelfIndependent());
+        assertTrue(local.freeVariables().contains("self"));
     }
 
     @Test
@@ -566,6 +585,39 @@ class OclSemanticBinderTest {
         OclSemanticBinder.BoundIf ifExpression = as(comparison.left(), OclSemanticBinder.BoundIf.class);
         assertEquals("Boolean", ifExpression.condition().type().typeName());
         assertEquals("String", ifExpression.type().typeName());
+    }
+
+    @Test
+    void acceptsNullAsBottomIfCondition() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                end
+                """, "context Person inv BottomCondition: if null then true else false endif");
+
+        OclSemanticBinder.BoundIf ifExpression = as(bound.expression(), OclSemanticBinder.BoundIf.class);
+        assertEquals("Void", ifExpression.condition().type().typeName());
+        assertEquals("Boolean", ifExpression.type().typeName());
+    }
+
+    @Test
+    void keepsVoidInternalWhileAllowingNullToConformToDeclaredType() {
+        OclSemanticBinder.BoundContextInvariant bound = bind("""
+                model Demo
+                class Person
+                end
+                """, "context Person inv TypedNull: let value : Integer = null in value = null");
+
+        OclSemanticBinder.BoundLet let = as(bound.expression(), OclSemanticBinder.BoundLet.class);
+        assertEquals("Integer", let.variableType().typeName());
+        assertEquals("Void", let.value().type().typeName());
+
+        UnsupportedOperationException failure = assertThrows(UnsupportedOperationException.class, () -> bind("""
+                model Demo
+                class Person
+                end
+                """, "context Person inv ExplicitVoid: let value : Void = null in value.isUndefined()"));
+        assertTrue(failure.getMessage().contains("internal to null-bottom inference"));
     }
 
     @Test

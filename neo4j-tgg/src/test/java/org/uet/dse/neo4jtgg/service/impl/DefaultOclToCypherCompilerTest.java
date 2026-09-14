@@ -433,7 +433,7 @@ class DefaultOclToCypherCompilerTest {
     }
 
     @Test
-    void rejectsNullIfConditionAtSemanticPhase() {
+    void compilesNullIfConditionAsBottom() {
         String spec = """
                 model Demo
                 class Person
@@ -450,9 +450,8 @@ class DefaultOclToCypherCompilerTest {
         CypherCompilationResult result = compiler.compile(
                 "context Person inv NullIf: if null then self.name = 'adult' else true endif");
 
-        assertFalse(result.isSupported());
-        assertEquals("SEMANTIC", result.getDiagnostic().phase().name());
-        assertEquals(OclDiagnosticCode.INVALID_IF_CONDITION, result.getDiagnostic().code());
+        assertTrue(result.isSupported(), result.getReason());
+        assertTrue(result.getCypher().contains("THEN null WHEN"), result.getCypher());
     }
 
     @Test

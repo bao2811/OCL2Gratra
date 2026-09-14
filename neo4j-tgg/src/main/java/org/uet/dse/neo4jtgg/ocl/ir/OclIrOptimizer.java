@@ -71,11 +71,11 @@ public class OclIrOptimizer {
             OclIr.Expression elseBranch = optimizeExpression(ifExpression.elseBranch(), bindings);
             Boolean foldedCondition = extractIfConditionTruth(condition);
             if (foldedCondition != null) {
-                return foldedCondition ? thenBranch : elseBranch;
+                return preserveIfResultType(foldedCondition ? thenBranch : elseBranch, ifExpression.type());
             }
-            if (thenBranch.equals(elseBranch)) {
-                return thenBranch;
-            }
+            // Branch equality is not sufficient for folding: a bottom
+            // condition still makes the complete conditional bottom, even
+            // when both branches carry the same value.
             return new OclIr.If(condition, thenBranch, elseBranch, ifExpression.type());
         }
         if (expression instanceof OclIr.Let letExpression) {
@@ -172,6 +172,21 @@ public class OclIrOptimizer {
                     optimizedBody, iteratorOperation.type());
         }
         return expression;
+    }
+
+    /**
+     * A contextual null branch is bound as Void, while the enclosing if may
+     * have a widened result type (for example Integer).  Constant folding must
+     * retain that contextual type even though the runtime payload remains null.
+     */
+    private OclIr.Expression preserveIfResultType(OclIr.Expression selected, OclTypeBinding resultType) {
+        if (selected instanceof OclIr.Literal literal
+                && literal.value() == null
+                && resultType != null
+                && !resultType.equals(literal.type())) {
+            return new OclIr.Literal(null, resultType);
+        }
+        return selected;
     }
 
     private Boolean extractIfConditionTruth(OclIr.Expression expression) {

@@ -79,7 +79,12 @@ public final class OclCypherPlan {
                                       String conformanceRelationship, String identityProperty) {
     }
 
-    /** Physical scalar-slot accessor selected during CQM planning. */
+    /**
+     * Physical realization of the logical attribute observer used by the
+     * preservation theorem.  The logical operation is {@code read_G^a}; the
+     * canonical Neo4j carrier realizes it by following {@code ObjectHasAttribute}
+     * to one {@code AttributeValue} slot and reading its encoded {@code value}.
+     */
     public record AttributeBinding(String attributeKey, String slotLabel,
                                    String ownerRelationship, String valueProperty) {
     }

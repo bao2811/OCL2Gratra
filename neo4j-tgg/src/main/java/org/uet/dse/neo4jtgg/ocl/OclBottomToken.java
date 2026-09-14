@@ -7,7 +7,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The sole concrete representation of OCL bottom inside generated Cypher.
+ * Canonical representation of OCL bottom inside finite-set values in generated
+ * Cypher. Scalar bottom is carried by Cypher {@code null}; this tagged token is
+ * required where a list element must remain distinguishable from a missing
+ * value (for example during Set equality and uniqueness).
  *
  * <p>The token is a tagged map, while admitted UML scalar values and canonical
  * graph keys are Neo4j scalar values.  Keeping construction here prevents an

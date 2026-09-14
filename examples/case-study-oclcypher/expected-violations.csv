@@ -1,0 +1,9 @@
+invariant,ids
+Member::AdultMember,"bob,carol"
+Member::MemberNameDefined,""
+Branch::ManagerIsEmployee,"branch"
+Branch::HasMembers,""
+Book::TitleNotBlank,bookBlank
+Loan::LoanCustomerIsAdult,"bob,carol"
+Loan::LoanBookOfferedByBranch,"loan3"
+Loan::OverdueFeeNonNegative,loan2

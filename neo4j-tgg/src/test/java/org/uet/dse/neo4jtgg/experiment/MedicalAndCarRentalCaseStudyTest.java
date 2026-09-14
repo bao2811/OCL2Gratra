@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -97,6 +98,45 @@ class MedicalAndCarRentalCaseStudyTest {
     @Test
     void carRentalCypherIsStructurallyCertifiedAndMatchesUseViolationIds() throws Exception {
         verifyCase(CAR_RENTAL, "carrentalmodel.use", "carrental.soil", 10);
+    }
+
+    @Test
+    void extendedCarRentalFixtureIsNonVacuousAndMatchesUseViolationIds() throws Exception {
+        verifyInvariantFile(CAR_RENTAL, "carrentalmodel.use", "carrental-experiment.soil",
+                "invariants-extended.ocl", "expected-violations-extended.csv",
+                "expected-certification-boundaries-extended.txt",
+                "expected-production-gaps-extended.txt",
+                "expected-production-gap-reasons-extended.csv", 25);
+        verifyVacuityProfile(CAR_RENTAL, "carrentalmodel.use", "carrental-experiment.soil",
+                "invariants-extended.ocl", "expected-violations-extended.csv", 21, 4);
+    }
+
+    private void verifyVacuityProfile(Path directory, String modelFile, String soilFile,
+                                      String invariantFile, String expectedFile,
+                                      int expectedMixed, int expectedAllPass) throws Exception {
+        MModel model = compileModel(directory.resolve(modelFile));
+        MSystem system = loadSoil(model, directory.resolve(soilFile));
+        var invariants = new DefaultOclToCypherCompiler(model).parseContextInvariants(
+                Files.readString(directory.resolve(invariantFile)));
+        Map<String, Set<String>> expected = expectedIds(directory.resolve(expectedFile));
+        Map<String, BenchmarkVacuityStatus> expectedClassifications =
+                expectedClassifications(directory.resolve(expectedFile));
+        Map<BenchmarkVacuityStatus, Integer> counts = new EnumMap<>(BenchmarkVacuityStatus.class);
+
+        for (var invariant : invariants) {
+            String id = invariant.className + "::" + invariant.invName;
+            BenchmarkVacuityStatus actual = ViolationSetOracle.compare(id,
+                    contextIds(system, invariant.className), expected.get(id), expected.get(id))
+                    .vacuityStatus();
+            assertEquals(expectedClassifications.get(id), actual, id);
+            counts.merge(actual, 1, Integer::sum);
+        }
+        assertEquals(expectedMixed,
+                counts.getOrDefault(BenchmarkVacuityStatus.NON_VACUOUS_MIXED, 0));
+        assertEquals(expectedAllPass,
+                counts.getOrDefault(BenchmarkVacuityStatus.ALL_PASS, 0));
+        assertEquals(0, counts.getOrDefault(BenchmarkVacuityStatus.ALL_VIOLATE, 0));
+        assertEquals(0, counts.getOrDefault(BenchmarkVacuityStatus.EMPTY_CONTEXT, 0));
     }
 
     private void verifyCase(Path directory, String modelFile, String soilFile,
@@ -215,6 +255,21 @@ class MedicalAndCarRentalCaseStudyTest {
             String[] columns = line.split(",", -1);
             Set<String> ids = columns[1].isBlank() ? Set.of() : Set.of(columns[1].split(";"));
             result.put(columns[0], ids);
+        }
+        return Map.copyOf(result);
+    }
+
+    private static Map<String, BenchmarkVacuityStatus> expectedClassifications(Path source)
+            throws Exception {
+        Map<String, BenchmarkVacuityStatus> result = new LinkedHashMap<>();
+        var lines = Files.readAllLines(source);
+        for (String line : lines.subList(1, lines.size())) {
+            if (line.isBlank()) continue;
+            String[] columns = line.split(",", -1);
+            if (columns.length != 3) {
+                throw new IllegalArgumentException("Missing vacuity classification: " + line);
+            }
+            result.put(columns[0], BenchmarkVacuityStatus.valueOf(columns[2]));
         }
         return Map.copyOf(result);
     }

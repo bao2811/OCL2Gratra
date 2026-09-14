@@ -32,26 +32,34 @@ class MedicalAndCarRentalRealNeo4jTest {
     void medicalSystemMatchesUseForEveryProductionSupportedInvariant() throws Exception {
         runCase("MEDICAL_YTE", Path.of("..", "examples", "medical-system-yte"),
                 "medical-system.use", "medical-system.soil", "invariants.ocl",
-                "expected-violations.csv", 13);
+                "expected-violations.csv", "expected-production-gaps.txt", 13);
     }
 
     @Test
     void medicalNestedDiscriminatorsMatchUseOnRealNeo4j() throws Exception {
         runCase("MEDICAL_YTE_NESTED", Path.of("..", "examples", "medical-system-yte"),
                 "medical-system.use", "medical-system.soil", "nested-discriminators.ocl",
-                "expected-nested-discriminator-violations.csv", 14);
+                "expected-nested-discriminator-violations.csv",
+                "expected-nested-production-gaps.txt", 14);
     }
 
     @Test
     void carRentalMatchesUseForEveryProductionSupportedInvariant() throws Exception {
         runCase("CAR_RENTAL", Path.of("..", "examples", "carrental"),
                 "carrentalmodel.use", "carrental.soil", "invariants.ocl",
-                "expected-violations.csv", 10);
+                "expected-violations.csv", "expected-production-gaps.txt", 10);
+    }
+
+    @Test
+    void extendedCarRentalMatchesUseForEveryProductionSupportedInvariant() throws Exception {
+        runCase("CAR_RENTAL_EXTENDED", Path.of("..", "examples", "carrental"),
+                "carrentalmodel.use", "carrental-experiment.soil", "invariants-extended.ocl",
+                "expected-violations-extended.csv", "expected-production-gaps-extended.txt", 25);
     }
 
     private void runCase(String evidenceName, Path directory, String modelFile,
                          String soilFile, String invariantFile, String expectedFile,
-                         int expectedExecuted) throws Exception {
+                         String expectedGapFile, int expectedExecuted) throws Exception {
         Assumptions.assumeTrue(Boolean.getBoolean("neo4j.medical.carrental.it"),
                 "Run with -Dneo4j.medical.carrental.it=true and configured Neo4j");
         connect(Neo4jEnvironmentConfig.load());
@@ -80,7 +88,7 @@ class MedicalAndCarRentalRealNeo4jTest {
             Map<String, Set<String>> expected = MedicalAndCarRentalCaseStudyTest.expectedIds(
                     directory.resolve(expectedFile));
             Set<String> expectedGaps = new LinkedHashSet<>(Files.readAllLines(
-                    directory.resolve("expected-production-gaps.txt")));
+                    directory.resolve(expectedGapFile)));
             ViolationSetOracle oracle = new ViolationSetOracle(
                     new UseObjectSideReferenceEvaluator(), this::execute);
             int executed = 0;

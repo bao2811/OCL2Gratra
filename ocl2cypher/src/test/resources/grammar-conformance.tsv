@@ -1,0 +1,46 @@
+# Grammar conformance — OCL.g4 vs research/OCLscope/OCL-Concrete-Grammar.ebnf
+#
+# Each row gives a full concrete-syntax snippet and whether OCL.g4 (the
+# recognizer) accepts it. "accept=YES" is grammar recognition ONLY; later
+# N_SM admission may still reject null/invalid/range/etc. A row is a failure if
+# the recognizer disagrees with the `accept` column.
+#
+# Columns are TAB-separated: id <TAB> accept <TAB> snippet
+id	accept	snippet
+type-collection-set	NO	context Person inv T: Bag(Set(Integer))->size() > 0	
+type-primitive-int	YES	context P inv T: 1 + 2 > 2
+type-nested-collection	NO	context P inv T: Set(Bag(Integer)){1}->size() > 0
+type-unknown-head	NO	context P inv T: Bogus(Integer){1}->size() > 0
+inv-classifier-head	YES	context Person inv T: true
+inv-named-var-head	YES	context p : Person inv T: true
+inv-package-block	YES	package Foo context Person inv T: true endpackage
+inv-missing-body	NO	context P
+inv-two-ident-head	NO	context P Q inv T: true
+lit-empty-set	YES	context P inv T: Set{}->size() = 0
+lit-set-null	YES	context P inv T: Set{null}->size() = 1
+lit-set-invalid	YES	context P inv T: Set{invalid}->size() = 1
+lit-set-range	YES	context P inv T: Set{1 .. 10}->size() > 0
+lit-int-maximal-munch	YES	context P inv T: 123 + 1 > 0
+lit-real-exponent	YES	context P inv T: 1e10 > 1
+lit-real-fraction	YES	context P inv T: 3.14 > 0
+lit-unclosed-string	NO	context P inv T: self.name = 'oops
+lit-bag-ok	YES	context P inv T: Bag{1,2,3}->size() = 3
+nav-dot-property	YES	context P inv T: self.age >= 18
+nav-arrow-size	YES	context C inv T: self.employees->size() > 3
+nav-iterator-select	YES	context C inv T: self.employees->select(e | e.age >= 18)->size() > 0
+nav-unknown-iterator	NO	context C inv T: self.employees->inventedOp(e | e)->size() > 0
+self-only	YES	context Person inv T: self = self
+let-typed	YES	context P inv T: let u : Integer = 1 in u + 1 > 0
+let-nested	YES	context P inv T: let u = 1 in let v = 2 in u + v > 0
+if-nested	YES	context P inv T: if true then if false then 1 else 2 endif else 3 endif > 0
+if-missing-endif	NO	context P inv T: if true then 1 else 2
+logic-not-and	YES	context P inv T: not true and false
+logic-or-and	YES	context P inv T: true or false and true
+div-keyword	YES	context P inv T: 7 div 2 > 2
+mod-keyword	YES	context P inv T: 7 mod 2 > 0
+div-misread-word	NO	context P inv T: 7 divd 2 > 0
+escaped-identifier	YES	context P inv T: _'true' = 1
+comment-leading-ok	YES	-- leading comment
+comment-context-dangling	NO	context A -- dangling
+equality-ops	YES	context P inv T: 1 = 1 and 2 <> 1
+relational-ops	YES	context P inv T: 1 < 2 and 2 >= 1

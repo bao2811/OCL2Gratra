@@ -12,6 +12,7 @@ import org.uet.dse.neo4j.oclite.ast.ASTNode;
 import org.uet.dse.neo4j.oclite.ast.ASTVisitor;
 import org.uet.dse.neo4jtgg.ocl.OclMetamodelIndex;
 import org.uet.dse.neo4jtgg.ocl.OclSemanticBinder;
+import org.uet.dse.neo4jtgg.ocl.OclTypeBinding;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -138,6 +139,37 @@ class OclIrOptimizerTest {
 
         assertTrue(optimized instanceof OclIr.Literal);
         assertEquals(1L, ((OclIr.Literal) optimized).value());
+    }
+
+    @Test
+    void preservesContextualTypeWhenFoldingNullIfBranch() {
+        OclIrOptimizer optimizer = new OclIrOptimizer();
+        OclIr.Expression expression = new OclIr.If(
+                new OclIr.Literal(Boolean.TRUE, BOOLEAN),
+                new OclIr.Literal(null, OclTypeBinding.scalar("Void")),
+                new OclIr.Literal(1L, INTEGER),
+                INTEGER);
+
+        OclIr.Expression optimized = optimizer.optimizeExpression(expression);
+
+        assertTrue(optimized instanceof OclIr.Literal);
+        assertNull(((OclIr.Literal) optimized).value());
+        assertEquals(INTEGER, optimized.type());
+    }
+
+    @Test
+    void doesNotFoldEqualBranchesWhenConditionMayBeBottom() {
+        OclIrOptimizer optimizer = new OclIrOptimizer();
+        OclTypeBinding voidType = OclTypeBinding.scalar("Void");
+        OclIr.Expression expression = new OclIr.If(
+                new OclIr.Literal(null, voidType),
+                new OclIr.Literal(1L, INTEGER),
+                new OclIr.Literal(1L, INTEGER),
+                INTEGER);
+
+        OclIr.Expression optimized = optimizer.optimizeExpression(expression);
+
+        assertTrue(optimized instanceof OclIr.If);
     }
 
     @Test

@@ -199,7 +199,7 @@ public final class OclCertifiedModelValidator {
                     "WF_OVA_BINARY_TYPE", path, violations);
         } else if (expression instanceof OclIr.If ifExpression) {
             validateOvaExpression(ifExpression.condition(), path + ".condition", scope, stage, certified, violations, visited);
-            requireBoolean(ifExpression.condition(), "WF_OVA_IF", path + ".condition", violations);
+            requireBooleanOrBottom(ifExpression.condition(), "WF_OVA_IF", path + ".condition", violations);
             validateOvaExpression(ifExpression.thenBranch(), path + ".thenBranch", scope, stage, certified, violations, visited);
             validateOvaExpression(ifExpression.elseBranch(), path + ".elseBranch", scope, stage, certified, violations, visited);
             requireCompatibleType(ifExpression.thenBranch().type(), ifExpression.elseBranch().type(),
@@ -342,7 +342,7 @@ public final class OclCertifiedModelValidator {
                     "WF_CQM_BINARY_TYPE", path, violations);
         } else if (expression instanceof OclCypherPlan.IfPlan ifPlan) {
             validateCqmExpression(ifPlan.condition(), path + ".condition", scope, certified, violations, visited);
-            requireBoolean(ifPlan.condition(), "WF_CQM_IF", path + ".condition", violations);
+            requireBooleanOrBottom(ifPlan.condition(), "WF_CQM_IF", path + ".condition", violations);
             validateCqmExpression(ifPlan.thenBranch(), path + ".thenBranch", scope, certified, violations, visited);
             validateCqmExpression(ifPlan.elseBranch(), path + ".elseBranch", scope, certified, violations, visited);
             requireCompatibleType(ifPlan.thenBranch().type(), ifPlan.elseBranch().type(),
@@ -774,7 +774,8 @@ public final class OclCertifiedModelValidator {
     }
 
     private static boolean isVoid(OclTypeBinding type) {
-        return type != null && "Void".equalsIgnoreCase(type.typeName());
+        return type != null && !type.isCollection() && !type.isNode() && !type.isClassReference()
+                && "Void".equalsIgnoreCase(type.typeName());
     }
 
     private static void requireExact(String actual, String expected, String code, String path,
@@ -832,9 +833,27 @@ public final class OclCertifiedModelValidator {
         }
     }
 
+    private static void requireBooleanOrBottom(OclIr.Expression expression, String code, String path,
+                                               List<Violation> violations) {
+        if (expression != null && !isBooleanOrBottom(expression.type())) {
+            violations.add(new Violation(code, path, "Boolean or bottom expression is required"));
+        }
+    }
+
+    private static void requireBooleanOrBottom(OclCypherPlan.ExpressionPlan expression, String code, String path,
+                                               List<Violation> violations) {
+        if (expression != null && !isBooleanOrBottom(expression.type())) {
+            violations.add(new Violation(code, path, "Boolean or bottom plan expression is required"));
+        }
+    }
+
     private static boolean isBoolean(OclTypeBinding type) {
         return type != null && !type.isCollection() && !type.isNode() && !type.isClassReference()
                 && "Boolean".equalsIgnoreCase(type.typeName());
+    }
+
+    private static boolean isBooleanOrBottom(OclTypeBinding type) {
+        return isBoolean(type) || isVoid(type);
     }
 
     private static Set<String> extend(Set<String> scope, String name) {
